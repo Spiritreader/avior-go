@@ -10,6 +10,7 @@ import (
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -19,8 +20,8 @@ const (
 )
 
 var (
-	resumeChan chan string
-	running    bool
+	resumeChan     chan string
+	canProcessJobs bool
 )
 
 func main() {
@@ -77,6 +78,7 @@ func main() {
 // wg is the WaitGroup that is used to keep the main function waiting until
 // the service exits
 func runService(ctx context.Context, wg *sync.WaitGroup) {
+	var sleepTime int
 	refreshConfig()
 	aviorDb, errConnect := db.Connect()
 	defer func() {
@@ -97,21 +99,33 @@ func runService(ctx context.Context, wg *sync.WaitGroup) {
 		wg.Done()
 		return
 	}
+
+	// sign in current machine and start loop
 	err = db.SignInClient(aviorDb, client)
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
-	running = true
 MainLoop:
 	for {
-		if running {
+		// check if client is allowed to run
+		if tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now()) {
+			canProcessJobs = true
+			sleepTime = 5
+		} else {
+			canProcessJobs = false
+			sleepTime = 1
+		}
+
+		if canProcessJobs {
 			refreshConfig()
 			processJob(aviorDb, client)
 		}
+
+		// skip sleep when more jobs are queued, also serves as exit point
 		select {
 		case <-resumeChan:
 			continue
-		case <-time.After(5 * time.Minute):
+		case <-time.After(time.Duration(sleepTime) * time.Minute):
 			continue
 		case <-ctx.Done():
 			_ = glg.Info("service stop signal received")
@@ -128,11 +142,11 @@ func processJob(aviorDb *mongo.Database, client *db.Client) {
 		_ = glg.Errorf("couldn't retrieve next job: %s", err)
 		return
 	}
-
 	if job == nil {
 		_ = glg.Info("no more jobs in queue")
 		return
 	}
+
 	select {
 	case resumeChan <- RESUME:
 		_ = glg.Log("sending resume event")
