@@ -5,39 +5,29 @@ import (
 	"io/ioutil"
 	"os"
 	"sync"
+
+	"github.com/Spiritreader/avior-go/structs"
 )
 
 var once sync.Once
-var instance *Config
+var instance *structs.Config
 
 // Instance retrieves the current configuration file instance
 //
 // Creates a new one if it doesn't exist
-func Instance() *Config {
+func Instance() *structs.Config {
 	once.Do(func() {
-		instance = new(Config)
+		instance = new(structs.Config)
 		InitWithDefaults(instance)
 	})
 	return instance
 }
 
-// Config is the main application configuration
-type Config struct {
-	DatabaseURL  string
-	AudioFormats AudioFormats
-	Resolutions  map[string]string
+func InitWithDefaults(cfg *structs.Config) {
+	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
 }
 
-type AudioFormats struct {
-	StereoTags []string
-	MultiTags  []string
-}
-
-func InitWithDefaults(cfg *Config) {
-	cfg.DatabaseURL = "mongodb://localhost:27017"
-}
-
-func Load() error {
+func LoadLocal() error {
 	jsonFileHandle, err := os.Open("config.json")
 	if err != nil {
 		return err
@@ -47,7 +37,7 @@ func Load() error {
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(serialized, instance)
+	err = json.Unmarshal(serialized, &instance.Local)
 	if err != nil {
 		return err
 	}
@@ -55,7 +45,7 @@ func Load() error {
 }
 
 func Save() error {
-	encoded, err := json.MarshalIndent(*instance, "", "  ")
+	encoded, err := json.MarshalIndent(instance.Local, "", "  ")
 	if err != nil {
 		return err
 	}

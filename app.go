@@ -11,6 +11,7 @@ import (
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/media"
+	"github.com/Spiritreader/avior-go/structs"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -47,7 +48,7 @@ func main() {
 
 	// Instantiate and load config file
 	_ = config.Instance()
-	if err := config.Load(); err != nil {
+	if err := config.LoadLocal(); err != nil {
 		glg.Fatalf("couldn't load config file, shutting down: %s", err)
 	}
 
@@ -146,10 +147,10 @@ MainLoop:
 	wg.Done()
 }
 
-func processJob(aviorDb *mongo.Database, client *db.Client) {
+func processJob(aviorDb *mongo.Database, client *structs.Client) {
 	job, err := db.GetNextJobForClient(aviorDb, client)
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve next job: %s", err)
+		_ = glg.Errorf("next job: %s", err)
 		return
 	}
 	if job == nil {
@@ -178,7 +179,7 @@ func resume() {
 }
 
 func refreshConfig() {
-	err := config.Load()
+	err := config.LoadLocal()
 	if err != nil {
 		_ = glg.Infof("could not load config: %s", err)
 		return

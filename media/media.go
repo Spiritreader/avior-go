@@ -59,8 +59,8 @@ func (f *FileInfo) Update() error {
 func (f *FileInfo) getAudio() {
 	cfg := config.Instance()
 
-	tunerStereo := find(f.TunerLog, cfg.AudioFormats.StereoTags)
-	tunerMulti := find(f.TunerLog, cfg.AudioFormats.MultiTags)
+	tunerStereo := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
+	tunerMulti := find(f.TunerLog, cfg.Local.AudioFormats.MultiTags)
 
 	if tunerStereo && !tunerMulti {
 		// guaranteed to be stereo if tuner only picks up one audio codec
@@ -70,8 +70,8 @@ func (f *FileInfo) getAudio() {
 		f.AudioFormat = MULTI
 	} else if tunerStereo && tunerMulti {
 		// complement info with tags if available
-		metaStereo := find(f.MetadataLog, cfg.AudioFormats.StereoTags)
-		metaMulti := find(f.MetadataLog, cfg.AudioFormats.MultiTags)
+		metaStereo := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags)
+		metaMulti := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags)
 
 		if metaMulti {
 			// if tags include multichannel audio, it's still likely to be multichannel
@@ -87,13 +87,13 @@ func (f *FileInfo) getAudio() {
 // updates the struct based on the resolution tag that's been mapped in the config file
 func (f *FileInfo) getResolution() {
 	cfg := config.Instance()
-	keys := make([]string, 0, len(cfg.Resolutions))
-	for k := range cfg.Resolutions {
+	keys := make([]string, 0, len(cfg.Local.Resolutions))
+	for k := range cfg.Local.Resolutions {
 		keys = append(keys, k)
 	}
 	matchedKey := match(f.TunerLog, keys)
 	if matchedKey != nil {
-		f.Resolution = cfg.Resolutions[*matchedKey]
+		f.Resolution = cfg.Local.Resolutions[*matchedKey]
 	}
 }
 
