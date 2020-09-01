@@ -44,17 +44,15 @@ type FileInfo struct {
 	AudioFormat    int
 	MetadataLog    []string
 	TunerLog       []string
-	Legacy         bool
+	legacy         bool
 }
 
 func (f *FileInfo) Update() error {
-	if !f.Legacy {
-		if err := f.readLogs(); err != nil {
-			return err
-		}
-		f.getAudio()
-		f.getResolution()
+	if err := f.readLogs(); err != nil {
+		return err
 	}
+	f.getAudio()
+	f.getResolution()
 	return nil
 }
 
@@ -90,54 +88,39 @@ func (f *FileInfo) getAudio() {
 // updates the struct based on the resolution tag that's been mapped in the config file
 func (f *FileInfo) getResolution() {
 	cfg := config.Instance()
-	keys := make([]string, 0, len(cfg.Local.Resolutions))
-	for k := range cfg.Local.Resolutions {
-		keys = append(keys, k)
-	}
-	matchedKey := match(f.TunerLog, keys)
-	if matchedKey != nil {
-		f.Resolution = cfg.Local.Resolutions[*matchedKey]
-	}
+	f.Resolution = *match(f.TunerLog, cfg.Local.Resolutions)
 }
 
 // reads both log files and updates the struct
 func (f *FileInfo) readLogs() error {
-	tunerLogPath := strings.TrimSuffix(f.Path, filepath.Ext(f.Path)) + ".log"
-	metadataLogPath := strings.TrimSuffix(f.Path, filepath.Ext(f.Path)) + ".txt"
-	tunerFile, err := os.Open(tunerLogPath)
-	if err != nil {
-		_ = glg.Errorf("couldn't open tuner log: %s", err)
-		return err
-	}
-	defer tunerFile.Close()
-	metadataFile, err := os.Open(metadataLogPath)
-	if err != nil {
-		_ = glg.Errorf("couldn't open metadata log: %s", err)
-		return err
-	}
-	defer metadataFile.Close()
+	stem := strings.TrimSuffix(f.Path, filepath.Ext(f.Path))
+	tunerLogPath := stem + ".log"
+	metadataLogPath := stem + ".txt"
+	legacyLogPaths := []string{stem + ".mkv.log", stem + ".mpg.log"}
 
-	scanner := bufio.NewScanner(tunerFile)
-	for scanner.Scan() {
-		f.TunerLog = append(f.TunerLog, fmt.Sprintln(scanner.Text()))
+	if err := readFileContent(&f.MetadataLog, metadataLogPath); err != nil {
+		_ = glg.Warnf("couldn't read metadata log: %s", err)
 	}
-	if err := scanner.Err(); err != nil {
-		_ = glg.Errorf("error reading tuner log: %s", err)
-		f.TunerLog = nil
-		return err
-	}
-
-	scanner = bufio.NewScanner(metadataFile)
-	for scanner.Scan() {
-		f.MetadataLog = append(f.MetadataLog, fmt.Sprintln(scanner.Text()))
-	}
-	if err := scanner.Err(); err != nil {
-		_ = glg.Errorf("error reading metadata log: %s", err)
-		f.TunerLog = nil
-		f.MetadataLog = nil
+	if err := readFileContent(&f.TunerLog, tunerLogPath); err != nil {
+		if err == os.ErrNotExist {
+			for _, legacyLogPath := range legacyLogPaths {
+				if err := readFileContent(&f.TunerLog, legacyLogPath); err == nil {
+					_ = glg.Infof("legacy log file detected: %s", legacyLogPath)
+					f.legacy = true
+					return nil
+				}
+			}
+		}
 		return err
 	}
 	return nil
+}
+
+// Use to determine whether this file has a legacy logfile attached to it.
+//
+// If this teturns true, the MetadataLog will be nil as it doesn't exist for legacy file types
+func (f *FileInfo) Legacy() bool {
+	return f.legacy
 }
 
 func find(slice []string, terms []string) bool {
@@ -151,13 +134,36 @@ func find(slice []string, terms []string) bool {
 	return false
 }
 
-func match(slice []string, terms []string) *string {
+func match(slice []string, terms map[string]string) *string {
 	for _, line := range slice {
-		for _, term := range terms {
-			if strings.Contains(line, term) {
-				return &term
+		for k, v := range terms {
+			if strings.Contains(line, v) {
+				return &k
 			}
 		}
+	}
+	return nil
+}
+
+func readFileContent(out *[]string, filePath string) error {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return err
+	}
+	fileHandle, err := os.Open(filePath)
+	if err != nil {
+		_ = glg.Errorf("couldn't open log with path %s: %s", filePath, err)
+		return err
+	}
+	defer fileHandle.Close()
+
+	scanner := bufio.NewScanner(fileHandle)
+	for scanner.Scan() {
+		*out = append(*out, fmt.Sprintln(scanner.Text()))
+	}
+	if err := scanner.Err(); err != nil {
+		_ = glg.Errorf("error reading tuner log with path %s: %s", filePath, err)
+		*out = nil
+		return err
 	}
 	return nil
 }
