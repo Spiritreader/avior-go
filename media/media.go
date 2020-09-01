@@ -185,7 +185,7 @@ func (f *FileInfo) readLogs() error {
 	legacyLogPaths := []string{stem + ".mkv.log", stem + ".mpg.log"}
 
 	if err := readFileContent(&f.MetadataLog, metadataLogPath); err != nil {
-		_ = glg.Warnf("couldn't read metadata log: %s", err)
+		_ = glg.Warnf("couldn't read metadata log for %s: %s", metadataLogPath, err)
 	} else {
 		f.LogPaths = append(f.LogPaths, metadataLogPath)
 	}
@@ -193,7 +193,7 @@ func (f *FileInfo) readLogs() error {
 		if err == os.ErrNotExist {
 			for _, legacyLogPath := range legacyLogPaths {
 				if err := readFileContent(&f.TunerLog, legacyLogPath); err == nil {
-					_ = glg.Infof("legacy log file detected: %s", legacyLogPath)
+					_ = glg.Logf("legacy log file detected: %s", legacyLogPath)
 					f.legacy = true
 					f.LogPaths = append(f.LogPaths, legacyLogPath)
 					return nil

@@ -119,10 +119,15 @@ func runService(ctx context.Context, wg *sync.WaitGroup) {
 MainLoop:
 	for {
 		// check if client is allowed to run
-		if tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now()) {
+		canRun := tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now())
+		if canRun && !canProcessJobs {
+			_ = glg.Infof("client %s moving to standby, active hours: %s - %s",
+				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
 			canProcessJobs = true
 			sleepTime = 5
-		} else {
+		} else if !canRun && canProcessJobs {
+			_ = glg.Infof("client %s resuming , active hours: %s - %s",
+				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
 			canProcessJobs = false
 			sleepTime = 1
 		}
@@ -150,13 +155,14 @@ MainLoop:
 func processJob(aviorDb *mongo.Database, client *structs.Client) {
 	job, err := db.GetNextJobForClient(aviorDb, client)
 	if err != nil {
-		_ = glg.Errorf("next job: %s", err)
+		_ = glg.Errorf("failed getting next job: %s", err)
 		return
 	}
 	if job == nil {
 		_ = glg.Info("no more jobs in queue")
 		return
 	}
+	_ = glg.Infof("processing job %s", job.Path)
 	fileInfo := new(media.FileInfo)
 	fileInfo.Path = job.Path
 	fileInfo.Name = job.Name

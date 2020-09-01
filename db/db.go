@@ -131,6 +131,7 @@ func GetNextJobForClient(db *mongo.Database, client *structs.Client) (*structs.J
 	var result *structs.Job
 	err := db.Collection("jobs").FindOne(ctx, bson.M{"AssignedClient.$id": client.ID}).Decode(&result)
 	if err != nil {
+		_ = glg.Errorf("could not retrieve next job for client %s: %s", client.Name, err)
 		return nil, err
 	}
 	if result == nil {
@@ -197,6 +198,7 @@ func SignInClient(db *mongo.Database, client *structs.Client) error {
 		_ = glg.Warnf("could not sign in %s, jobs will not be assigned to this client unless IgnoreOnline is set", client.Name)
 		return err
 	}
+	_ = glg.Infof("signed in %s", client.Name)
 	return nil
 }
 
@@ -208,5 +210,6 @@ func SignOutClient(db *mongo.Database, client *structs.Client) error {
 		_ = glg.Warnf("could not sign out %s, jobs will continue to be assigned as long as its online", client.Name)
 		return err
 	}
+	_ = glg.Infof("signed out %s", client.Name)
 	return nil
 }
