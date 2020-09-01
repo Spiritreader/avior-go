@@ -23,7 +23,14 @@ func Instance() *Config {
 
 // Config is the main application configuration
 type Config struct {
-	DatabaseURL string
+	DatabaseURL  string
+	AudioFormats AudioFormats
+	Resolutions  map[string]string
+}
+
+type AudioFormats struct {
+	StereoTags []string
+	MultiTags  []string
 }
 
 func InitWithDefaults(cfg *Config) {

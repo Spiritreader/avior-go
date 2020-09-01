@@ -10,6 +10,7 @@ import (
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -26,9 +27,8 @@ var (
 
 func main() {
 	resumeChan = make(chan string, 1)
-	//Initalize global structs
-	_ = config.Instance()
 
+	// Set up logger
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	glg.Get().
@@ -45,6 +45,27 @@ func main() {
 	_ = glg.Info("version ==>", "hey")
 	defer log.Close()
 
+	// Instantiate and load config file
+	_ = config.Instance()
+	if err := config.Load(); err != nil {
+		glg.Fatalf("couldn't load config file, shutting down: %s", err)
+	}
+
+	// connect to database
+	aviorDb, errConnect := db.Connect()
+	defer func() {
+		if errConnect == nil {
+			if err := aviorDb.Client.Disconnect(context.TODO()); err != nil {
+				_ = glg.Errorf("error disconnecting client, %s", err)
+			}
+		}
+	}()
+	if errConnect != nil {
+		_ = glg.Errorf("error connecting to database, %s", errConnect)
+		return
+	}
+
+	// Exit strategy
 	ctx := context.Background()
 	// trap Ctrl+C and call cancel on the context
 	ctx, cancel := context.WithCancel(ctx)
@@ -63,6 +84,7 @@ func main() {
 		}
 	}()
 
+	// Run service
 	wg := new(sync.WaitGroup)
 	defer wg.Wait()
 	wg.Add(1)
@@ -80,28 +102,16 @@ func main() {
 func runService(ctx context.Context, wg *sync.WaitGroup) {
 	var sleepTime int
 	refreshConfig()
-	aviorDb, errConnect := db.Connect()
-	defer func() {
-		if errConnect == nil {
-			if err := aviorDb.Client().Disconnect(context.TODO()); err != nil {
-				_ = glg.Errorf("error disconnecting client, %s", err)
-			}
-		}
-	}()
-	if errConnect != nil {
-		_ = glg.Errorf("error connecting to database, %s", errConnect)
-		wg.Done()
-		return
-	}
+	dbInstance := db.Get()
 
-	client, err := db.GetClientForMachine(aviorDb)
+	client, err := db.GetClientForMachine(dbInstance.Db)
 	if err != nil {
 		wg.Done()
 		return
 	}
 
 	// sign in current machine and start loop
-	err = db.SignInClient(aviorDb, client)
+	err = db.SignInClient(dbInstance.Db, client)
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
@@ -118,7 +128,7 @@ MainLoop:
 
 		if canProcessJobs {
 			refreshConfig()
-			processJob(aviorDb, client)
+			processJob(dbInstance.Db, client)
 		}
 
 		// skip sleep when more jobs are queued, also serves as exit point
@@ -132,7 +142,7 @@ MainLoop:
 			break MainLoop
 		}
 	}
-	_ = db.SignOutClient(aviorDb, client)
+	_ = db.SignOutClient(dbInstance.Db, client)
 	wg.Done()
 }
 
@@ -146,7 +156,19 @@ func processJob(aviorDb *mongo.Database, client *db.Client) {
 		_ = glg.Info("no more jobs in queue")
 		return
 	}
+	fileInfo := new(media.FileInfo)
+	fileInfo.Path = job.Path
+	fileInfo.Name = job.Name
+	fileInfo.Subtitle = job.Subtitle
+	err = fileInfo.Update()
+	if err != nil {
+		resume()
+	}
 
+	resume()
+}
+
+func resume() {
 	select {
 	case resumeChan <- RESUME:
 		_ = glg.Log("sending resume event")

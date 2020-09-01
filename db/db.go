@@ -2,10 +2,10 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Spiritreader/avior-go/config"
@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 // Client is a target machine for Avior
@@ -33,9 +32,15 @@ type Client struct {
 type Job struct {
 	ID                   primitive.ObjectID `bson:"_id"`
 	Path                 string             `bson:"Path"`
+	Name                 string             `bson:"Name"`
 	Subtitle             string             `bson:"Subtitle"`
 	AssignedClient       DBRef              `bson:"AssignedClient"`
 	AssignedClientLoaded Client
+}
+
+type Field struct {
+	ID    primitive.ObjectID `bson:"_id"`
+	Value string             `bson:"Name"`
 }
 
 // DBRef wrapper to expose mongodb's references within the Go driver
@@ -45,25 +50,60 @@ type DBRef struct {
 	DB  interface{} `bson:"$db"`
 }
 
-// Connect establishes a connection to the database and returns the db handle
-func Connect() (*mongo.Database, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+type DataStore struct {
+	Db     *mongo.Database
+	Client *mongo.Client
+}
+
+var instance *DataStore
+var once sync.Once
+
+// Get establishes a connection to the database and returns the db handle
+func Connect() (*DataStore, error) {
+	var connectErr error
+	once.Do(func() {
+		instance = new(DataStore)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		cfg := config.Instance()
+		client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.DatabaseURL))
+		if err != nil {
+			connectErr = err
+			return
+		}
+		instance.Client = client
+		instance.Db = client.Database("Avior")
+	})
+	if connectErr != nil {
+		return nil, connectErr
+	}
+	return instance, nil
+}
+
+func Get() *DataStore {
+	return instance
+}
+
+func GetFields(db *mongo.Database, collectionName string) ([]Field, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	cfg := config.Instance()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.DatabaseURL))
+	clientCursor, err := db.Collection(collectionName).Find(ctx, bson.D{})
+	if err != nil {
+		_ = glg.Errorf("couldn't retrieve all fields for collection %s: %s", collectionName, err)
+		return nil, err
+	}
+	defer clientCursor.Close(ctx)
+	var fields []Field
+	err = clientCursor.All(ctx, &fields)
 	if err != nil {
 		return nil, err
 	}
-	err = client.Ping(ctx, readpref.Primary())
-	if err != nil {
-		return nil, err
-	}
-	return client.Database("Avior"), nil
+	return fields, nil
 }
 
 // GetClients retrieves all clients that have been registered
 func GetClients(db *mongo.Database) ([]Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	clientCursor, err := db.Collection("clients").Find(ctx, bson.D{})
 	if err != nil {
@@ -83,7 +123,7 @@ func GetClients(db *mongo.Database) ([]Client, error) {
 
 // GetJobsForClient gets all jobs for a particular client
 func GetJobsForClient(db *mongo.Database, client Client) ([]Job, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	clientCursor, err := db.Collection("jobs").Find(ctx, bson.M{"AssignedClient.$id": client.ID})
 
@@ -106,7 +146,7 @@ func GetJobsForClient(db *mongo.Database, client Client) ([]Job, error) {
 //
 // nil will be returned if there are no more jobs available
 func GetNextJobForClient(db *mongo.Database, client *Client) (*Job, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	var result *Job
@@ -124,7 +164,7 @@ func GetNextJobForClient(db *mongo.Database, client *Client) (*Job, error) {
 // GetClientForMachine returns the current db client that matches this machine's hostname.
 // A new client will be created if none is found in the database
 func GetClientForMachine(db *mongo.Database) (*Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	hostname, _ := os.Hostname()
 	var thisMachine *Client
@@ -161,7 +201,7 @@ func InsertClient(db *mongo.Database, client *Client) error {
 }
 
 func UpdateClient(db *mongo.Database, client *Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	_, err := db.Collection("clients").ReplaceOne(ctx, bson.M{"_id": client.ID}, client)
 	if err != nil {
@@ -190,14 +230,4 @@ func SignOutClient(db *mongo.Database, client *Client) error {
 		return err
 	}
 	return nil
-}
-
-//SayHi says hi to test modules
-func SayHi() {
-	fmt.Println("was good homie")
-}
-
-//SayGoodbye says goodbye to test module
-func SayGoodbye() {
-	fmt.Println("see ya")
 }
