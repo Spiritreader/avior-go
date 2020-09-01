@@ -44,14 +44,17 @@ type FileInfo struct {
 	AudioFormat    int
 	MetadataLog    []string
 	TunerLog       []string
+	Legacy         bool
 }
 
 func (f *FileInfo) Update() error {
-	if err := f.readLogs(); err != nil {
-		return err
+	if !f.Legacy {
+		if err := f.readLogs(); err != nil {
+			return err
+		}
+		f.getAudio()
+		f.getResolution()
 	}
-	f.getAudio()
-	f.getResolution()
 	return nil
 }
 
@@ -131,9 +134,9 @@ func (f *FileInfo) readLogs() error {
 	if err := scanner.Err(); err != nil {
 		_ = glg.Errorf("error reading metadata log: %s", err)
 		f.TunerLog = nil
+		f.MetadataLog = nil
 		return err
 	}
-
 	return nil
 }
 
