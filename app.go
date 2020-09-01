@@ -14,7 +14,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const (
+	RESUME = "resume signal"
+)
+
+var (
+	resumeChan chan string
+	running    bool
+)
+
 func main() {
+	resumeChan = make(chan string, 1)
 	//Initalize global structs
 	_ = config.Instance()
 
@@ -82,21 +92,53 @@ func runService(ctx context.Context, wg *sync.WaitGroup) {
 		return
 	}
 
-	select {
-	case <-ctx.Done():
-		_ = glg.Info("service stop signal received")
-	default:
-		refreshConfig()
-		for {
-			processJob(aviorDb)
-			time.Sleep(2 * time.Second)
+	client, err := db.GetClientForMachine(aviorDb)
+	if err != nil {
+		wg.Done()
+		return
+	}
+	err = db.SignInClient(aviorDb, client)
+	if err != nil {
+		_ = glg.Info("signed in %s", client.Name)
+	}
+	running = true
+MainLoop:
+	for {
+		if running {
+			refreshConfig()
+			processJob(aviorDb, client)
+		}
+		select {
+		case <-resumeChan:
+			continue
+		case <-time.After(5 * time.Minute):
+			continue
+		case <-ctx.Done():
+			_ = glg.Info("service stop signal received")
+			break MainLoop
 		}
 	}
+	_ = db.SignOutClient(aviorDb, client)
 	wg.Done()
 }
 
-func processJob(aviorDb *mongo.Database) {
+func processJob(aviorDb *mongo.Database, client *db.Client) {
+	job, err := db.GetNextJobForClient(aviorDb, client)
+	if err != nil {
+		_ = glg.Errorf("couldn't retrieve next job: %s", err)
+		return
+	}
 
+	if job == nil {
+		_ = glg.Info("no more jobs in queue")
+		return
+	}
+	select {
+	case resumeChan <- RESUME:
+		_ = glg.Log("sending resume event")
+	default:
+		_ = glg.Log("resume event already waiting for consumption")
+	}
 }
 
 func refreshConfig() {
