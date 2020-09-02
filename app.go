@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +16,7 @@ import (
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/Spiritreader/avior-go/tools"
+	"github.com/karrick/godirwalk"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -171,6 +175,12 @@ func processJob(aviorDb *mongo.Database, client *structs.Client) {
 	if err != nil {
 		resume()
 	}
+	fmt.Println(fileInfo)
+	fmt.Println(fileInfo.OutName())
+	duplicates := checkForDuplicates(fileInfo)
+	if len(duplicates) > 0 {
+		fmt.Println(duplicates)
+	}
 
 	resume()
 }
@@ -190,4 +200,62 @@ func refreshConfig() {
 		_ = glg.Infof("could not load config: %s", err)
 		return
 	}
+	err = db.LoadShared(db.Get().Db)
+	if err != nil {
+		_ = glg.Infof("could not load shared config from db: %s", err)
+	}
+}
+
+func runModules() {
+	_ = glg.Log("I am")
+}
+
+// checkForDuplicates retrieves all duplicates for the given file,
+//
+// given a slice of media paths that should be searched
+func checkForDuplicates(file *media.FileInfo) []media.FileInfo {
+	cfg := config.Instance()
+	counter := 0
+	matches := make([]media.FileInfo, 0)
+	for _, path := range cfg.Local.MediaPaths {
+		dir_matches, count, _ := traverseDir(file, path)
+		counter += count
+		matches = append(matches, dir_matches...)
+	}
+	cfg.Local.EstimatedLibSize = counter
+	_ = config.Save()
+	return matches
+}
+
+func traverseDir(file *media.FileInfo, path string) ([]media.FileInfo, int, error) {
+	counter := 0
+	matches := make([]media.FileInfo, 0)
+	err := godirwalk.Walk(path, &godirwalk.Options{
+		Unsorted: true,
+		Callback: func(path string, de *godirwalk.Dirent) error {
+			if de.IsDir() && strings.HasPrefix(de.Name(), ".") {
+				_ = glg.Logf("skipping hidden dir %s", path)
+				return errors.New("directory ignored")
+			}
+			if !de.IsDir() && strings.Contains(de.Name(), file.OutName()) {
+				file := &media.FileInfo{Path: path}
+				matches = append(matches, *file)
+			}
+			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
+				counter++
+			}
+			return nil
+		},
+		ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
+			if err != nil && err.Error() != "directory ignored" {
+				_ = glg.Warnf("couldn't read %s, skipping: %s", path, err)
+			}
+			return godirwalk.SkipNode
+		},
+	})
+	if err != nil {
+		_ = glg.Errorf("error traversing directory %s: %s", path, err)
+		return nil, 0, err
+	}
+	return matches, counter, nil
 }

@@ -25,6 +25,7 @@ func Instance() *structs.Config {
 
 func InitWithDefaults(cfg *structs.Config) {
 	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
+	cfg.Local.Ext = ".mkv"
 }
 
 func LoadLocal() error {

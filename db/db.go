@@ -44,18 +44,22 @@ func Connect() (*structs.DataStore, error) {
 
 func LoadShared(db *mongo.Database) error {
 	cfg := config.Instance()
-	nameExclude, err := GetFields(db, "name_exclude")
+	nameExcludeFields, err := GetFields(db, "name_exclude")
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve name exclude list: %s", nameExclude)
+		_ = glg.Errorf("couldn't retrieve name exclude list: %s", nameExcludeFields)
 		return err
 	}
-	subExclude, err := GetFields(db, "sub_exclude")
+	for _, field := range nameExcludeFields {
+		cfg.Shared.NameExclude = append(cfg.Shared.NameExclude, field.Value)
+	}
+	subExcludeFields, err := GetFields(db, "sub_exclude")
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve sub exclude list: %s", subExclude)
+		_ = glg.Errorf("couldn't retrieve sub exclude list: %s", subExcludeFields)
 		return err
 	}
-	cfg.Shared.NameExclude = nameExclude
-	cfg.Shared.SubExclude = subExclude
+	for _, field := range subExcludeFields {
+		cfg.Shared.SubExclude = append(cfg.Shared.SubExclude, field.Value)
+	}
 	return nil
 }
 
@@ -212,4 +216,22 @@ func SignOutClient(db *mongo.Database, client *structs.Client) error {
 	}
 	_ = glg.Infof("signed out %s", client.Name)
 	return nil
+}
+
+func InsertFields(collection *mongo.Collection, fields []structs.Field) error {
+	fieldSlice := make([]interface{}, len(fields))
+	for idx, field := range fields {
+		fieldSlice[idx] = field
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := collection.InsertMany(ctx, fieldSlice)
+	return err
+}
+
+func DeleteFields(collection *mongo.Collection, fields []structs.Field) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := collection.DeleteMany(ctx, bson.M{"Name": bson.M{"$in": bson.A{fields}}})
+	return err
 }

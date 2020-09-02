@@ -57,14 +57,17 @@ type Config struct {
 
 // LocalConfig is the main application configuration
 type LocalConfig struct {
-	DatabaseURL  string
-	AudioFormats AudioFormats
-	Resolutions  map[string]string
+	DatabaseURL      string
+	Ext              string
+	AudioFormats     AudioFormats
+	Resolutions      map[string]string
+	MediaPaths       []string
+	EstimatedLibSize int
 }
 
 type SharedConfig struct {
-	NameExclude []Field
-	SubExclude  []Field
+	NameExclude []string
+	SubExclude  []string
 }
 
 type AudioFormats struct {

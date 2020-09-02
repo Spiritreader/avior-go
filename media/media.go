@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 )
 
@@ -105,15 +106,40 @@ func (f *FileInfo) Update() error {
 	f.getAudio()
 	f.getResolution()
 	f.getLength()
+	f.trimName()
 	return nil
+}
+
+func (f *FileInfo) LogContains(terms []string) bool {
+	tunerContains, _ := find(f.TunerLog, terms)
+	metadataContains, _ := find(f.MetadataLog, terms)
+	if tunerContains || metadataContains {
+		return true
+	}
+	return false
+}
+
+// Returns, in percent from 0-100, the difference in length between the recorded and actual length
+func (f *FileInfo) LengthDifference() int {
+	return int(math.Round(100 - (float64(f.Length) / float64(f.RecordedLength) * 100)))
+}
+
+func (f *FileInfo) OutName() string {
+	cfg := config.Instance()
+	sanitizedName := tools.RemoveIllegalChars(f.Name)
+	sanitizedSub := tools.RemoveIllegalChars(f.Subtitle)
+	if len(sanitizedSub) == 0 {
+		return sanitizedName + cfg.Local.Ext
+	}
+	return sanitizedName + " - " + sanitizedSub + cfg.Local.Ext
 }
 
 // getAudio retrieves the audio file from the log files and updates the struct
 func (f *FileInfo) getAudio() {
 	cfg := config.Instance()
 
-	tunerStereo := Find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
-	tunerMulti := Find(f.TunerLog, cfg.Local.AudioFormats.MultiTags)
+	tunerStereo, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
+	tunerMulti, _ := find(f.TunerLog, cfg.Local.AudioFormats.MultiTags)
 
 	if tunerStereo && !tunerMulti {
 		// guaranteed to be stereo if tuner only picks up one audio codec
@@ -123,8 +149,8 @@ func (f *FileInfo) getAudio() {
 		f.AudioFormat = MULTI
 	} else if tunerStereo && tunerMulti {
 		// complement info with tags if available
-		metaStereo := Find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags)
-		metaMulti := Find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags)
+		metaStereo, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags)
+		metaMulti, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags)
 
 		if metaMulti {
 			// if tags include multichannel audio, it's still likely to be multichannel
@@ -172,9 +198,17 @@ func (f *FileInfo) getLength() {
 	}
 }
 
-// Returns, in percent from 0-100, the difference in length between the recorded and actual length
-func (f *FileInfo) LengthDifference() int {
-	return int(math.Round(100 - (float64(f.Length) / float64(f.RecordedLength) * 100)))
+// Removes unwanted strings from the Output file name
+func (f *FileInfo) trimName() {
+	cfg := config.Instance()
+	found, term := find([]string{f.Name}, cfg.Shared.NameExclude)
+	if found {
+		f.Name = strings.Replace(term, f.Name, "", 1)
+	}
+	found, term = find([]string{f.Subtitle}, cfg.Shared.SubExclude)
+	if found {
+		f.Subtitle = strings.Replace(term, f.Name, "", 1)
+	}
 }
 
 // reads both log files and updates the struct
@@ -213,15 +247,15 @@ func (f *FileInfo) Legacy() bool {
 	return f.legacy
 }
 
-func Find(slice []string, terms []string) bool {
+func find(slice []string, terms []string) (bool, string) {
 	for _, line := range slice {
 		for _, term := range terms {
 			if strings.Contains(line, term) {
-				return true
+				return true, term
 			}
 		}
 	}
-	return false
+	return false, ""
 }
 
 func matchMap(slice []string, terms map[string]string) (*string, *string) {

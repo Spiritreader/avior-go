@@ -1,0 +1,36 @@
+__nameToCut.txt__
+Filmnacht im ZDF
+Der Fernsehfilm der Woche
+Der Samstagskrimi
+Hollywood-Freitag
+Montagskino im ZDF
+SommerKino im Ersten
+FilmDebüt im Ersten
+FilmMittwoch im Ersten
+KinoFestival im Ersten
+Das kleine Fernsehspiel
+Dokumentarfilm im Ersten
+JUNGER FILM
+NEUES FRANZÖSISCHES KINO
+Kleines Fernsehspiel
+BEZIEHUNGSKISTEN
+Dokumentarfilm im Ersten - 
+Freitag im Ersten
+PremierenKino im Ersten
+Kinofestival im Ersten
+DonnerstagsKrimi im Ersten
+
+---NAME-----------------------------    __SUBTITLE__________
+Ying's Bassabenteuer - Teil 1
+
+
+Avior
+--clients
+--jobs
+--sub_exclude
+--name_exclude
+
+Insert + Delete
+for
+--sub_exclude
+--name_exclude

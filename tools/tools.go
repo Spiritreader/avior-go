@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -21,4 +22,20 @@ func InTimeSpan(startString string, endString string, checkTime time.Time) bool 
 		return check.Equal(start)
 	}
 	return !start.After(check) || !end.Before(check)
+}
+
+func RemoveIllegalChars(str string) string {
+	toWhitespace := "\\<>|"
+	toNone := ":?*\""
+	toUnderscore := "/"
+	for _, rune := range toWhitespace {
+		str = strings.ReplaceAll(str, string(rune), " ")
+	}
+	for _, rune := range toNone {
+		str = strings.ReplaceAll(str, string(rune), "")
+	}
+	for _, rune := range toUnderscore {
+		str = strings.ReplaceAll(str, string(rune), "_")
+	}
+	return str
 }
