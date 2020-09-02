@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
@@ -10,6 +11,7 @@ import (
 
 func main() {
 	// connect to database
+	_ = config.LoadLocal()
 	aviorDb, errConnect := db.Connect()
 	defer func() {
 		if errConnect == nil {
@@ -22,7 +24,7 @@ func main() {
 		_ = glg.Errorf("error connecting to database, %s", errConnect)
 		return
 	}
-
+	db.LoadSharedConfig(aviorDb.Db)
 	newField := new(structs.Field)
 	newField.Value = "Exclude this, you filthy casual"
 	oneField := []structs.Field{*newField}

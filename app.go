@@ -200,7 +200,7 @@ func refreshConfig() {
 		_ = glg.Infof("could not load config: %s", err)
 		return
 	}
-	err = db.LoadShared(db.Get().Db)
+	err = db.LoadSharedConfig(db.Get().Db)
 	if err != nil {
 		_ = glg.Infof("could not load shared config from db: %s", err)
 	}

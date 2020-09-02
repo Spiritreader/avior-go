@@ -42,7 +42,7 @@ func Connect() (*structs.DataStore, error) {
 	return instance, nil
 }
 
-func LoadShared(db *mongo.Database) error {
+func LoadSharedConfig(db *mongo.Database) error {
 	cfg := config.Instance()
 	nameExcludeFields, err := GetFields(db, "name_exclude")
 	if err != nil {
@@ -221,6 +221,7 @@ func SignOutClient(db *mongo.Database, client *structs.Client) error {
 func InsertFields(collection *mongo.Collection, fields []structs.Field) error {
 	fieldSlice := make([]interface{}, len(fields))
 	for idx, field := range fields {
+		field.ID = primitive.NewObjectID()
 		fieldSlice[idx] = field
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

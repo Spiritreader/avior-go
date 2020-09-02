@@ -29,6 +29,9 @@ func InitWithDefaults(cfg *structs.Config) {
 }
 
 func LoadLocal() error {
+	if instance == nil {
+		Instance()
+	}
 	jsonFileHandle, err := os.Open("config.json")
 	if err != nil {
 		return err
