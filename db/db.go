@@ -47,7 +47,7 @@ func Connect() (*DataStore, error) {
 			return
 		}
 		instance.client = client
-		instance.db = client.Database("Avior")
+		instance.db = client.Database("Avior_test")
 	})
 	if connectErr != nil {
 		return nil, connectErr
@@ -57,6 +57,7 @@ func Connect() (*DataStore, error) {
 
 func (ds *DataStore) LoadSharedConfig() error {
 	cfg := config.Instance()
+	// name excludes
 	nameExcludeFields, err := ds.GetFields("name_exclude")
 	if err != nil {
 		_ = glg.Errorf("couldn't retrieve name exclude list: %s", nameExcludeFields)
@@ -65,6 +66,8 @@ func (ds *DataStore) LoadSharedConfig() error {
 	for _, field := range nameExcludeFields {
 		cfg.Shared.NameExclude = append(cfg.Shared.NameExclude, field.Value)
 	}
+
+	// subtitle excludes
 	subExcludeFields, err := ds.GetFields("sub_exclude")
 	if err != nil {
 		_ = glg.Errorf("couldn't retrieve sub exclude list: %s", subExcludeFields)
@@ -73,6 +76,26 @@ func (ds *DataStore) LoadSharedConfig() error {
 	for _, field := range subExcludeFields {
 		cfg.Shared.SubExclude = append(cfg.Shared.SubExclude, field.Value)
 	}
+
+	// log excludes
+	logExcludeFields, err := ds.GetFields("log_exclude")
+	if err != nil {
+		_ = glg.Errorf("couldn't retrieve log exclude list: %s", logExcludeFields)
+		return err
+	}
+	for _, field := range subExcludeFields {
+		cfg.Shared.LogExclude = append(cfg.Shared.LogExclude, field.Value)
+	}
+
+	// log includes
+	logIncludeFields, err := ds.GetFields("log_include")
+	if err != nil {
+		_ = glg.Errorf("couldn't retrieve log include list: %s", logIncludeFields)
+		return err
+	}
+	for _, field := range logIncludeFields {
+		cfg.Shared.LogInclude = append(cfg.Shared.LogInclude, field.Value)
+	}
 	return nil
 }
 
@@ -80,24 +103,33 @@ func Get() *DataStore {
 	return instance
 }
 
-func (ds *DataStore) GetFields(collectionName string) ([]structs.Field, error) {
+// GetJAllJobs gets all jobs
+//
+// nil will be returned if there are no jobs available
+func (ds *DataStore) GetAllJobs() ([]structs.Job, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	clientCursor, err := ds.Db().Collection(collectionName).Find(ctx, bson.D{})
+	clientCursor, err := ds.Db().Collection("jobs").Find(ctx, bson.D{})
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve all fields for collection %s: %s", collectionName, err)
+		_ = glg.Errorf("could not retrieve jobs: %s", err)
 		return nil, err
 	}
 	defer clientCursor.Close(ctx)
-	var fields []structs.Field
-	err = clientCursor.All(ctx, &fields)
+	var jobs []structs.Job
+	err = clientCursor.All(ctx, &jobs)
 	if err != nil {
+		_ = glg.Errorf("could not read jobs: %s", err)
 		return nil, err
 	}
-	return fields, nil
+	if len(jobs) == 0 {
+		return nil, nil
+	}
+	return jobs, nil
 }
 
-// GetJobsForClient gets all jobs for a particular client
+// GetJobsForClient gets all jobs for a given client
+//
+// nil will be returned if there are no jobs available for the client
 func (ds *DataStore) GetJobsForClient(client structs.Client) ([]structs.Job, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -110,11 +142,14 @@ func (ds *DataStore) GetJobsForClient(client structs.Client) ([]structs.Job, err
 	var jobs []structs.Job
 	err = clientCursor.All(ctx, &jobs)
 	if err != nil {
-		_ = glg.Errorf("could not  jobs for client %s: %s", client.Name, err)
+		_ = glg.Errorf("could not read jobs for client %s: %s", client.Name, err)
 		return nil, err
 	}
 	for idx := range jobs {
-		jobs[idx].AssignedClientLoaded = client
+		jobs[idx].AssignedClientLoaded = &client
+	}
+	if len(jobs) == 0 {
+		return nil, nil
 	}
 	return jobs, nil
 }
@@ -134,8 +169,26 @@ func (ds *DataStore) GetNextJobForClient(client *structs.Client) (*structs.Job, 
 	if result == nil {
 		return nil, nil
 	}
-	result.AssignedClientLoaded = *client
+	result.AssignedClientLoaded = client
 	return result, nil
+}
+
+func (ds *DataStore) InsertJobForClient(job *structs.Job, client *structs.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	job.AssignedClient = structs.DBRef{
+		Ref: "clients",
+		ID:  client.ID,
+		DB:  "undefined",
+	}
+	job.AssignedClientLoaded = nil
+	_, err := ds.Db().Collection("jobs").InsertOne(ctx, job)
+	if err != nil {
+		_ = glg.Errorf("could not insert job \"%s\" for client %s: %s", job.Name, client.Name, err)
+		return err
+	}
+	_ = glg.Infof("inserted job \"%s\" for client %s", job.Name, client.Name)
+	return nil
 }
 
 // GetClientForMachine returns the current db client that matches this machine's hostname.
@@ -249,6 +302,25 @@ func (ds *DataStore) SignOutClient(client *structs.Client) error {
 	}
 	_ = glg.Infof("signed out %s", client.Name)
 	return nil
+}
+
+// GetFields gets all fields for a given collection
+func (ds *DataStore) GetFields(collectionName string) ([]structs.Field, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	clientCursor, err := ds.Db().Collection(collectionName).Find(ctx, bson.D{})
+	if err != nil {
+		_ = glg.Errorf("couldn't retrieve all fields for collection %s: %s", collectionName, err)
+		return nil, err
+	}
+	defer clientCursor.Close(ctx)
+	var fields []structs.Field
+	err = clientCursor.All(ctx, &fields)
+	if err != nil {
+		_ = glg.Errorf("couldn't read all fields for collection %s: %s", collectionName, err)
+		return nil, err
+	}
+	return fields, nil
 }
 
 func (ds *DataStore) InsertFields(collection *mongo.Collection, fields []structs.Field) error {

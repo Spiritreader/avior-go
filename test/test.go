@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
@@ -43,9 +44,9 @@ func main() {
 		return
 	}
 	dataStore := db.Get()
-	database := aviorDb.Db()
+	//database := aviorDb.Db()
 	_ = dataStore.LoadSharedConfig()
-	tempMany := make([]structs.Field, 0)
+	/*tempMany := make([]structs.Field, 0)
 	tempOne := make([]structs.Field, 0)
 
 	newField := structs.Field{ID: primitive.NilObjectID, Value: "Exclude this, you filthy casual"}
@@ -56,11 +57,38 @@ func main() {
 
 	newField3 := &structs.Field{Value: "Exclude this, you filthy casual3"}
 	tempMany = append(tempMany, *newField3)
+	*/
+	newJob := &structs.Job{
+		ID:       primitive.NewObjectID(),
+		Path:     "/ibims/einspath",
+		Name:     "Die unglaublichen Abenteuer des Ying-Kai Dang",
+		Subtitle: "DonnerstagsKrimi im Ersten",
+	}
+	client, _ := aviorDb.GetClientForMachine()
+	aviorDb.InsertJobForClient(newJob, client)
+	/*
+		_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempOne)
+		_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempMany)
+		_ = aviorDb.DeleteFields(database.Collection("name_exclude"), tempOne)
+		_ = aviorDb.DeleteFields(database.Collection("name_exclude"), tempMany)
+	*/
+	/*
+		fields := make([]structs.Field, 0)
+		_ = readFileContent(&fields, "log\\namesToCut.txt")
+		_ = aviorDb.InsertFields(database.Collection("name_exclude"), fields)
 
-	_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempOne)
-	_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempMany)
-	_ = aviorDb.DeleteFields(database.Collection("name_exclude"), tempOne)
-	_ = aviorDb.DeleteFields(database.Collection("name_exclude"), tempMany)
+		fields = make([]structs.Field, 0)
+		_ = readFileContent(&fields, "log\\subtitlesToCut.txt")
+		_ = aviorDb.InsertFields(database.Collection("sub_exclude"), fields)
+
+		fields = make([]structs.Field, 0)
+		_ = readFileContent(&fields, "log\\searchTermsinclude.txt")
+		_ = aviorDb.InsertFields(database.Collection("log_include"), fields)
+
+		fields = make([]structs.Field, 0)
+		_ = readFileContent(&fields, "log\\searchTermsexclude.txt")
+		_ = aviorDb.InsertFields(database.Collection("log_exclude"), fields)
+	*/
 }
 
 func readFileContent(out *[]structs.Field, filePath string) error {
@@ -76,8 +104,12 @@ func readFileContent(out *[]structs.Field, filePath string) error {
 
 	scanner := bufio.NewScanner(fileHandle)
 	for scanner.Scan() {
+		scannerText := scanner.Text()
+		if strings.HasPrefix(scannerText, "#") {
+			continue
+		}
 		newField := new(structs.Field)
-		newField.Value = scanner.Text()
+		newField.Value = scannerText
 		*out = append(*out, *newField)
 	}
 	if err := scanner.Err(); err != nil {

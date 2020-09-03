@@ -15,6 +15,9 @@ const (
 )
 
 type Module interface {
+	// Run executes a module
+	//
+	// file[0] must be the new file, file[1] must be the old file
 	Run(...media.File) (string, string)
 	Priority() int
 	Name() string

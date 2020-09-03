@@ -50,6 +50,13 @@ func InitWithDefaults(cfg *structs.Config) {
 		Settings: &structs.LengthModuleSettings{Threshold: 25},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_LENGTH] = *moduleConfig
+	// LogMatch Config Defaults
+	moduleConfig = &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+		Settings: &structs.LogMatchModuleSettings{Mode: consts.LOGMATCH_MODE_NEUTRAL},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_LOGMATCH] = *moduleConfig
 }
 
 func LoadLocal() error {

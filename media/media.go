@@ -132,13 +132,19 @@ func (f *File) Update() error {
 	return nil
 }
 
-func (f *File) LogContains(terms []string) bool {
-	tunerContains, _ := find(f.TunerLog, terms)
-	metadataContains, _ := find(f.MetadataLog, terms)
-	if tunerContains || metadataContains {
-		return true
+// LogsContain returns true once the first term matches.
+//
+// It also includes the term that was matched against
+func (f *File) LogsContain(terms []string) (bool, string) {
+	tunerContains, tMatch := find(f.TunerLog, terms)
+	if tunerContains {
+		return true, tMatch
 	}
-	return false
+	metadataContains, mMatch := find(f.MetadataLog, terms)
+	if metadataContains {
+		return true, mMatch
+	}
+	return false, ""
 }
 
 // Returns, in percent from 0-100, the difference in length between the recorded and actual length

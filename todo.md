@@ -48,7 +48,7 @@ for
 - [x] Get client
 - [x] Insert client
 - [x] Edit client
-- [ ] Remove client
+- [x] Remove client
 - [x] Get fields
 - [x] Add fields
 - [x] Remove fields#
@@ -116,6 +116,8 @@ ____
 - [ ] MaximumFileSize (whitelist)
     - if a new file is larger in Gigabytes than the specified filesize then it should not be eligible for replacement
     - return modes: `KEEP`, `NOCH`
+- [ ] Legacy checker
+    - if a file is legacy, overwrite it
 
 ### Encoder
 

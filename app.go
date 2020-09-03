@@ -217,8 +217,8 @@ func checkForDuplicates(file *media.File) []media.File {
 	cfg := config.Instance()
 	counter := 0
 	matches := make([]media.File, 0)
-	for _, path := range cfg.Local.MediaPaths {
-		_ = glg.Infof("scanning directory %s", path)
+	for idx, path := range cfg.Local.MediaPaths {
+		_ = glg.Infof("scanning directory (%d/%d): %s", idx, len(cfg.Local.MediaPaths), path)
 		dir_matches, count, _ := traverseDir(file, path)
 		counter += count
 		matches = append(matches, dir_matches...)

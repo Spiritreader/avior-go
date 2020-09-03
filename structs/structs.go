@@ -9,18 +9,18 @@ import (
 
 // Job is the Avior encode job database binding
 type Job struct {
-	ID                   primitive.ObjectID `bson:"_id"`
+	ID                   primitive.ObjectID `bson:"_id,omitempty"`
 	Path                 string             `bson:"Path"`
 	Name                 string             `bson:"Name"`
 	Subtitle             string             `bson:"Subtitle"`
-	CustomParameters     []string           `bson:"CustomParameters"`
+	CustomParameters     []string           `bson:"CustomParameters,omitempty"`
 	AssignedClient       DBRef              `bson:"AssignedClient"`
-	AssignedClientLoaded Client
+	AssignedClientLoaded *Client            `bson:"AssignedClientLoaded,omitempty"`
 }
 
 // Client is a target machine for Avior
 type Client struct {
-	ID                primitive.ObjectID `bson:"_id"`
+	ID                primitive.ObjectID `bson:"_id,omitempty"`
 	Name              string             `bson:"Name"`
 	AvailabilityStart string             `bson:"AvailabilityStart"`
 	AvailabilityEnd   string             `bson:"AvailabilityEnd"`
@@ -31,13 +31,13 @@ type Client struct {
 }
 
 type Field struct {
-	ID    primitive.ObjectID `bson:"_id"`
+	ID    primitive.ObjectID `bson:"_id,omitempty"`
 	Value string             `bson:"Name"`
 }
 
 // DBRef wrapper to expose mongodb's references within the Go driver
 type DBRef struct {
-	Ref interface{} `bson:"$ref"`
+	Ref interface{} `bson:"$ref,omitempty"`
 	ID  interface{} `bson:"$id"`
 	DB  interface{} `bson:"$db"`
 }
@@ -64,6 +64,8 @@ type LocalConfig struct {
 type SharedConfig struct {
 	NameExclude []string
 	SubExclude  []string
+	LogInclude  []string
+	LogExclude  []string
 }
 
 type AudioFormats struct {
@@ -87,4 +89,8 @@ type AudioModuleSettings struct {
 
 type LengthModuleSettings struct {
 	Threshold int
+}
+
+type LogMatchModuleSettings struct {
+	Mode string
 }
