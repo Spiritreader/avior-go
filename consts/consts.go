@@ -14,4 +14,5 @@ const (
 	LOGMATCH_MODE_INCLUDE  string = "include"
 	LOGMATCH_MODE_NEUTRAL  string = "neutral"
 	LOGMATCH_MODE_EXCLUDE  string = "exclude"
+	RESUME                 string = "resume signal"
 )

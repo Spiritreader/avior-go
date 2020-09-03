@@ -3,12 +3,15 @@ package main
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/encoder"
+	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -43,6 +46,24 @@ func main() {
 		_ = glg.Errorf("error connecting to database, %s", errConnect)
 		return
 	}
+	dataStore := db.Get()
+	_ = dataStore.LoadSharedConfig()
+	job := &structs.Job{
+		ID:       primitive.NewObjectID(),
+		Path:     "D:/Recording/Drogen Amerikas längster Krieg - Dokumentarfilm, USA, 2012, ZDF, ZDF, 104 Mi_2015-06-25-00-25-arte (AC3,deu).ts",
+		Name:     "NEUES FRANZÖSISCHES KINO Drogen",
+		Subtitle: "Amerika's längster Krieg Dokumentarfilm im Ersten",
+	}
+	jobFile := media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, EncodeParams: job.CustomParameters}
+	err := jobFile.Update()
+	if err != nil {
+		return
+	}
+	stats, err := encoder.Encode(jobFile, 0, 0, true)
+	fmt.Println(stats, err)
+}
+
+func insertTests() {
 	dataStore := db.Get()
 	//database := aviorDb.Db()
 	_ = dataStore.LoadSharedConfig()
