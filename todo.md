@@ -42,9 +42,9 @@ for
 
 ### Database:
 - [x] Get job
-- [ ] Insert job
-- [ ] Edit job
-- [ ] Remove job
+- [x] Insert job
+- [x] Edit job
+- [x] Remove job
 - [x] Get client
 - [x] Insert client
 - [x] Edit client

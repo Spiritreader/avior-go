@@ -28,6 +28,8 @@ func InitWithDefaults(cfg *structs.Config) {
 	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
 	cfg.Local.Ext = ".mkv"
 	cfg.Local.Modules = make(map[string]structs.ModuleConfig)
+	cfg.Local.Resolutions = map[string]string{"hd": "1280x720", "fhd": "1920x1080"}
+	cfg.Local.EncoderConfig = map[string]structs.EncoderConfig{"hd": *new(structs.EncoderConfig)}
 
 	// AgeModule Config Defaults
 	moduleConfig := &structs.ModuleConfig{
@@ -60,10 +62,15 @@ func InitWithDefaults(cfg *structs.Config) {
 }
 
 func LoadLocal() error {
+	err := LoadLocalFrom("config.json")
+	return err
+}
+
+func LoadLocalFrom(path string) error {
 	if instance == nil {
 		Instance()
 	}
-	jsonFileHandle, err := os.Open("config.json")
+	jsonFileHandle, err := os.Open(path)
 	if err != nil {
 		return err
 	}

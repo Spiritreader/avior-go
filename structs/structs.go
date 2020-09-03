@@ -59,6 +59,7 @@ type LocalConfig struct {
 	MediaPaths       []string
 	EstimatedLibSize int
 	Modules          map[string]ModuleConfig
+	EncoderConfig    map[string]EncoderConfig
 }
 
 type SharedConfig struct {
@@ -93,4 +94,11 @@ type LengthModuleSettings struct {
 
 type LogMatchModuleSettings struct {
 	Mode string
+}
+
+type EncoderConfig struct {
+	OutDirectory  string
+	PreArguments  []string
+	PostArguments []string
+	Stash         []string
 }
