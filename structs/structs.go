@@ -82,5 +82,9 @@ type AgeModuleSettings struct {
 }
 
 type AudioModuleSettings struct {
-	Accuracy int
+	Accuracy string
+}
+
+type LengthModuleSettings struct {
+	Threshold int
 }

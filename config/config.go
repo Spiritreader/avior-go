@@ -36,6 +36,20 @@ func InitWithDefaults(cfg *structs.Config) {
 		Settings: &structs.AgeModuleSettings{MaxAge: 90},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_AGE] = *moduleConfig
+	// AudioModule Config Defaults
+	moduleConfig = &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+		Settings: &structs.AudioModuleSettings{Accuracy: consts.AUDIO_ACC_MED},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_AUDIO] = *moduleConfig
+	// LengthModule Config Defaults
+	moduleConfig = &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+		Settings: &structs.LengthModuleSettings{Threshold: 25},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_LENGTH] = *moduleConfig
 }
 
 func LoadLocal() error {

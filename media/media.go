@@ -27,15 +27,36 @@ Probability High: Only tuner
 Probability Med: tuner + tags
 Probability Low: tuner + meta without tag
 */ //
+
+type AudioFormat int
+
 const (
-	STEREO          int = -3
-	STEREO_PROBABLY int = -2
-	STEREO_MAYBE    int = -1
-	AUDIO_UNKNOWN   int = 0
-	MULTI_MAYBE     int = 1
-	MULTI_PROBABLY  int = 2
-	MULTI           int = 3
+	STEREO          = AudioFormat(-3)
+	STEREO_PROBABLY = AudioFormat(-2)
+	STEREO_MAYBE    = AudioFormat(-1)
+	AUDIO_UNKNOWN   = AudioFormat(0)
+	MULTI_MAYBE     = AudioFormat(1)
+	MULTI_PROBABLY  = AudioFormat(2)
+	MULTI           = AudioFormat(3)
 )
+
+func (a AudioFormat) String() string {
+	switch a {
+	case STEREO:
+		return "STEREO"
+	case STEREO_PROBABLY:
+		return "STEREO_PROBABLY"
+	case STEREO_MAYBE:
+		return "STEREO_MAYBE"
+	case MULTI_PROBABLY:
+		return "MULTI_PROBABLY"
+	case MULTI_MAYBE:
+		return "MULTI_MAYBE"
+	case MULTI:
+		return "MULTI"
+	}
+	return "UNKNOWN"
+}
 
 type Resolution struct {
 	Tag   string
@@ -91,7 +112,7 @@ type File struct {
 	// Probability Med: tuner + tags
 	//
 	// Probability Low: tuner + meta without tag
-	AudioFormat  int
+	AudioFormat  AudioFormat
 	EncodeParams []string
 	MetadataLog  []string
 	TunerLog     []string

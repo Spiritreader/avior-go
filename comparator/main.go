@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
 )
 
@@ -14,18 +15,31 @@ const (
 )
 
 type Module interface {
-	Run() string
+	Run(...media.File) (string, string)
 	Priority() int
 	Name() string
 	Init(structs.ModuleConfig)
 }
 
-// Initializes all modules
-func InitModules() []Module {
-	cfg := config.Instance()
+// Initializes all modules for duplicate checking
+func InitDupeModules() []Module {
 	modules := []Module{
 		&AgeModule{},
+		&AudioModule{},
 	}
+	return initModules(modules)
+}
+
+// Initialize all modules for single file checking
+func InitStandaloneModules() []Module {
+	modules := []Module{
+		&LengthModule{},
+	}
+	return initModules(modules)
+}
+
+func initModules(modules []Module) []Module {
+	cfg := config.Instance()
 	for idx := range modules {
 		modules[idx].Init(cfg.Local.Modules[modules[idx].Name()])
 	}

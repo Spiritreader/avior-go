@@ -163,7 +163,6 @@ func processJob(dataStore *db.DataStore, client *structs.Client) {
 		return
 	}
 	if job == nil {
-		_ = glg.Info("no more jobs in queue")
 		return
 	}
 	_ = glg.Infof("processing job %s", job.Path)
@@ -177,7 +176,7 @@ func processJob(dataStore *db.DataStore, client *structs.Client) {
 	runModules()
 	duplicates := checkForDuplicates(jobFile)
 	if dupeLen := len(duplicates); dupeLen > 0 {
-		_ = glg.Infof("found %d duplicates", dupeLen)
+		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
 		runModules()
 	}
 	resume()
@@ -205,7 +204,7 @@ func refreshConfig() {
 }
 
 func runModules() {
-	modules := comparator.InitModules()
+	modules := comparator.InitDupeModules()
 	for idx := range modules {
 		modules[idx].Run()
 	}
