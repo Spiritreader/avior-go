@@ -28,13 +28,13 @@ Probability Med: tuner + tags
 Probability Low: tuner + meta without tag
 */ //
 const (
-	STEREO          = -3
-	STEREO_PROBABLY = -2
-	STEREO_MAYBE    = -1
-	AUDIO_UNKNOWN   = 0
-	MULTI_MAYBE     = 1
-	MULTI_PROBABLY  = 2
-	MULTI           = 3
+	STEREO          int = -3
+	STEREO_PROBABLY int = -2
+	STEREO_MAYBE    int = -1
+	AUDIO_UNKNOWN   int = 0
+	MULTI_MAYBE     int = 1
+	MULTI_PROBABLY  int = 2
+	MULTI           int = 3
 )
 
 type Resolution struct {
@@ -60,7 +60,7 @@ func (r *Resolution) GetPixels() (int64, error) {
 	return out, nil
 }
 
-type FileInfo struct {
+type File struct {
 	Path       string
 	Name       string
 	Subtitle   string
@@ -91,15 +91,16 @@ type FileInfo struct {
 	// Probability Med: tuner + tags
 	//
 	// Probability Low: tuner + meta without tag
-	AudioFormat int
-	MetadataLog []string
-	TunerLog    []string
-	LogPaths    []string
-	legacy      bool
+	AudioFormat  int
+	EncodeParams []string
+	MetadataLog  []string
+	TunerLog     []string
+	LogPaths     []string
+	legacy       bool
 }
 
 // Updates the struct to fill out all remaining fields
-func (f *FileInfo) Update() error {
+func (f *File) Update() error {
 	if err := f.readLogs(); err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func (f *FileInfo) Update() error {
 	return nil
 }
 
-func (f *FileInfo) LogContains(terms []string) bool {
+func (f *File) LogContains(terms []string) bool {
 	tunerContains, _ := find(f.TunerLog, terms)
 	metadataContains, _ := find(f.MetadataLog, terms)
 	if tunerContains || metadataContains {
@@ -120,11 +121,11 @@ func (f *FileInfo) LogContains(terms []string) bool {
 }
 
 // Returns, in percent from 0-100, the difference in length between the recorded and actual length
-func (f *FileInfo) LengthDifference() int {
+func (f *File) LengthDifference() int {
 	return int(math.Round(100 - (float64(f.Length) / float64(f.RecordedLength) * 100)))
 }
 
-func (f *FileInfo) OutName() string {
+func (f *File) OutName() string {
 	cfg := config.Instance()
 	sanitizedName := tools.RemoveIllegalChars(f.Name)
 	sanitizedSub := tools.RemoveIllegalChars(f.Subtitle)
@@ -135,7 +136,7 @@ func (f *FileInfo) OutName() string {
 }
 
 // getAudio retrieves the audio file from the log files and updates the struct
-func (f *FileInfo) getAudio() {
+func (f *File) getAudio() {
 	cfg := config.Instance()
 
 	tunerStereo, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
@@ -164,14 +165,14 @@ func (f *FileInfo) getAudio() {
 }
 
 // updates the struct based on the resolution tag that's been mapped in the config file
-func (f *FileInfo) getResolution() {
+func (f *File) getResolution() {
 	cfg := config.Instance()
 	k, v := matchMap(f.TunerLog, cfg.Local.Resolutions)
 	f.Resolution.Tag = *k
 	f.Resolution.Value = *v
 }
 
-func (f *FileInfo) getLength() {
+func (f *File) getLength() {
 	f.RecordedLength = -1
 	for _, line := range f.TunerLog {
 		if strings.Contains(line, ") Stop") {
@@ -199,7 +200,7 @@ func (f *FileInfo) getLength() {
 }
 
 // Removes unwanted strings from the Output file name
-func (f *FileInfo) trimName() {
+func (f *File) trimName() {
 	cfg := config.Instance()
 	found, term := find([]string{f.Name}, cfg.Shared.NameExclude)
 	if found {
@@ -212,7 +213,7 @@ func (f *FileInfo) trimName() {
 }
 
 // reads both log files and updates the struct
-func (f *FileInfo) readLogs() error {
+func (f *File) readLogs() error {
 	stem := strings.TrimSuffix(f.Path, filepath.Ext(f.Path))
 	tunerLogPath := stem + ".log"
 	metadataLogPath := stem + ".txt"
@@ -243,7 +244,7 @@ func (f *FileInfo) readLogs() error {
 // Use to determine whether this file has a legacy logfile attached to it.
 //
 // If this teturns true, the MetadataLog will be nil as it doesn't exist for legacy file types
-func (f *FileInfo) Legacy() bool {
+func (f *File) Legacy() bool {
 	return f.legacy
 }
 

@@ -2,7 +2,6 @@ package structs
 
 import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // DATABASE
@@ -14,6 +13,7 @@ type Job struct {
 	Path                 string             `bson:"Path"`
 	Name                 string             `bson:"Name"`
 	Subtitle             string             `bson:"Subtitle"`
+	CustomParameters     []string           `bson:"CustomParameters"`
 	AssignedClient       DBRef              `bson:"AssignedClient"`
 	AssignedClientLoaded Client
 }
@@ -42,11 +42,6 @@ type DBRef struct {
 	DB  interface{} `bson:"$db"`
 }
 
-type DataStore struct {
-	Db     *mongo.Database
-	Client *mongo.Client
-}
-
 // CONFIG
 // ______________________
 
@@ -63,6 +58,7 @@ type LocalConfig struct {
 	Resolutions      map[string]string
 	MediaPaths       []string
 	EstimatedLibSize int
+	Modules          map[string]ModuleConfig
 }
 
 type SharedConfig struct {
@@ -73,4 +69,18 @@ type SharedConfig struct {
 type AudioFormats struct {
 	StereoTags []string
 	MultiTags  []string
+}
+
+type ModuleConfig struct {
+	Enabled  bool
+	Priority int
+	Settings interface{}
+}
+
+type AgeModuleSettings struct {
+	MaxAge int
+}
+
+type AudioModuleSettings struct {
+	Accuracy int
 }

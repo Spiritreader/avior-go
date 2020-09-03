@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
 )
 
@@ -26,6 +27,15 @@ func Instance() *structs.Config {
 func InitWithDefaults(cfg *structs.Config) {
 	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
 	cfg.Local.Ext = ".mkv"
+	cfg.Local.Modules = make(map[string]structs.ModuleConfig)
+
+	// AgeModule Config Defaults
+	moduleConfig := &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+		Settings: &structs.AgeModuleSettings{MaxAge: 90},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_AGE] = *moduleConfig
 }
 
 func LoadLocal() error {

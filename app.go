@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Spiritreader/avior-go/comparator"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/media"
@@ -18,7 +19,6 @@ import (
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/karrick/godirwalk"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -60,7 +60,7 @@ func main() {
 	aviorDb, errConnect := db.Connect()
 	defer func() {
 		if errConnect == nil {
-			if err := aviorDb.Client.Disconnect(context.TODO()); err != nil {
+			if err := aviorDb.Client().Disconnect(context.TODO()); err != nil {
 				_ = glg.Errorf("error disconnecting client, %s", err)
 			}
 		}
@@ -107,16 +107,16 @@ func main() {
 func runService(ctx context.Context, wg *sync.WaitGroup) {
 	var sleepTime int
 	refreshConfig()
-	dbInstance := db.Get()
+	dataStore := db.Get()
 
-	client, err := db.GetClientForMachine(dbInstance.Db)
+	client, err := dataStore.GetClientForMachine()
 	if err != nil {
 		wg.Done()
 		return
 	}
 
 	// sign in current machine and start loop
-	err = db.SignInClient(dbInstance.Db, client)
+	err = dataStore.SignInClient(client)
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
@@ -138,7 +138,7 @@ MainLoop:
 
 		if canProcessJobs {
 			refreshConfig()
-			processJob(dbInstance.Db, client)
+			processJob(dataStore, client)
 		}
 
 		// skip sleep when more jobs are queued, also serves as exit point
@@ -152,12 +152,12 @@ MainLoop:
 			break MainLoop
 		}
 	}
-	_ = db.SignOutClient(dbInstance.Db, client)
+	_ = dataStore.SignOutClient(client)
 	wg.Done()
 }
 
-func processJob(aviorDb *mongo.Database, client *structs.Client) {
-	job, err := db.GetNextJobForClient(aviorDb, client)
+func processJob(dataStore *db.DataStore, client *structs.Client) {
+	job, err := dataStore.GetNextJobForClient(client)
 	if err != nil {
 		_ = glg.Errorf("failed getting next job: %s", err)
 		return
@@ -167,21 +167,19 @@ func processJob(aviorDb *mongo.Database, client *structs.Client) {
 		return
 	}
 	_ = glg.Infof("processing job %s", job.Path)
-	fileInfo := new(media.FileInfo)
-	fileInfo.Path = job.Path
-	fileInfo.Name = job.Name
-	fileInfo.Subtitle = job.Subtitle
-	err = fileInfo.Update()
+	jobFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, EncodeParams: job.CustomParameters}
+	err = jobFile.Update()
 	if err != nil {
 		resume()
 	}
-	fmt.Println(fileInfo)
-	fmt.Println(fileInfo.OutName())
-	duplicates := checkForDuplicates(fileInfo)
-	if len(duplicates) > 0 {
-		fmt.Println(duplicates)
+	fmt.Println(jobFile)
+	fmt.Println(jobFile.OutName())
+	runModules()
+	duplicates := checkForDuplicates(jobFile)
+	if dupeLen := len(duplicates); dupeLen > 0 {
+		_ = glg.Infof("found %d duplicates", dupeLen)
+		runModules()
 	}
-
 	resume()
 }
 
@@ -200,24 +198,28 @@ func refreshConfig() {
 		_ = glg.Infof("could not load config: %s", err)
 		return
 	}
-	err = db.LoadSharedConfig(db.Get().Db)
+	err = db.Get().LoadSharedConfig()
 	if err != nil {
 		_ = glg.Infof("could not load shared config from db: %s", err)
 	}
 }
 
 func runModules() {
-	_ = glg.Log("I am")
+	modules := comparator.InitModules()
+	for idx := range modules {
+		modules[idx].Run()
+	}
 }
 
 // checkForDuplicates retrieves all duplicates for the given file,
 //
 // given a slice of media paths that should be searched
-func checkForDuplicates(file *media.FileInfo) []media.FileInfo {
+func checkForDuplicates(file *media.File) []media.File {
 	cfg := config.Instance()
 	counter := 0
-	matches := make([]media.FileInfo, 0)
+	matches := make([]media.File, 0)
 	for _, path := range cfg.Local.MediaPaths {
+		_ = glg.Infof("scanning directory %s", path)
 		dir_matches, count, _ := traverseDir(file, path)
 		counter += count
 		matches = append(matches, dir_matches...)
@@ -227,9 +229,9 @@ func checkForDuplicates(file *media.FileInfo) []media.FileInfo {
 	return matches
 }
 
-func traverseDir(file *media.FileInfo, path string) ([]media.FileInfo, int, error) {
+func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 	counter := 0
-	matches := make([]media.FileInfo, 0)
+	matches := make([]media.File, 0)
 	err := godirwalk.Walk(path, &godirwalk.Options{
 		Unsorted: true,
 		Callback: func(path string, de *godirwalk.Dirent) error {
@@ -238,7 +240,8 @@ func traverseDir(file *media.FileInfo, path string) ([]media.FileInfo, int, erro
 				return errors.New("directory ignored")
 			}
 			if !de.IsDir() && strings.Contains(de.Name(), file.OutName()) {
-				file := &media.FileInfo{Path: path}
+				file := &media.File{Path: path}
+				_ = glg.Infof("found duplicate: %s", path)
 				matches = append(matches, *file)
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {

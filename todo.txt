@@ -34,3 +34,40 @@ Insert + Delete
 for
 --sub_exclude
 --name_exclude
+
+
+Modules:
+If there is a duplicate file present in the system, 
+a module should determine if that duplicate file should be discarded and replaced by the new one or kept.
+Each module should also have a priority that determines how important its output is (aka execution order on crack)
+
+A single module can return:
+- REPL: allows replacement
+- NOCH: does nothing (no change / noch nicht)
+- KEEP: disqualifies replacement
+____
+Compare resolutions
+    - better resolution should allow replacement
+    - return modes: REPL, NOCH, KEEP
+Compare audioformat
+    - better audio format should allow replacement
+    - return modes: REPL, NOCH, KEEP
+Estimate size of new file
+    - better file size should allow replacement (percentage threshold)
+    - depends on: encoder
+    - return modes: REPL, NOCH, KEEP
+Check for include/exclude terms in logfile
+    - include mode: if include and exclude match, include takes priority
+    - neutral mode: swiss
+    - exclude mode: if include and exclude match, exclude takes priority
+    - return modes: REPL, NOCH, KEEP
+Age (whiltelist)
+    - files that have been created below a certain threshold age will be kept
+    - return modes: KEEP, NOCH
+Length (whitelist)
+    - new files whose recorded lenghts differ greater than a configurable percent threshold should not be eligible for replacement
+    - return modes: KEEP, NOCH
+MaximumFileSize (whitelist)
+    - if a new file is larger in Gigabytes than the specified filesize then it should not be eligible for replacement
+    - return modes: KEEP, NOCH
+
