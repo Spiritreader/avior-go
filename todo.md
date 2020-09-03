@@ -102,7 +102,7 @@ ____
     - depends on: encoder
     - return modes: `REPL`, `NOCH`, `KEEP`
 
--  [ ] Check for include/exclude terms in logfile
+- [x] Check for include/exclude terms in logfile
     - include mode: if include and exclude match, include takes priority
     - neutral mode: swiss
     - exclude mode: if include and exclude match, exclude takes priority
