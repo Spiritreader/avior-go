@@ -229,13 +229,17 @@ func (f *File) getLength() {
 // Removes unwanted strings from the Output file name
 func (f *File) trimName() {
 	cfg := config.Instance()
-	found, term := find([]string{f.Name}, cfg.Shared.NameExclude)
-	if found {
-		f.Name = strings.Replace(term, f.Name, "", 1)
+	terms := findAll([]string{f.Name}, cfg.Shared.NameExclude)
+	for _, term := range terms {
+		if idx := strings.Index(f.Name, term); idx != -1 {
+			f.Name = strings.Trim(f.Name[idx+len(term):], " ")
+		}
 	}
-	found, term = find([]string{f.Subtitle}, cfg.Shared.SubExclude)
-	if found {
-		f.Subtitle = strings.Replace(term, f.Name, "", 1)
+	terms = findAll([]string{f.Subtitle}, cfg.Shared.SubExclude)
+	for _, term := range terms {
+		if idx := strings.Index(f.Subtitle, term); idx != -1 {
+			f.Subtitle = strings.Trim(f.Subtitle[:idx], " ")
+		}
 	}
 }
 
@@ -284,6 +288,18 @@ func find(slice []string, terms []string) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+func findAll(slice []string, terms []string) []string {
+	found := make([]string, 0)
+	for _, line := range slice {
+		for _, term := range terms {
+			if strings.Contains(line, term) {
+				found = append(found, term)
+			}
+		}
+	}
+	return found
 }
 
 func matchMap(slice []string, terms map[string]string) (*string, *string) {

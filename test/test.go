@@ -63,7 +63,7 @@ func main() {
 	fmt.Println(stats, err)
 }
 
-func insertTests() {
+func insertTests(aviorDb db.DataStore) {
 	dataStore := db.Get()
 	//database := aviorDb.Db()
 	_ = dataStore.LoadSharedConfig()
@@ -86,7 +86,7 @@ func insertTests() {
 		Subtitle: "DonnerstagsKrimi im Ersten",
 	}
 	client, _ := aviorDb.GetClientForMachine()
-	aviorDb.InsertJobForClient(newJob, client)
+	_ = aviorDb.InsertJobForClient(newJob, client)
 	/*
 		_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempOne)
 		_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempMany)

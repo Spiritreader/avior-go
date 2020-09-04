@@ -7,6 +7,7 @@ import (
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // GetJAllJobs gets all jobs
@@ -68,7 +69,7 @@ func (ds *DataStore) GetNextJobForClient(client *structs.Client) (*structs.Job, 
 	defer cancel()
 	var result *structs.Job
 	err := ds.Db().Collection("jobs").FindOne(ctx, bson.M{"AssignedClient.$id": client.ID}).Decode(&result)
-	if err != nil {
+	if err != mongo.ErrNoDocuments && err != nil {
 		_ = glg.Errorf("could not retrieve next job for client %s: %s", client.Name, err)
 		return nil, err
 	}

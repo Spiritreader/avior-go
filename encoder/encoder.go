@@ -2,6 +2,7 @@ package encoder
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -71,13 +72,12 @@ func Encode(file media.File, start, duration int, overwrite bool) (Stats, error)
 		return Stats{false, -1, -1337, ""}, err
 	}
 	scanner := bufio.NewScanner(multiReader)
-	scanner.Split(bufio.ScanWords)
+	scanner.Split(ScanLinesWithCR)
 	for scanner.Scan() {
 		fmt.Println(scanner.Text())
 	}
 	if err := cmd.Wait(); err != nil {
-		_ = glg.Errorf("waiting for ffmpeg failed: %s", err)
-		return Stats{false, -1, -1337, outPath}, err
+		_ = glg.Errorf("ffmpeg error: %s", err)
 	}
 	exitCode := cmd.ProcessState.ExitCode()
 	encTime := int(math.Round(time.Since(startTime).Minutes()))
@@ -85,4 +85,22 @@ func Encode(file media.File, start, duration int, overwrite bool) (Stats, error)
 		return Stats{false, encTime, exitCode, outPath}, nil
 	}
 	return Stats{true, encTime, exitCode, outPath}, nil
+}
+
+func ScanLinesWithCR(data []byte, atEOF bool) (advance int, token []byte, err error) {
+    if atEOF && len(data) == 0 {
+        return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
+		return i + 1, data[0:i], nil
+	} else if i := bytes.IndexByte(data, '\r'); i >= 0 {
+        // We have a full newline-terminated line.
+        return i + 1, data[0:i], nil
+    }
+    // If we're at EOF, we have a final, non-terminated line. Return it.
+    if atEOF {
+        return len(data), data, nil
+    }
+    // Request more data.
+    return 0, nil, nil
 }
