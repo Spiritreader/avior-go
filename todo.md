@@ -153,8 +153,9 @@ PI -test
 ```
 
 **Implementation:**
-- [ ] config file entry
-- [ ] ffmpeg output parser
-- [ ] cli call constructor
-- [ ] global state integation
+- [x] config file entry
+- [x] ffmpeg output parser
+- [x] cli call constructor
+- [x] global state integation
+- [ ] estimate remaining time
 
