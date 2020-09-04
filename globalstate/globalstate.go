@@ -19,19 +19,28 @@ func Instance() *Data {
 }
 
 type Data struct {
-	Encoder Encoder
+	Encoder    Encoder
+	FileWalker FileWalker
 }
 
 type Encoder struct {
-	LineOut  []string
-	Duration time.Time
-	Frame    int
-	Fps      float64
-	Q        float64
-	Size     string
-	Position time.Time
-	Bitrate  string
-	Dup      int
-	Drop     int
-	Speed    float64
+	LineOut   []string
+	Duration  time.Time
+	Frame     int
+	Fps       float64
+	Q         float64
+	Size      string
+	Position  time.Time
+	Bitrate   string
+	Dup       int
+	Drop      int
+	Speed     float64
+	Slice     int
+	OfSlices  int
+	Remaining time.Duration
+}
+
+type FileWalker struct {
+	Directory string
+	Position  int
 }

@@ -9,11 +9,14 @@ import (
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/karrick/godirwalk"
 	"github.com/kpango/glg"
 )
+
+var state *globalstate.Data = globalstate.Instance()
 
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, resumeChan chan string) {
 	job, err := dataStore.GetNextJobForClient(client)
@@ -63,15 +66,16 @@ func runModules() {
 // given a slice of media paths that should be searched
 func checkForDuplicates(file *media.File) []media.File {
 	cfg := config.Instance()
-	counter := 0
+	state.FileWalker.Position = 0
 	matches := make([]media.File, 0)
 	for idx, path := range cfg.Local.MediaPaths {
+		state.FileWalker.Directory = path
 		_ = glg.Infof("scanning directory (%d/%d): %s", idx, len(cfg.Local.MediaPaths), path)
 		dir_matches, count, _ := traverseDir(file, path)
-		counter += count
+		state.FileWalker.Position += count
 		matches = append(matches, dir_matches...)
 	}
-	cfg.Local.EstimatedLibSize = counter
+	cfg.Local.EstimatedLibSize = state.FileWalker.Position
 	_ = config.Save()
 	return matches
 }

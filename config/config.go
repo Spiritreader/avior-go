@@ -59,6 +59,20 @@ func InitWithDefaults(cfg *structs.Config) {
 		Settings: &structs.LogMatchModuleSettings{Mode: consts.LOGMATCH_MODE_NEUTRAL},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_LOGMATCH] = *moduleConfig
+	// MaxSize Config Defaults
+	moduleConfig = &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+		Settings: &structs.MaxSizeModuleSettings{MaxSize: 30},
+	}
+	// SizeApprox Config Defaults
+	cfg.Local.Modules[consts.MODULE_NAME_MAXSIZE] = *moduleConfig
+	moduleConfig = &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+		Settings: &structs.SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
 }
 
 func LoadLocal() error {

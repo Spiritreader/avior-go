@@ -55,12 +55,12 @@ for
 
 ### Global state:
 The purpose of this module is to serve as a collection of all state data that is currently outputted by the service. This includes:
-- [ ] Progress for encoding
-- [ ] Progress for size estimation
-- [ ] Progress for duplicate search
-- [ ] Progress for file moving
+- [x] Progress for encoding
+- [x] Progress for size estimation
+- [x] Progress for duplicate search
+- [x] Progress for file moving
 - [ ] Encoder output string
-- [ ] duplicate search current file and directory
+- [x] duplicate search current file and directory
 - [ ] current file that is moved
 - [ ] current slice that is encoded for estimation
   
@@ -68,7 +68,7 @@ The purpose of this module is to serve as a collection of all state data that is
 ### Duplicate search:
 - [x] find duplicates on disk
 - [x] config file entry
-- [ ] global state integration
+- [x] global state integration
 - [ ] moving of old files when modules result is REPL
 
 
@@ -97,7 +97,7 @@ ____
     - better audio format should allow replacement
     - return modes: `REPL`, `NOCH`, `KEEP`
 
-- [ ] Estimate size of new file
+- [x] Estimate size of new file
     - better file size should allow (percentage threshold)
     - depends on: encoder
     - return modes: `REPL`, `NOCH`, `KEEP`
@@ -113,7 +113,7 @@ ____
 - [x] Length (whitelist)
     - new files whose recorded lenghts differ greater than a configurable percent threshold should not be eligible for replacement
     - return modes: `KEEP`, `NOCH`
-- [ ] MaximumFileSize (whitelist)
+- [x] MaximumFileSize (whitelist)
     - if a new file is larger in Gigabytes than the specified filesize then it should not be eligible for replacement
     - return modes: `KEEP`, `NOCH`
 - [ ] Legacy checker
@@ -157,5 +157,5 @@ PI -test
 - [x] ffmpeg output parser
 - [x] cli call constructor
 - [x] global state integation
-- [ ] estimate remaining time
+- [x] estimate remaining time
 

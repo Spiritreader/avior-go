@@ -60,7 +60,7 @@ func Encode(file media.File, start, duration int, overwrite bool) (Stats, error)
 	}
 	var outPath string
 	if duration > 0 && start > 0 {
-		outPath = filepath.Join(filepath.Dir(file.Path), fmt.Sprintf("%s.mkv.estimate", xid.New()))
+		outPath = filepath.Join(filepath.Dir(file.Path), fmt.Sprintf("%s.estimate", xid.New()))
 	} else {
 		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName())
 	}
@@ -158,7 +158,10 @@ func parseOut(line string) {
 
 		next = strings.Split(next[1], bitrateToken)
 		// next[0] now time value
-		state.Encoder.Position, _ = time.Parse("15:04:05", strings.Trim(next[0][:strings.Index(next[0], ".")], " "))
+		cutIdx := strings.Index(next[0], ".")
+		if cutIdx != -1 {
+			state.Encoder.Position, _ = time.Parse("15:04:05", strings.Trim(next[0][:cutIdx], " "))
+		}
 
 
 		next = strings.Split(next[1], dupToken)
@@ -174,17 +177,25 @@ func parseOut(line string) {
 
 		next = strings.Split(next[1], speedToken)
 		// next[1] now holds speed value
-		state.Encoder.Speed, _ = strconv.ParseFloat(strings.Trim(next[1][:strings.Index(next[1], "x")], " "), 64)
+
+		cutIdx = strings.Index(next[1], "x")
+		if cutIdx != -1 {
+			state.Encoder.Speed, _ = strconv.ParseFloat(strings.Trim(next[1][:cutIdx], " "), 64)
+		}
+
+		// calculate ETA
+		state.Encoder.Remaining = state.Encoder.Duration.Sub(state.Encoder.Position)
 	}
 
-	fmt.Printf("Duration: %s\n", state.Encoder.Duration)
-	fmt.Printf("Frame: %d\n", state.Encoder.Frame)
-	fmt.Printf("Fps: %f\n", state.Encoder.Fps)
-	fmt.Printf("Q: %f\n", state.Encoder.Q)
-	fmt.Printf("Size: %s\n", state.Encoder.Size)
-	fmt.Printf("Position: %s\n", state.Encoder.Position)
-	fmt.Printf("Bitrate: %s\n", state.Encoder.Bitrate)
-	fmt.Printf("Dup: %d\n", state.Encoder.Dup)
-	fmt.Printf("Drop: %d\n", state.Encoder.Drop)
-	fmt.Printf("Speed: %f\n", state.Encoder.Speed)
+	fmt.Printf("Duration: %s ", state.Encoder.Duration)
+	fmt.Printf("Frame: %d ", state.Encoder.Frame)
+	fmt.Printf("Fps: %f ", state.Encoder.Fps)
+	fmt.Printf("Q: %f ", state.Encoder.Q)
+	fmt.Printf("Size: %s ", state.Encoder.Size)
+	fmt.Printf("Position: %s ", state.Encoder.Position)
+	fmt.Printf("Bitrate: %s ", state.Encoder.Bitrate)
+	fmt.Printf("Dup: %d ", state.Encoder.Dup)
+	fmt.Printf("Drop: %d ", state.Encoder.Drop)
+	fmt.Printf("Speed: %f ", state.Encoder.Speed)
+	fmt.Printf("Remaining: %s\n", state.Encoder.Remaining)
 }

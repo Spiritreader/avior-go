@@ -96,6 +96,16 @@ type LogMatchModuleSettings struct {
 	Mode string
 }
 
+type MaxSizeModuleSettings struct {
+	MaxSize int
+}
+
+type SizeApproxModuleSettings struct {
+	Difference  int
+	SampleCount int
+	Fraction    int
+}
+
 type EncoderConfig struct {
 	OutDirectory  string
 	PreArguments  []string
