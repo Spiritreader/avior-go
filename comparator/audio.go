@@ -18,60 +18,62 @@ func (s *AudioModule) Init(mcfg structs.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
-func (s *AudioModule) Run(files ...media.File) (string, string) {
+func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 	if s.moduleConfig == nil {
 		_ = glg.Warnf("module %s has never been initialized and has thus been disabled", s.Name())
-		return NOCH, "err no init"
+		return s.Name(), NOCH, "err no init"
 	}
 	if !s.moduleConfig.Enabled {
-		return NOCH, "disabled"
+		return s.Name(), NOCH, "disabled"
 	}
 	settings := &structs.AudioModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
-		return NOCH, "err"
+		return s.Name(), NOCH, "err"
 	}
 	new := files[0]
 	duplicate := files[1]
-
 	if new.AudioFormat == media.AUDIO_UNKNOWN {
-		return KEEP, "new file audio unknown"
+		return s.Name(), KEEP, "new file audio unknown"
 	} else if duplicate.AudioFormat == media.AUDIO_UNKNOWN {
-		return KEEP, "old file audio unknown"
+		return s.Name(), KEEP, "old file audio unknown"
 	}
 
 	switch settings.Accuracy {
 	case consts.AUDIO_ACC_LOW:
 		if new.AudioFormat > media.AUDIO_UNKNOWN && duplicate.AudioFormat < media.AUDIO_UNKNOWN {
-			return REPL, fmt.Sprintf("new file better: %s vs %s",
+			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else {
-			return KEEP, fmt.Sprintf("old file better %s vs %s",
+			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	case consts.AUDIO_ACC_MED:
 		if new.AudioFormat > media.MULTI_MAYBE && duplicate.AudioFormat < media.STEREO_MAYBE {
-			return REPL, fmt.Sprintf("new file better: %s vs %s",
+			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else {
-			return KEEP, fmt.Sprintf("old file better %s vs %s",
+			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	case consts.AUDIO_ACC_HIGH:
 		if new.AudioFormat == media.MULTI && duplicate.AudioFormat == media.STEREO {
-			return REPL, fmt.Sprintf("new file better: %s vs %s",
+			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else {
-			return KEEP, fmt.Sprintf("old file better %s vs %s",
+			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	}
-	return NOCH, fmt.Sprintf("no action: %s vs %s",
+	return s.Name(), NOCH, fmt.Sprintf("no action: %s vs %s",
 		new.AudioFormat.String(), duplicate.AudioFormat.String())
 }
 
 func (s *AudioModule) Priority() int {
-	return -1
+	if s.moduleConfig == nil {
+		return -1
+	}
+	return s.moduleConfig.Priority
 }
 
 func (s *AudioModule) Name() string {

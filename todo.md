@@ -89,7 +89,7 @@ A single module can return:
 
 ____
 **Module Implementations:**
-- [ ] Compare resolutions:
+- [x] Compare resolutions:
     - better resolution should allow replacement
     - return modes: `REPL`, `NOCH`, `KEEP`
 

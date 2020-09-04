@@ -30,18 +30,18 @@ func (s *SizeApproxModule) Init(mcfg structs.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
-func (s *SizeApproxModule) Run(files ...media.File) (string, string) {
+func (s *SizeApproxModule) Run(files ...media.File) (string, string, string) {
 	if s.moduleConfig == nil {
 		_ = glg.Warnf("module %s has never been initialized and has thus been disabled", s.Name())
-		return NOCH, "err no init"
+		return s.Name(), NOCH, "err no init"
 	}
 	if !s.moduleConfig.Enabled {
-		return NOCH, "disabled"
+		return s.Name(), NOCH, "disabled"
 	}
 	settings := &structs.SizeApproxModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
-		return NOCH, "err"
+		return s.Name(), NOCH, "err"
 	}
 	s.new = files[0]
 	s.duplicate = files[0]
@@ -50,25 +50,28 @@ func (s *SizeApproxModule) Run(files ...media.File) (string, string) {
 	state.Encoder.Slice = 0
 	state.Encoder.OfSlices = 0
 	if err != nil {
-		return NOCH, fmt.Sprintf("module error: %s", err)
+		return s.Name(), NOCH, fmt.Sprintf("module error: %s", err)
 	}
 	since := time.Since(startTime)
 	_ = glg.Infof("approx module: estimation took %s", since)
 	if difference > s.settings.Difference {
-		return REPL, fmt.Sprintf("new/old: ratio: %s/%s: %d",
+		return s.Name(), REPL, fmt.Sprintf("new/old: ratio: %s/%s: %d",
 			tools.ByteCountSI(estimatedSize), tools.ByteCountSI(duplicateSize), difference)
 	} else if difference >= 0 {
-		return NOCH, fmt.Sprintf("new/old: ratio: %s/%s: %d",
+		return s.Name(), NOCH, fmt.Sprintf("new/old: ratio: %s/%s: %d",
 			tools.ByteCountSI(estimatedSize), tools.ByteCountSI(duplicateSize), difference)
 	} else if difference < 0 {
-		return KEEP, fmt.Sprintf("new/old: ratio: %s/%s: %d",
+		return s.Name(), KEEP, fmt.Sprintf("new/old: ratio: %s/%s: %d",
 			tools.ByteCountSI(estimatedSize), tools.ByteCountSI(duplicateSize), difference)
 	}
-	return KEEP, "no criteria matched for replacement"
+	return s.Name(), KEEP, "no criteria matched for replacement"
 }
 
 func (s *SizeApproxModule) Priority() int {
-	return -1
+	if s.moduleConfig == nil {
+		return -1
+	}
+	return s.moduleConfig.Priority
 }
 
 func (s *SizeApproxModule) Name() string {

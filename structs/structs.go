@@ -56,6 +56,7 @@ type LocalConfig struct {
 	Ext              string
 	AudioFormats     AudioFormats
 	Resolutions      map[string]string
+	ObsoletePath     string
 	MediaPaths       []string
 	EstimatedLibSize int
 	Modules          map[string]ModuleConfig
@@ -98,6 +99,10 @@ type LogMatchModuleSettings struct {
 
 type MaxSizeModuleSettings struct {
 	MaxSize int
+}
+
+type ResolutionModuleSettings struct {
+	MinResolution int
 }
 
 type SizeApproxModuleSettings struct {

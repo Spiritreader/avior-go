@@ -18,31 +18,34 @@ func (s *LengthModule) Init(mcfg structs.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
-func (s *LengthModule) Run(files ...media.File) (string, string) {
+func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 	if s.moduleConfig == nil {
 		_ = glg.Warnf("module %s has never been initialized and has thus been disabled", s.Name())
-		return NOCH, "err no init"
+		return s.Name(), NOCH, "err no init"
 	}
 	if !s.moduleConfig.Enabled {
-		return NOCH, "disabled"
+		return s.Name(), NOCH, "disabled"
 	}
 	settings := &structs.LengthModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
-		return NOCH, "err"
+		return s.Name(), NOCH, "err"
 	}
 	file := files[0]
 	diff := file.LengthDifference()
 	if diff > settings.Threshold {
-		return KEEP, fmt.Sprintf("recording too short: %dm / %dm (%d%% / %d%%)",
+		return s.Name(), KEEP, fmt.Sprintf("recording too short: %dm / %dm (%d%% / %d%%)",
 			file.RecordedLength, file.Length, diff, settings.Threshold)
 	}
-	return NOCH, fmt.Sprintf("ok: %dm / %dm (%d%% / %d%%)",
+	return s.Name(), NOCH, fmt.Sprintf("ok: %dm / %dm (%d%% / %d%%)",
 		file.RecordedLength, file.Length, diff, settings.Threshold)
 }
 
 func (s *LengthModule) Priority() int {
-	return -1
+	if s.moduleConfig == nil {
+		return -1
+	}
+	return s.moduleConfig.Priority
 }
 
 func (s *LengthModule) Name() string {

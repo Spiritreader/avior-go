@@ -10,6 +10,7 @@ import (
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/globalstate"
+	"github.com/Spiritreader/avior-go/joblog"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/karrick/godirwalk"
@@ -19,6 +20,7 @@ import (
 var state *globalstate.Data = globalstate.Instance()
 
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, resumeChan chan string) {
+	jobLog := new(joblog.Data)
 	job, err := dataStore.GetNextJobForClient(client)
 	if err != nil {
 		_ = glg.Errorf("failed getting next job: %s", err)
@@ -36,12 +38,22 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, resumeChan chan
 	}
 	fmt.Println(jobFile)
 	fmt.Println(jobFile.OutName())
-	runModules()
+	jobLog.AddFileProperties(*jobFile)
+	res := runModules(*jobLog, *jobFile)
+	switch res {
+	case comparator.KEEP:
+		resume(resumeChan)
+	}
 	duplicates := checkForDuplicates(jobFile)
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
-		runModules()
+		res = runDupeModules(*jobLog, *jobFile, duplicates[0])
+		switch res {
+		case comparator.KEEP:
+			resume(resumeChan)
+		}
 	}
+	
 	resume(resumeChan)
 }
 
@@ -54,11 +66,44 @@ func resume(resumeChan chan string) {
 	}
 }
 
-func runModules() {
+func runModules(jobLog joblog.Data, fileNew media.File) string {
+	jobLog.Add("Module Results:")
 	modules := comparator.InitDupeModules()
 	for idx := range modules {
-		modules[idx].Run()
+		name, result, message := modules[idx].Run(fileNew)
+		_ = glg.Infof("%s: %s - %s", name, result, message)
+		jobLog.Add(fmt.Sprintf("%s: %s - %s", name, result, message))
+
+		switch result {
+		case comparator.NOCH:
+			continue
+		case comparator.KEEP:
+			return comparator.KEEP
+		case comparator.REPL:
+			return comparator.REPL
+		}
 	}
+	return comparator.NOCH
+}
+
+func runDupeModules(jobLog joblog.Data, fileNew media.File, fileDup media.File) string {
+	jobLog.Add("Dupe Module Results:")
+	modules := comparator.InitDupeModules()
+	for idx := range modules {
+		name, result, message := modules[idx].Run(fileNew, fileDup)
+		_ = glg.Infof("%s: %s - %s", name, result, message)
+		jobLog.Add(fmt.Sprintf("%s: %s - %s", name, result, message))
+
+		switch result {
+		case comparator.NOCH:
+			continue
+		case comparator.KEEP:
+			return comparator.KEEP
+		case comparator.REPL:
+			return comparator.REPL
+		}
+	}
+	return comparator.NOCH
 }
 
 // checkForDuplicates retrieves all duplicates for the given file,

@@ -10,16 +10,16 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type ResolutionModule struct {
+
+type LegacyModule struct {
 	moduleConfig *structs.ModuleConfig
 }
 
-func (s *ResolutionModule) Init(mcfg structs.ModuleConfig) {
+func (s *LegacyModule) Init(mcfg structs.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
-
-func (s *ResolutionModule) Run(files ...media.File) (string, string, string) {
+func (s *LegacyModule) Run(files ...media.File) (string, string, string) {
 	if s.moduleConfig == nil {
 		_ = glg.Warnf("module %s has never been initialized and has thus been disabled", s.Name())
 		return s.Name(), NOCH, "err no init"
@@ -58,13 +58,13 @@ func (s *ResolutionModule) Run(files ...media.File) (string, string, string) {
 	}
 }
 
-func (s *ResolutionModule) Priority() int {
+func (s *LegacyModule) Priority() int {
 	if s.moduleConfig == nil {
 		return -1
 	}
 	return s.moduleConfig.Priority
 }
 
-func (s *ResolutionModule) Name() string {
-	return consts.MODULE_NAME_RESOLUTION
+func (s *LegacyModule) Name() string {
+	return consts.MODULE_NAME_LEGACY
 }
