@@ -31,6 +31,7 @@ func InitDupeModules() []Module {
 		&AudioModule{},
 		&ResolutionModule{},
 		&LogMatchModule{},
+		&AgeModule{},
 		&SizeApproxModule{},
 	}
 	return initModules(modules)
@@ -39,7 +40,6 @@ func InitDupeModules() []Module {
 // Initialize all modules for single file checking
 func InitStandaloneModules() []Module {
 	modules := []Module{
-		&AgeModule{},
 		&LengthModule{},
 		&MaxSizeModule{},
 	}

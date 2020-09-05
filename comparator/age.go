@@ -34,9 +34,9 @@ func (s *AgeModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), NOCH, "err no convert"
 	}
 
-	duplicateFileInfo, err := os.Stat(files[0].Path)
+	duplicateFileInfo, err := os.Stat(files[1].Path)
 	if err != nil {
-		_ = glg.Warnf("could not open file \"%s\" for metadata retrieval: %s", files[0].Path, err)
+		_ = glg.Warnf("could not open file \"%s\" for metadata retrieval: %s", files[1].Path, err)
 		// if module fails, disable module
 		return s.Name(), NOCH, "err no access"
 	}

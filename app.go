@@ -118,13 +118,13 @@ MainLoop:
 	for {
 		// check if client is allowed to run
 		canRun := tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now())
-		if canRun && !sleep {
+		if !canRun && !sleep {
 			_ = glg.Infof("client %s moving to standby, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
 			sleep = false
 			sleepTime = 5
-		} else if !canRun && sleep {
-			_ = glg.Infof("client %s resuming , active hours: %s - %s",
+		} else if canRun && sleep {
+			_ = glg.Infof("client %s resuming, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
 			sleep = true
 			sleepTime = 1
@@ -140,13 +140,12 @@ MainLoop:
 			if job == nil {
 				return
 			}
-			worker.ProcessJob(dataStore, client, job, resumeChan)
 			err = dataStore.DeleteJob(job)
+			worker.ProcessJob(dataStore, client, job, resumeChan)
 			if err != nil {
 				_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
 				paused = true
 			}
-			break MainLoop
 		}
 
 		// skip sleep when more jobs are queued, also serves as exit point
