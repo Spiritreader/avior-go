@@ -112,7 +112,7 @@ func (s *SizeApproxModule) estimate() (int64, int64, int, error) {
 	// encode all slices and get sample file sizes
 	for idx := range samples {
 		state.Encoder.Slice = idx
-		stats, err := encoder.Encode(s.duplicate, position, secondsPerEncSlice, true)
+		stats, err := encoder.Encode(s.duplicate, position, secondsPerEncSlice, true, nil)
 		if err != nil {
 			_ = glg.Errorf("error encoding %s for estimation, output path %s, err: %s",
 				s.duplicate.Path, stats.OutputPath, err)

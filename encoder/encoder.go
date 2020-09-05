@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/kpango/glg"
@@ -24,26 +25,46 @@ type Stats struct {
 	Success    bool
 	Duration   int
 	ExitCode   int
+	// Encoded output path including file name
 	OutputPath string
 	Call       string
 }
 
 var state *globalstate.Data = globalstate.Instance()
 
-func Encode(file media.File, start, duration int, overwrite bool) (Stats, error) {
+func Encode(file media.File, start, duration int, overwrite bool, dstDir *string) (Stats, error) {
 	cfg := config.Instance()
 	encoderConfig, ok := cfg.Local.EncoderConfig[file.Resolution.Tag]
 	if !ok {
-		_ = glg.Errorf("no encoder config found with tag/resolution %s/%s for %s",
-			file.Resolution.Tag, file.Resolution.Value, file.Path)
+		_ = glg.Errorf("no encoder config found for %s", file.Path)
 		return Stats{false, -1, -1337, "", ""}, errors.New("no tag found")
 	}
+
+	// use custom parameters instead of encoder config if provided
+	if len(file.CustomParams) > 0 {
+		customPreArgs := make([]string, 0)
+		customPostArgs := make([]string, 0)
+		for _, cParam := range file.CustomParams {
+			if strings.HasPrefix(cParam, consts.COMPAT_CPARAM_PREFIX) {
+				split := strings.Split(cParam, consts.COMPAT_CPARAM_PREFIX)
+				customPreArgs = append(customPreArgs, split[1])
+			} else {
+				customPostArgs = append(customPostArgs, cParam)
+			}
+		}
+		encoderConfig.PreArguments = customPreArgs
+		encoderConfig.PostArguments = customPostArgs
+	}
+
+	// allow overwrite setting
 	params := make([]string, 0)
 	if overwrite {
 		params = append(params, "-y")
 	} else {
 		params = append(params, "-n")
 	}
+
+	// pre arguments for ffmpeg
 	for _, preArgument := range encoderConfig.PreArguments {
 		split := strings.Split(preArgument, " ")
 		params = append(params, split...)
@@ -55,16 +76,24 @@ func Encode(file media.File, start, duration int, overwrite bool) (Stats, error)
 	if duration > 0 {
 		params = append(params, "-t", strconv.Itoa(duration))
 	}
+
+	// post arguments for ffmpeg
 	for _, postArgument := range encoderConfig.PostArguments {
 		split := strings.Split(postArgument, " ")
 		params = append(params, split...)
 	}
+
+	// determine which output path to use
 	var outPath string
 	if duration > 0 && start > 0 {
 		outPath = filepath.Join(filepath.Dir(file.Path), fmt.Sprintf("%s.estimate", xid.New()))
+	} else if (dstDir != nil) {
+		outPath = filepath.Join(*dstDir, file.OutName() + cfg.Local.Ext)
 	} else {
-		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName())
+		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName() + cfg.Local.Ext)
 	}
+
+	// call ffmpeg
 	params = append(params, outPath)
 	startTime := time.Now()
 	cmd := exec.Command("ffmpeg", params...)
@@ -75,6 +104,8 @@ func Encode(file media.File, start, duration int, overwrite bool) (Stats, error)
 		_ = glg.Errorf("could not start ffmpeg: %s", err)
 		return Stats{false, -1, -1337, "", ""}, err
 	}
+
+	// scan stdout
 	scanner := bufio.NewScanner(multiReader)
 	scanner.Split(ScanLinesSTDOUT)
 	for scanner.Scan() {
@@ -86,7 +117,7 @@ func Encode(file media.File, start, duration int, overwrite bool) (Stats, error)
 	exitCode := cmd.ProcessState.ExitCode()
 	encTime := int(math.Round(time.Since(startTime).Minutes()))
 	if exitCode != 0 {
-		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, nil
+		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, errors.New("exit code not ok")
 	}
 	return Stats{true, encTime, exitCode, outPath, strings.Join(params, " ")}, nil
 }
@@ -112,7 +143,7 @@ func ScanLinesSTDOUT(data []byte, atEOF bool) (advance int, token []byte, err er
 
 func parseOut(line string) {
 	durationToken := "Duration:"
-	frameToken := "frame="
+	frameToken := "frame"
 	fpsToken := "fps"
 	qToken := "q"
 	sizeToken := "size"
@@ -123,8 +154,8 @@ func parseOut(line string) {
 	speedToken := "speed"
 
 	state.Encoder.LineOut = append(state.Encoder.LineOut, line)
-	//fmt.Println(line)
 	if strings.Contains(line, durationToken) {
+		fmt.Println(line)
 		keyIdx := strings.Index(line, durationToken) + len(durationToken)
 		timeIdx := strings.Index(line, ".")
 		state.Encoder.Duration, _ = time.Parse("15:04:05", strings.Trim(line[keyIdx:timeIdx], " "))
@@ -186,16 +217,20 @@ func parseOut(line string) {
 			diff /= time.Duration(state.Encoder.Speed)
 			state.Encoder.Remaining = diff
 		}
+		termOut := ""
+		termOut += fmt.Sprintf("Duration: %s ", state.Encoder.Duration.Format("15:04:05"))
+		termOut += fmt.Sprintf("Frame: %d ", state.Encoder.Frame)
+		termOut += fmt.Sprintf("Fps: %.2f ", state.Encoder.Fps)
+		termOut += fmt.Sprintf("Q: %.0f ", state.Encoder.Q)
+		termOut += fmt.Sprintf("Size: %s ", state.Encoder.Size)
+		termOut += fmt.Sprintf("Position: %s ", state.Encoder.Position.Format("15:04:05"))
+		termOut += fmt.Sprintf("Bitrate: %s ", state.Encoder.Bitrate)
+		termOut += fmt.Sprintf("Dup: %d ", state.Encoder.Dup)
+		termOut += fmt.Sprintf("Drop: %d ", state.Encoder.Drop)
+		termOut += fmt.Sprintf("Speed: %.1f ", state.Encoder.Speed)
+		termOut += fmt.Sprintf("Remaining: %s", state.Encoder.Remaining)
+		fmt.Printf("\r" + termOut)
+	} else {
+		fmt.Println(line)
 	}
-	fmt.Printf("Duration: %s ", state.Encoder.Duration.Format("15:04:05"))
-	fmt.Printf("Frame: %d ", state.Encoder.Frame)
-	fmt.Printf("Fps: %.2f ", state.Encoder.Fps)
-	fmt.Printf("Q: %.0f ", state.Encoder.Q)
-	fmt.Printf("Size: %s ", state.Encoder.Size)
-	fmt.Printf("Position: %s ", state.Encoder.Duration.Format("15:04:05"))
-	fmt.Printf("Bitrate: %s ", state.Encoder.Bitrate)
-	fmt.Printf("Dup: %d ", state.Encoder.Dup)
-	fmt.Printf("Drop: %d ", state.Encoder.Drop)
-	fmt.Printf("Speed: %.1f ", state.Encoder.Speed)
-	fmt.Printf("Remaining: %s\n", state.Encoder.Remaining)
 }

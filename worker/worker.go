@@ -26,7 +26,7 @@ var state *globalstate.Data = globalstate.Instance()
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
 	jobLog := new(joblog.Data)
 	_ = glg.Infof("processing job %s", job.Path)
-	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, EncodeParams: job.CustomParameters}
+	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := mediaFile.Update()
 	if err != nil {
 		Resume(resumeChan)
@@ -38,43 +38,73 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	res := runModules(*jobLog, *mediaFile)
 	switch res {
 	case comparator.KEEP:
-		_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log")
-		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"))
+		_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 		Resume(resumeChan)
 		return
 	}
 
+	var redirectDir *string = nil
 	duplicates := checkForDuplicates(mediaFile)
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
 		res, moduleName := runDupeModules(*jobLog, *mediaFile, duplicates[0])
-		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
-		err := move(duplicates[0], obsoleteDir, &moduleName)
-		if err != nil {
-			_ = glg.Errorf("can't continue without moving duplicate files, skipping job")
-			Resume(resumeChan)
-			return
-		}
 		switch res {
-		case comparator.KEEP:
+		case comparator.KEEP, comparator.NOCH:
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
-			err = move(*mediaFile, existDir, nil)
+			err = moveMediaFile(*mediaFile, existDir, nil)
 			if err != nil {
-				_ = glg.Warnf("couldn't move source files to exist directory, err: %s", err)
+				_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", err)
 			}
-			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log")
-			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"))
+			err = moveLogs(*mediaFile, existDir, nil)
+			if err != nil {
+				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
+			}
+			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 			Resume(resumeChan)
 			return
 		}
+		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
+
+		errM := moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
+		errL := moveLogs(duplicates[0], obsoleteDir, &moduleName)
+		if errM != nil || errL == nil {
+			msg := "can't continue without moving duplicate files, skipping job"
+			_ = glg.Errorf(msg)
+			jobLog.Add("error:")
+			jobLog.Add(errM.Error())
+			jobLog.Add(errL.Error())
+			jobLog.Add(msg)
+			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			Resume(resumeChan)
+			return
+		}
+		duplicateDir := filepath.Dir(duplicates[0].Path)
+		redirectDir = &duplicateDir
 	}
 
+	// encode with one retry that overwrites (in case the old one failed)
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
-	stats, err := encoder.Encode(*mediaFile, 0, 0, false)
-	if err != nil || stats.ExitCode != 0 {
+	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
+	if err != nil {
+		if err.Error() == "no tag found" || stats.ExitCode == 1 {
+			jobLog.Add("error: " + err.Error())
+			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			Resume(resumeChan)
+			return
+		}
+		if stats.ExitCode == 1 {
+			jobLog.Add("ffmpeg exit code 1")
+			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			Resume(resumeChan)
+			return
+		}
 		_ = glg.Warnf("encode failed, retrying")
-		stats, err = encoder.Encode(*mediaFile, 0, 0, true)
+		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
+			jobLog.Add("error: " + err.Error())
+			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
@@ -84,13 +114,22 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add(fmt.Sprintf("Output Path: %s", stats.OutputPath))
 	jobLog.Add(fmt.Sprintf("Duration: %d", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
-	_ = jobLog.AppendTo(filepath.Join("log", "processed.log"))
-	_ = jobLog.AppendTo(mediaFile.LogPaths[0])
+	_ = jobLog.AppendTo(filepath.Join("log", "processed.log"), false, true)
+	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
 
+	// move files, cleanup
 	doneDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.DONE_DIR)
-	err = move(*mediaFile, doneDir, nil)
+	err = moveMediaFile(*mediaFile, doneDir, nil)
 	if err != nil {
-		_ = glg.Warnf("couldn't move source files to done directory, err: %s", err)
+		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
+	}
+	err = copyLogsToEncOut(*mediaFile, filepath.Dir(stats.OutputPath))
+	if err != nil {
+		_ = glg.Errorf("couldn't copy source log files to encoded file directory, err: %s", err)
+	}
+	err = moveLogs(*mediaFile, doneDir, nil)
+	if err != nil {
+		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
 	}
 	Resume(resumeChan)
 }
@@ -144,19 +183,30 @@ func runDupeModules(jobLog joblog.Data, fileNew media.File, fileDup media.File) 
 	return comparator.NOCH, "none"
 }
 
-func move(file media.File, dstDir string, moduleName *string) error {
+func moveMediaFile(file media.File, dstDir string, moduleName *string) error {
 	_, err := os.Stat(dstDir)
 	if os.IsNotExist(err) {
 		_ = os.Mkdir(dstDir, 0777)
 	}
-	toMovePaths := make(map[string]string, 0)
 	fileOut := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
 	if moduleName != nil {
 		fileOut += *moduleName
 	}
 	fileOut += filepath.Ext(file.Path)
 	fileOut = filepath.Join(dstDir, fileOut)
-	toMovePaths[file.Path] = fileOut
+	err = tools.MoppyFile(file.Path, fileOut, true)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func moveLogs(file media.File, dstDir string, moduleName *string) error {
+	_, err := os.Stat(dstDir)
+	if os.IsNotExist(err) {
+		_ = os.Mkdir(dstDir, 0777)
+	}
+	toMovePaths := make(map[string]string)
 	for _, log := range file.LogPaths {
 		logOut := strings.TrimSuffix(filepath.Base(log), filepath.Ext(log))
 		if moduleName != nil {
@@ -168,6 +218,27 @@ func move(file media.File, dstDir string, moduleName *string) error {
 	}
 	for src, dst := range toMovePaths {
 		err := tools.MoppyFile(src, dst, true)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyLogsToEncOut(file media.File, dstDir string) error {
+	_, err := os.Stat(dstDir)
+	if os.IsNotExist(err) {
+		_ = os.Mkdir(dstDir, 0777)
+	}
+	toMovePaths := make(map[string]string)
+	for _, log := range file.LogPaths {
+		logOut := file.OutName()
+		logOut += filepath.Ext(log)
+		logOut = filepath.Join(dstDir, logOut)
+		toMovePaths[log] = logOut
+	}
+	for src, dst := range toMovePaths {
+		err := tools.MoppyFile(src, dst, false)
 		if err != nil {
 			return err
 		}

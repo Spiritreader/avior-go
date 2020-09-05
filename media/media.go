@@ -113,10 +113,11 @@ type File struct {
 	//
 	// Probability Low: tuner + meta without tag
 	AudioFormat  AudioFormat
-	EncodeParams []string
+	CustomParams []string
 	MetadataLog  []string
 	TunerLog     []string
 	LogPaths     []string
+	IgnoreLength bool
 	legacy       bool
 }
 
@@ -129,6 +130,11 @@ func (f *File) Update() error {
 	f.getResolution()
 	f.getLength()
 	f.trimName()
+	found, _, idx := find(f.CustomParams, []string{"lengthOverride"})
+	if found {
+		f.IgnoreLength = true
+		f.CustomParams = append(f.CustomParams[:idx], f.CustomParams[idx+1:]...)
+	}
 	return nil
 }
 
@@ -136,11 +142,11 @@ func (f *File) Update() error {
 //
 // It also includes the term that was matched against
 func (f *File) LogsContain(terms []string) (bool, string) {
-	tunerContains, tMatch := find(f.TunerLog, terms)
+	tunerContains, tMatch, _ := find(f.TunerLog, terms)
 	if tunerContains {
 		return true, tMatch
 	}
-	metadataContains, mMatch := find(f.MetadataLog, terms)
+	metadataContains, mMatch, _ := find(f.MetadataLog, terms)
 	if metadataContains {
 		return true, mMatch
 	}
@@ -159,15 +165,15 @@ func (f *File) OutName() string {
 	if len(sanitizedSub) == 0 {
 		return sanitizedName + cfg.Local.Ext
 	}
-	return sanitizedName + " - " + sanitizedSub + cfg.Local.Ext
+	return sanitizedName + " - " + sanitizedSub
 }
 
 // getAudio retrieves the audio file from the log files and updates the struct
 func (f *File) getAudio() {
 	cfg := config.Instance()
 
-	tunerStereo, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
-	tunerMulti, _ := find(f.TunerLog, cfg.Local.AudioFormats.MultiTags)
+	tunerStereo, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
+	tunerMulti, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.MultiTags)
 
 	if tunerStereo && !tunerMulti {
 		// guaranteed to be stereo if tuner only picks up one audio codec
@@ -177,8 +183,8 @@ func (f *File) getAudio() {
 		f.AudioFormat = MULTI
 	} else if tunerStereo && tunerMulti {
 		// complement info with tags if available
-		metaStereo, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags)
-		metaMulti, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags)
+		metaStereo, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags)
+		metaMulti, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags)
 
 		if metaMulti {
 			// if tags include multichannel audio, it's still likely to be multichannel
@@ -195,8 +201,10 @@ func (f *File) getAudio() {
 func (f *File) getResolution() {
 	cfg := config.Instance()
 	k, v := matchMap(f.TunerLog, cfg.Local.Resolutions)
-	f.Resolution.Tag = *k
-	f.Resolution.Value = *v
+	if k != nil && v != nil {
+		f.Resolution.Tag = *k
+		f.Resolution.Value = *v
+	}
 }
 
 func (f *File) getLength() {
@@ -250,11 +258,7 @@ func (f *File) readLogs() error {
 	metadataLogPath := stem + ".txt"
 	legacyLogPaths := []string{stem + ".mkv.log", stem + ".mpg.log"}
 
-	if err := readFileContent(&f.MetadataLog, metadataLogPath); err != nil {
-		_ = glg.Warnf("could not read metadata log for \"%s\": %s", metadataLogPath, err)
-	} else {
-		f.LogPaths = append(f.LogPaths, metadataLogPath)
-	}
+	mErr := readFileContent(&f.MetadataLog, metadataLogPath);
 	if err := readFileContent(&f.TunerLog, tunerLogPath); err != nil {
 		if err == os.ErrNotExist {
 			for _, legacyLogPath := range legacyLogPaths {
@@ -269,6 +273,12 @@ func (f *File) readLogs() error {
 		return err
 	}
 	f.LogPaths = append(f.LogPaths, tunerLogPath)
+
+	if mErr != nil {
+		_ = glg.Warnf("could not read metadata log for \"%s\": %s", metadataLogPath, mErr)
+	} else {
+		f.LogPaths = append(f.LogPaths, metadataLogPath)
+	}
 	return nil
 }
 
@@ -279,15 +289,15 @@ func (f *File) Legacy() bool {
 	return f.legacy
 }
 
-func find(slice []string, terms []string) (bool, string) {
-	for _, line := range slice {
+func find(slice []string, terms []string) (bool, string, int) {
+	for idx, line := range slice {
 		for _, term := range terms {
 			if strings.Contains(line, term) {
-				return true, term
+				return true, term, idx
 			}
 		}
 	}
-	return false, ""
+	return false, "", -1
 }
 
 func findAll(slice []string, terms []string) []string {

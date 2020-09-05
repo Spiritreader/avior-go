@@ -51,11 +51,17 @@ func main() {
 	_ = dataStore.LoadSharedConfig()
 	job := &structs.Job{
 		ID:       primitive.NewObjectID(),
-		Path:     "D:/Recording/Drogen Amerikas längster Krieg - Dokumentarfilm, USA, 2012, ZDF, ZDF, 104 Mi_2015-06-25-00-25-arte (AC3,deu).ts",
+		Path:     "D:/Recording/Drogen Amerikas längster Krieg - Dokumentarfilm, USA, 2012, ZDF, ZDF, 104 Mi_2015-06-25-00-25-arte (AC3,deu).mkv",
 		Name:     "NEUES FRANZÖSISCHES KINO Drogen",
 		Subtitle: "Amerika's längster Krieg Dokumentarfilm im Ersten",
 	}
-	jobFile := media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, EncodeParams: job.CustomParameters}
+	_ = &structs.Job{
+		ID:       primitive.NewObjectID(),
+		Path:     "D:/Recording/Neva Give üp - Der einzig wahre Japaner.mkv",
+		Name:     "NEUES FRANZÖSISCHES KINO Neva Give üp",
+		Subtitle: "Der einzig wahre Japaner Dokumentarfilm im Ersten",
+	}
+	jobFile := media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := jobFile.Update()
 	if err != nil {
 		return

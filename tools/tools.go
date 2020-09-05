@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -99,35 +100,41 @@ type PassThru struct {
 	transferred int64
 	totalBytes  int64
 	data        *globalstate.Data
+	name        string
 }
 
 func MoppyFile(src string, dst string, move bool) error {
 	state := globalstate.Instance()
 	source, err := os.Open(src)
 	if err != nil {
-		_ = glg.Errorf("could not open file \"%s\": %s", src, err)
+		_ = glg.Errorf("could not open file: %s", err)
 		return err
 	}
 	sourceInfo, err := os.Stat(src)
 	if err != nil {
-		_ = glg.Errorf("could not get metadata from file \"%s\": %s", src, err)
+		_ = glg.Errorf("could not get metadata from file: %s", err)
 		return err
 	}
-	defer source.Close()
 	destination, err := os.Create(dst)
 	if err != nil {
-		_ = glg.Errorf("could not create destination file \"%s\": %s", dst, err)
+		_ = glg.Errorf("could not create destination file: %s", err)
 		return err
 	}
-	defer destination.Close()
 	var reader io.Reader
 	reader = source
-	reader = &PassThru{Reader: reader, data: state, totalBytes: sourceInfo.Size()}
+	reader = &PassThru{
+		Reader: reader, 
+		data: state, 
+		totalBytes: sourceInfo.Size(), 
+		name: filepath.Base(dst), 
+	}
 	_, err = io.Copy(destination, reader)
+	_ = source.Close()
+	_ = destination.Close()
 	if err != nil {
 		err = os.Remove(dst)
 		if err != nil {
-			_ = glg.Errorf("failing to remove destination file \"%s\" while failing to copy \"%s\": %s", dst, src, err)
+			_ = glg.Errorf("failing to remove destination file while failing to copy \"%s\": %s", src, err)
 			return err
 		}
 		_ = glg.Errorf("could not copy file \"%s\" to \"%s\": %s", src, dst, err)
@@ -136,8 +143,8 @@ func MoppyFile(src string, dst string, move bool) error {
 	if move {
 		err = os.Remove(src)
 		if err != nil {
-				_ = glg.Errorf("could not remove source file \"%s\": %s", src, err)
-				return err
+			_ = glg.Errorf("could not remove source file: %s", err)
+			return err
 		}
 	}
 	return nil
@@ -147,12 +154,12 @@ func (pt *PassThru) Read(p []byte) (int, error) {
 	n, err := pt.Reader.Read(p)
 	if err == nil {
 		pt.transferred += int64(n)
-		pt.data.Mover.Progress = int((float64(pt.transferred) / float64(pt.totalBytes)) * 100) 
+		pt.data.Mover.Progress = int((float64(pt.transferred) / float64(pt.totalBytes)) * 100)
 		pt.data.Mover.Position = ByteCountSI(pt.transferred)
 		pt.data.Mover.FileSize = ByteCountSI(pt.totalBytes)
-		/*if pt.transferred % 100000 == 0 {
-				fmt.Printf("Bytes: %s Total: %s\n", ByteCountSI(pt.transferred), ByteCountSI(pt.totalBytes))
-		}*/
+		if pt.transferred%100000 == 0 {
+			fmt.Printf("\rFile: %s Bytes: %s Total: %s", pt.name, ByteCountSI(pt.transferred), ByteCountSI(pt.totalBytes))
+		}
 	}
 	return n, err
 }

@@ -37,8 +37,7 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), KEEP, fmt.Sprintf("recording too short: %dm / %dm (%d%% / %d%%)",
 			file.RecordedLength, file.Length, diff, settings.Threshold)
 	}
-	return s.Name(), NOCH, fmt.Sprintf("ok: %dm / %dm (%d%% / %d%%)",
-		file.RecordedLength, file.Length, diff, settings.Threshold)
+	return s.Name(), NOCH, fmt.Sprintf("difference: %d", diff)
 }
 
 func (s *LengthModule) Priority() int {

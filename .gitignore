@@ -27,3 +27,6 @@ log/
 
 # Local History for Visual Studio Code
 .history/
+
+# debug bin file
+__debug_bin
