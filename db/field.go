@@ -36,7 +36,7 @@ func (ds *DataStore) InsertFields(collection *mongo.Collection, fields []structs
 		field.ID = primitive.NewObjectID()
 		fieldSlice[idx] = field
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	insAmt, err := collection.InsertMany(ctx, fieldSlice)
 	if err != nil {
@@ -55,7 +55,7 @@ func (ds *DataStore) InsertFields(collection *mongo.Collection, fields []structs
 //
 // fields is the structs.Field slice containing all Fields that should be deleted
 func (ds *DataStore) DeleteFields(collection *mongo.Collection, fields []structs.Field) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	valueSlice := make([]string, len(fields))
 	for idx, field := range fields {

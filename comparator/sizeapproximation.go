@@ -95,7 +95,7 @@ func (s *SizeApproxModule) estimate() (int64, int64, int, error) {
 	// Start at half the time unit to avoid hitting opening sequences / black screens in movies
 	position := timeUnits / 2
 	encSeconds := float64(s.duplicate.RecordedLength) * float64(s.settings.Fraction) * 0.01 * 60
-	secondsPerEncSlice := int(math.Ceil(encSeconds/ float64(encSlices)))
+	secondsPerEncSlice := int(math.Ceil(encSeconds / float64(encSlices)))
 	if secondsPerEncSlice < 60 {
 		secondsPerEncSlice = 60
 	}
@@ -148,6 +148,6 @@ func (s *SizeApproxModule) estimate() (int64, int64, int, error) {
 		_ = glg.Errorf("could not read original file %s, err: %s", s.duplicate.Path, err)
 		return -1, -1, -1, err
 	}
-	difference := 100 - ((estimatedFileSize / duplicateFileSize.Size()) * 100)
+	difference := 100 - ((float64(estimatedFileSize) / float64(duplicateFileSize.Size())) * 100)
 	return estimatedFileSize, duplicateFileSize.Size(), int(difference), nil
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/kpango/glg"
 	"github.com/rs/xid"
+	"golang.org/x/sys/windows"
 )
 
 type Stats struct {
@@ -113,6 +114,20 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	if err := cmd.Start(); err != nil {
 		_ = glg.Errorf("could not start ffmpeg: %s", err)
 		return Stats{false, -1, -1337, "", ""}, err
+	}
+
+	hProcess, err := windows.OpenProcess(0x0400|0x0200, false, uint32(cmd.Process.Pid))
+	if err != nil {
+		_ = glg.Warnf("could not get ffmpeg handle using pid %d, err: %s", cmd.Process.Pid, err)
+	}
+	err = windows.SetPriorityClass(hProcess, config.PriorityUint32(cfg.Local.EncoderPriority))
+	if err != nil {
+		_ = glg.Warnf("could not set priority %s for ffmpeg handle using pid %d, err: %s",
+			cfg.Local.EncoderConfig, cmd.Process.Pid, err)
+	}
+	err = windows.CloseHandle(hProcess)
+	if err != nil {
+		_ = glg.Errorf("could not close handle for pid %d, err: %s", cmd.Process.Pid, err)
 	}
 
 	// scan stdout

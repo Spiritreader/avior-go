@@ -41,7 +41,7 @@ func Connect() (*DataStore, error) {
 			return
 		}
 		instance.client = client
-		instance.db = client.Database("Avior_test")
+		instance.db = client.Database("Avior")
 	})
 	if connectErr != nil {
 		return nil, connectErr
@@ -77,7 +77,7 @@ func (ds *DataStore) LoadSharedConfig() error {
 		_ = glg.Errorf("could not retrieve log exclude list: %s", logExcludeFields)
 		return err
 	}
-	for _, field := range subExcludeFields {
+	for _, field := range logExcludeFields {
 		cfg.Shared.LogExclude = append(cfg.Shared.LogExclude, field.Value)
 	}
 

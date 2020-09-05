@@ -42,30 +42,30 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 	switch settings.Accuracy {
 	case consts.AUDIO_ACC_LOW:
 		if new.AudioFormat > media.AUDIO_UNKNOWN && duplicate.AudioFormat < media.AUDIO_UNKNOWN {
-			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
+			return s.Name(), REPL, fmt.Sprintf("new file better: n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else if new.AudioFormat < media.AUDIO_UNKNOWN {
-			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
+			return s.Name(), KEEP, fmt.Sprintf("old file better n:%s vso: %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	case consts.AUDIO_ACC_MED:
 		if new.AudioFormat > media.MULTI_MAYBE && duplicate.AudioFormat < media.STEREO_MAYBE {
-			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
+			return s.Name(), REPL, fmt.Sprintf("new file better: n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else if new.AudioFormat < media.AUDIO_UNKNOWN {
-			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
+			return s.Name(), KEEP, fmt.Sprintf("old file better n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	case consts.AUDIO_ACC_HIGH:
 		if new.AudioFormat == media.MULTI && duplicate.AudioFormat == media.STEREO {
-			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
+			return s.Name(), REPL, fmt.Sprintf("new file better: n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else if new.AudioFormat < media.AUDIO_UNKNOWN {
-			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
+			return s.Name(), KEEP, fmt.Sprintf("old file better n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	}
-	return s.Name(), NOCH, fmt.Sprintf("no action: %s vs %s",
+	return s.Name(), NOCH, fmt.Sprintf("no action: n:%s vs n:%s",
 		new.AudioFormat.String(), duplicate.AudioFormat.String())
 }
 

@@ -18,6 +18,22 @@ import (
 var aviorDb *db.DataStore
 var appCancel context.CancelFunc
 
+func pause(w http.ResponseWriter, r *http.Request) {
+	state := globalstate.Instance()
+	encoder := json.NewEncoder(w)
+	state.Paused = true
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode("paused")
+}
+
+func resume(w http.ResponseWriter, r *http.Request) {
+	state := globalstate.Instance()
+	encoder := json.NewEncoder(w)
+	state.Paused = false
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode("resumed")
+}
+
 func getStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: root")
 	state := globalstate.Instance()
@@ -42,28 +58,6 @@ func requestStop(w http.ResponseWriter, r *http.Request) {
 	_ = encoder.Encode("stop signal received")
 }
 
-func getAllJobs(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: all jobs")
-	jobs, err := aviorDb.GetAllJobs()
-	if err != nil {
-		_ = glg.Errorf("error getting all jobs, %s", err)
-	}
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", " ")
-	_ = encoder.Encode(jobs)
-}
-
-func getAllClients(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: all clients")
-	clients, err := aviorDb.GetClients()
-	if err != nil {
-		_ = glg.Errorf("error getting all clients, %s", err)
-	}
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", " ")
-	_ = encoder.Encode(clients)
-}
-
 func Run(cancel context.CancelFunc, wg *sync.WaitGroup, stopChan chan string, db *db.DataStore) {
 	appCancel = cancel
 	aviorDb = db
@@ -86,11 +80,18 @@ func startHttpServer() *http.Server {
 	srv := &http.Server{Addr: ":10000"}
 
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", getStatus)
+	router.HandleFunc("/", getStatus).Methods("GET")
 	router.HandleFunc("/encoder", getEncLineOut)
 	router.HandleFunc("/jobs", getAllJobs)
 	router.HandleFunc("/clients", getAllClients)
-	router.HandleFunc("/shutdown", requestStop)
+
+	router.HandleFunc("/insertclient", insertClient).Methods("POST")
+	router.HandleFunc("/updateclient", updateClient).Methods("PUT")
+	router.HandleFunc("/deleteclient", deleteClient).Methods("DELETE")
+
+	router.HandleFunc("/shutdown", requestStop).Methods("PUT")
+	router.HandleFunc("/resume", resume).Methods("PUT")
+	router.HandleFunc("/pause", pause).Methods("PUT")
 	srv.Handler = router
 
 	go func() {

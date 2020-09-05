@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/bson"
@@ -34,7 +35,7 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 			Online:            false,
 			IgnoreOnline:      false,
 		}
-		err := ds.InsertClient(thisMachine)
+		err := ds.ModifyClient(thisMachine, "insert")
 		if err != nil {
 			_ = glg.Errorf("could not register myself as a client in the database: %s", err)
 			return nil, err
@@ -67,46 +68,31 @@ func (ds *DataStore) GetClients() ([]structs.Client, error) {
 	return aviorClients, nil
 }
 
-func (ds *DataStore) InsertClient(client *structs.Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := ds.Db().Collection("clients").InsertOne(ctx, client)
-	if err != nil {
-		_ = glg.Errorf("could not insert client %s: %s", client.Name, err)
-		return err
-	}
-	_ = glg.Infof("inserted client %s", client.Name)
-	return nil
-}
-
-func (ds *DataStore) UpdateClient(client *structs.Client) error {
+func (ds *DataStore) ModifyClient(client *structs.Client, method string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	clientColl := ds.Db().Collection("clients")
 	defer cancel()
-	_, err := ds.Db().Collection("clients").ReplaceOne(ctx, bson.M{"_id": client.ID}, client)
+	var err error
+	switch method {
+	case consts.INSERT:
+		_, err = clientColl.InsertOne(ctx, client)
+	case consts.UPDATE:
+		_, err = clientColl.ReplaceOne(ctx, bson.M{"_id": client.ID}, client)
+	case consts.DELETE:
+		_, err = clientColl.DeleteOne(ctx, bson.M{"_id": client.ID})
+	}
 	if err != nil {
-		_ = glg.Errorf("could not update client %s: %s", client.Name, err)
+		_ = glg.Errorf("could not %s client %s: %s", method, client.Name, err)
 		return err
 	}
-	_ = glg.Infof("updated client %s", client.Name)
-	return nil
-}
-
-func (ds *DataStore) DeleteClient(client *structs.Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := ds.Db().Collection("clients").DeleteOne(ctx, bson.M{"_id": client.ID})
-	if err != nil {
-		_ = glg.Errorf("could not delete client %s: %s", client.Name, err)
-		return err
-	}
-	_ = glg.Infof("deleted client %s", client.Name)
+	_ = glg.Infof("%sd client %s", method, client.Name)
 	return nil
 }
 
 // Signs out the current machine
 func (ds *DataStore) SignInClient(client *structs.Client) error {
 	client.Online = true
-	err := ds.UpdateClient(client)
+	err := ds.ModifyClient(client, "update")
 	if err != nil {
 		_ = glg.Warnf("could not sign in %s, jobs will not be assigned to this client unless IgnoreOnline is set: %s", client.Name, err)
 		return err
@@ -118,7 +104,7 @@ func (ds *DataStore) SignInClient(client *structs.Client) error {
 // Signs out the current machine
 func (ds *DataStore) SignOutClient(client *structs.Client) error {
 	client.Online = false
-	err := ds.UpdateClient(client)
+	err := ds.ModifyClient(client, "update")
 	if err != nil {
 		_ = glg.Warnf("could not sign out %s, jobs will continue to be assigned as long as its online: %s", client.Name, err)
 		return err

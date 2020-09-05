@@ -61,6 +61,7 @@ type LocalConfig struct {
 	EstimatedLibSize int
 	Modules          map[string]ModuleConfig
 	EncoderConfig    map[string]EncoderConfig
+	EncoderPriority  string
 }
 
 type SharedConfig struct {

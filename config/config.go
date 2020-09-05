@@ -13,6 +13,48 @@ import (
 var once sync.Once
 var instance *structs.Config
 
+const (
+	PRIORITY_ABOVE_NORMAL Priority = 0x00008000
+	PRIORITY_BELOW_NORMAL Priority = 0x00004000
+	PRIORITY_HIGH         Priority = 0x00000080
+	PRIORITY_IDLE         Priority = 0x00000040
+	PRIORITY_NORMAL       Priority = 0x00000020
+)
+
+type Priority uint32
+
+func (p Priority) String() string {
+	switch p {
+	case PRIORITY_ABOVE_NORMAL:
+		return "ABOVE_NORMAL"
+	case PRIORITY_BELOW_NORMAL:
+		return "BELOW_NORMAL"
+	case PRIORITY_HIGH:
+		return "HIGH"
+	case PRIORITY_IDLE:
+		return "IDLE"
+	case PRIORITY_NORMAL:
+		return "NORMAL"
+	}
+	return "UNKNOWN"
+}
+
+func PriorityUint32(p string) uint32 {
+	switch p {
+	case PRIORITY_ABOVE_NORMAL.String():
+		return uint32(PRIORITY_ABOVE_NORMAL)
+	case PRIORITY_BELOW_NORMAL.String():
+		return uint32(PRIORITY_BELOW_NORMAL)
+	case PRIORITY_HIGH.String():
+		return uint32(PRIORITY_HIGH)
+	case PRIORITY_IDLE.String():
+		return uint32(PRIORITY_IDLE)
+	case PRIORITY_NORMAL.String():
+		return uint32(PRIORITY_NORMAL)
+	}
+	return uint32(PRIORITY_IDLE)
+}
+
 // Instance retrieves the current configuration file instance
 //
 // Creates a new one if it doesn't exist
@@ -30,6 +72,7 @@ func InitWithDefaults(cfg *structs.Config) {
 	cfg.Local.Modules = make(map[string]structs.ModuleConfig)
 	cfg.Local.Resolutions = map[string]string{"hd": "1280x720", "fhd": "1920x1080"}
 	cfg.Local.EncoderConfig = map[string]structs.EncoderConfig{"hd": *new(structs.EncoderConfig)}
+	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
 
 	// AgeModule Config Defaults
 	moduleConfig := &structs.ModuleConfig{
@@ -73,11 +116,13 @@ func InitWithDefaults(cfg *structs.Config) {
 		Settings: &structs.SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
+	// ResolutionModule Config Defaults
 	moduleConfig = &structs.ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
+		Settings: &structs.ResolutionModuleSettings{MinResolution: 20},
 	}
-	cfg.Local.Modules[consts.MODULE_NAME_LEGACY] = *moduleConfig
+	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
 }
 
 func LoadLocal() error {

@@ -246,8 +246,8 @@ func (f *File) trimName() {
 			f.Subtitle = strings.Trim(f.Subtitle[:idx], " ")
 		}
 	}
-	f.Name = tools.RemoveIllegalChars(f.Name)
-	f.Subtitle = tools.RemoveIllegalChars(f.Subtitle)
+	f.Name = strings.Trim(tools.RemoveIllegalChars(f.Name), " ")
+	f.Subtitle = strings.Trim(tools.RemoveIllegalChars(f.Subtitle), " ")
 }
 
 // reads both log files and updates the struct

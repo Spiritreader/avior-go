@@ -50,7 +50,7 @@ func ByteCountUpSI(b int64, upBy int) (float64, string) {
 	const unit = 1000
 	upBy--
 	if b < unit || upBy < 1 {
-		return float64(b), fmt.Sprintf("%d B", b)
+		return float64(b), fmt.Sprintf("%dB", b)
 	}
 	div, exp := int64(unit), 0
 	for exp < upBy {
@@ -84,7 +84,7 @@ func ByteCountDownSI(b float64, exp int, downBy int) (float64, string) {
 func ByteCountSI(b int64) string {
 	const unit = 1000
 	if b < unit {
-		return fmt.Sprintf("%d B", b)
+		return fmt.Sprintf("%dB", b)
 	}
 	div, exp := int64(unit), 0
 	for n := b / unit; n >= unit; n /= unit {
@@ -180,4 +180,12 @@ func (pt *PassThru) Read(p []byte) (int, error) {
 		}
 	}
 	return n, err
+}
+
+const TH32CS_SNAPPROCESS = 0x00000002
+
+type WindowsProcess struct {
+	ProcessID       int
+	ParentProcessID int
+	Exe             string
 }

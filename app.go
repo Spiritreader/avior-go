@@ -133,6 +133,7 @@ MainLoop:
 		}
 
 		if !sleep && !state.Paused {
+
 			refreshConfig()
 			job, err := dataStore.GetNextJobForClient(client)
 			if err != nil {
@@ -152,14 +153,19 @@ MainLoop:
 
 		// skip sleep when more jobs are queued, also serves as exit point
 		select {
-		case <-resumeChan:
-			continue
-		case <-time.After(time.Duration(sleepTime) * time.Minute):
-			continue
 		case <-ctx.Done():
 			_ = glg.Info("service stop signal received")
 			break MainLoop
+		default:
 		}
+		select {
+		case <-resumeChan:
+			continue
+		default:
+		}
+
+		<-time.After(time.Duration(sleepTime) * time.Minute)
+		continue
 	}
 	_ = dataStore.SignOutClient(client)
 	apiChan <- "stop"

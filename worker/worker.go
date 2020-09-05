@@ -264,17 +264,18 @@ func copyLogsToEncOut(file media.File, dstDir string) error {
 //
 // given a slice of media paths that should be searched
 func checkForDuplicates(file *media.File) []media.File {
+	cfg := config.Instance()
 	state.FileWalker.Active = true
 	defer func() {
 		state.FileWalker.Active = false
 	}()
-	counter := 1
-	cfg := config.Instance()
+	counter := 0
 	state.FileWalker.Position = 0
+	state.FileWalker.LibSize = cfg.Local.EstimatedLibSize
 	matches := make([]media.File, 0)
 	for idx, path := range cfg.Local.MediaPaths {
 		state.FileWalker.Directory = path
-		_ = glg.Infof("scanning directory (%d/%d): %s", idx, len(cfg.Local.MediaPaths), path)
+		_ = glg.Infof("scanning directory (%d/%d): %s", idx+1, len(cfg.Local.MediaPaths), path)
 		dir_matches, count, _ := traverseDir(file, path)
 		counter += count
 		matches = append(matches, dir_matches...)
@@ -291,7 +292,6 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 		Unsorted: true,
 		Callback: func(path string, de *godirwalk.Dirent) error {
 			if de.IsDir() && strings.HasPrefix(de.Name(), ".") {
-				_ = glg.Logf("skipping hidden dir %s", path)
 				return errors.New("directory ignored")
 			}
 			if !de.IsDir() && strings.Contains(de.Name(), file.OutName()+config.Instance().Local.Ext) {

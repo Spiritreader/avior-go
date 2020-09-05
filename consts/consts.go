@@ -20,4 +20,8 @@ const (
 	DONE_DIR               string = "done"
 	EXIST_DIR              string = "exists"
 	COMPAT_CPARAM_PREFIX   string = "PI"
+	INSERT                 string = "insert"
+	UPDATE                 string = "update"
+	DELETE                 string = "delete"
+	GET                    string = "GE"
 )
