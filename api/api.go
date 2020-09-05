@@ -16,6 +16,7 @@ import (
 )
 
 var aviorDb *db.DataStore
+var exitCancel context.CancelFunc
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: root")
@@ -23,6 +24,14 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode(state)
+}
+
+func requestStop(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: shut down service")
+	exitCancel()
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode("stop signal received")
 }
 
 func getAllJobs(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +56,8 @@ func getAllClients(w http.ResponseWriter, r *http.Request) {
 	_ = encoder.Encode(clients)
 }
 
-func Run(ctx context.Context, wg *sync.WaitGroup) {
+func Run(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc) {
+	exitCancel = cancel
 	_ = glg.Infof("starting api http server")
 	_ = config.LoadLocalFrom("../config.json")
 	_ = config.Save()
@@ -85,6 +95,7 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/", getStatus)
 	router.HandleFunc("/jobs", getAllJobs)
 	router.HandleFunc("/clients", getAllClients)
+	router.HandleFunc("/shutdown", requestStop)
 	srv.Handler = router
 
 	go func() {

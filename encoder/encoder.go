@@ -96,6 +96,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	} else {
 		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName()+cfg.Local.Ext)
 	}
+	state.Encoder.OutPath = outPath
 
 	// call ffmpeg
 	params = append(params, outPath)

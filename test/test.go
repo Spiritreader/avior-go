@@ -53,7 +53,7 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	defer wg.Wait()
-	go api.Run(ctx, wg)
+	go api.Run(ctx, wg, cancel)
 
 	dataStore := db.Get()
 	_ = dataStore.LoadSharedConfig()

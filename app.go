@@ -86,7 +86,7 @@ func main() {
 	defer wg.Wait()
 	wg.Add(2)
 	go runService(ctx, wg, cancel)
-	go api.Run(ctx, wg)
+	go api.Run(ctx, wg, cancel)
 }
 
 // runService runs the main service loop

@@ -163,7 +163,7 @@ func (f *File) OutName() string {
 	sanitizedName := tools.RemoveIllegalChars(f.Name)
 	sanitizedSub := tools.RemoveIllegalChars(f.Subtitle)
 	if len(sanitizedSub) == 0 {
-		return sanitizedName + cfg.Local.Ext
+		return sanitizedName
 	}
 	return sanitizedName + " - " + sanitizedSub
 }
@@ -258,7 +258,7 @@ func (f *File) readLogs() error {
 	metadataLogPath := stem + ".txt"
 	legacyLogPaths := []string{stem + ".mkv.log", stem + ".mpg.log"}
 
-	mErr := readFileContent(&f.MetadataLog, metadataLogPath);
+	mErr := readFileContent(&f.MetadataLog, metadataLogPath)
 	if err := readFileContent(&f.TunerLog, tunerLogPath); err != nil {
 		if err == os.ErrNotExist {
 			for _, legacyLogPath := range legacyLogPaths {

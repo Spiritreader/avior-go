@@ -40,6 +40,7 @@ type Encoder struct {
 	OfSlices  int
 	Remaining time.Duration
 	Progress  float64
+	OutPath   string
 }
 
 type FileWalker struct {
