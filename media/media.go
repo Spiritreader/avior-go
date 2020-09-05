@@ -159,7 +159,6 @@ func (f *File) LengthDifference() int {
 }
 
 func (f *File) OutName() string {
-	cfg := config.Instance()
 	sanitizedName := tools.RemoveIllegalChars(f.Name)
 	sanitizedSub := tools.RemoveIllegalChars(f.Subtitle)
 	if len(sanitizedSub) == 0 {
