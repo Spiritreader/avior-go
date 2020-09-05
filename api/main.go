@@ -19,22 +19,20 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: homePage")
 }
 
-func getAllJobs(w http.ResponseWriter, r *http.Request) error {
+func getAllJobs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: getAllJobs")
 	jobs, err := aviorDb.GetAllJobs()
 	if err != nil {
 		_ = glg.Errorf("error getting all jobs, %s", err)
-		return err
 	}
 	json.NewEncoder(w).Encode(jobs)
 }
 
-func getAllClients(w http.ResponseWriter, r *http.Request) error {
+func getAllClients(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: getAllClients")
 	clients, err := aviorDb.GetClients()
 	if err != nil {
 		_ = glg.Errorf("error getting all clients, %s", err)
-		return err
 	}
 	json.NewEncoder(w).Encode(clients)
 }

@@ -39,6 +39,7 @@ type Encoder struct {
 	Slice     int
 	OfSlices  int
 	Remaining time.Duration
+	Progress  int
 }
 
 type FileWalker struct {

@@ -15,14 +15,14 @@ type Job struct {
 	Subtitle             string             `bson:"Subtitle"`
 	CustomParameters     []string           `bson:"CustomParameters,omitempty"`
 	AssignedClient       DBRef              `bson:"AssignedClient"`
-	AssignedClientLoaded *Client            `bson:"AssignedClientLoaded,omitempty`
+	AssignedClientLoaded *Client            `bson:"AssignedClientLoaded,omitempty"`
 }
 
 // Client is a target machine for Avior
 type Client struct {
 	ID                primitive.ObjectID `bson:"_id,omitempty"`
 	Name              string             `bson:"Name"`
-	AvailabilityStart string             `bson:"AvailabilityStart`
+	AvailabilityStart string             `bson:"AvailabilityStart"`
 	AvailabilityEnd   string             `bson:"AvailabilityEnd"`
 	MaximumJobs       int32              `bson:"MaximumJobs"`
 	Priority          int32              `bson:"Priority"`
@@ -31,13 +31,13 @@ type Client struct {
 }
 
 type Field struct {
-	ID    primitive.ObjectID `bson:"_id,omitempty`
+	ID    primitive.ObjectID `bson:"_id,omitempty"`
 	Value string             `bson:"Name"`
 }
 
 // DBRef wrapper to expose mongodb's references within the Go driver
 type DBRef struct {
-	Ref interface{} `bson:"$ref,omitempty`
+	Ref interface{} `bson:"$ref,omitempty"`
 	ID  interface{} `bson:"$id"`
 	DB  interface{} `bson:"$db"`
 }

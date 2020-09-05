@@ -113,16 +113,17 @@ func ScanLinesSTDOUT(data []byte, atEOF bool) (advance int, token []byte, err er
 func parseOut(line string) {
 	durationToken := "Duration:"
 	frameToken := "frame="
-	fpsToken := "fps="
-	qToken := "q="
-	sizeToken := "size="
-	timeToken := "time="
-	bitrateToken := "bitrate="
-	dupToken := "dup="
-	dropToken := "drop="
-	speedToken := "speed="
+	fpsToken := "fps"
+	qToken := "q"
+	sizeToken := "size"
+	timeToken := "time"
+	bitrateToken := "bitrate"
+	dupToken := "dup"
+	dropToken := "drop"
+	speedToken := "speed"
 
 	state.Encoder.LineOut = append(state.Encoder.LineOut, line)
+	//fmt.Println(line)
 	if strings.Contains(line, durationToken) {
 		keyIdx := strings.Index(line, durationToken) + len(durationToken)
 		timeIdx := strings.Index(line, ".")
@@ -131,66 +132,70 @@ func parseOut(line string) {
 	} else if strings.Contains(line, frameToken) {
 		// ffmpeg out looks like this:
 		// frame=  272 fps=271 q=15.0 size=     512kB time=00:00:11.07 bitrate= 378.8kbits/s dup=0 drop=269 speed=  11x
-
-		next := strings.Split(line, frameToken)
-		// next[0] empty
-
-		next = strings.Split(next[1], fpsToken)
-		// next[0] now holds frame value
-		frameParse, _ := strconv.ParseInt(strings.Trim(next[0], " "), 10, 32)
-		state.Encoder.Frame = int(frameParse)
-
-		next = strings.Split(next[1], qToken)
-		// next[0] now holds fps value
-		state.Encoder.Fps, _ = strconv.ParseFloat(strings.Trim(next[0], " "), 64)
-
-		next = strings.Split(next[1], sizeToken)
-		// next[0] now holds q value
-		state.Encoder.Q, _ = strconv.ParseFloat(strings.Trim(next[0], " "), 64)
-
-		next = strings.Split(next[1], timeToken)
-		// next[0] now holds size value
-		state.Encoder.Size = strings.Trim(next[0], " ")
-
-		next = strings.Split(next[1], bitrateToken)
-		// next[0] now time value
-		cutIdx := strings.Index(next[0], ".")
-		if cutIdx != -1 {
-			state.Encoder.Position, _ = time.Parse("15:04:05", strings.Trim(next[0][:cutIdx], " "))
+		separated := make([]string, 0)
+		splitEq := strings.Split(line, "=")
+		for idx := range splitEq {
+			splitWs := strings.Split(strings.Trim(splitEq[idx], " "), " ")
+			separated = append(separated, splitWs...)
+		}
+		statMap := make(map[string]string)
+		for idx := 0; idx < len(separated)-1; idx += 2 {
+			statMap[separated[idx]] = separated[idx+1]
 		}
 
-		next = strings.Split(next[1], dupToken)
-		// next[0] now holds bitrate value
-		state.Encoder.Bitrate = strings.Trim(next[0], " ")
-
-		next = strings.Split(next[1], dropToken)
-		// next[0] now holds dup value
-		dupParse, _ := strconv.ParseInt(strings.Trim(next[0], " "), 10, 32)
-		state.Encoder.Dup = int(dupParse)
-
-		next = strings.Split(next[1], speedToken)
-		// next[1] now holds speed value
-
-		cutIdx = strings.Index(next[1], "x")
-		if cutIdx != -1 {
-			state.Encoder.Speed, _ = strconv.ParseFloat(strings.Trim(next[1][:cutIdx], " "), 64)
+		if val, ok := statMap[frameToken]; ok {
+			frameParse, _ := strconv.ParseInt(val, 10, 32)
+			state.Encoder.Frame = int(frameParse)
+		}
+		if val, ok := statMap[fpsToken]; ok {
+			state.Encoder.Fps, _ = strconv.ParseFloat(val, 64)
+		}
+		if val, ok := statMap[qToken]; ok {
+			state.Encoder.Q, _ = strconv.ParseFloat(val, 64)
+		}
+		if val, ok := statMap[sizeToken]; ok {
+			state.Encoder.Size = val
+		}
+		if val, ok := statMap[timeToken]; ok {
+			cutIdx := strings.Index(val, ".")
+			if cutIdx != -1 {
+				state.Encoder.Position, _ = time.Parse("15:04:05", val)
+			}
+		}
+		if val, ok := statMap[bitrateToken]; ok {
+			state.Encoder.Bitrate = val
+		}
+		if val, ok := statMap[dupToken]; ok {
+			dupParse, _ := strconv.ParseInt(val, 10, 32)
+			state.Encoder.Dup = int(dupParse)
+		}
+		if val, ok := statMap[dropToken]; ok {
+			dropParse, _ := strconv.ParseInt(val, 10, 32)
+			state.Encoder.Drop = int(dropParse)
+		}
+		if val, ok := statMap[speedToken]; ok {
+			cutIdx := strings.Index(val, "x")
+			if cutIdx != -1 {
+				state.Encoder.Speed, _ = strconv.ParseFloat(strings.Trim(val[:cutIdx], " "), 64)
+			}
 		}
 
-		// calculate ETA
-		state.Encoder.Remaining = state.Encoder.Duration.Sub(state.Encoder.Position)
+		if state.Encoder.Speed > 0 {
+			// calculate ETA
+			diff := state.Encoder.Duration.Sub(state.Encoder.Position)
+			diff /= time.Duration(state.Encoder.Speed)
+			state.Encoder.Remaining = diff
+		}
 	}
-	fmt.Println(line)
-	/*
-	fmt.Printf("Duration: %s ", state.Encoder.Duration)
+	fmt.Printf("Duration: %s ", state.Encoder.Duration.Format("15:04:05"))
 	fmt.Printf("Frame: %d ", state.Encoder.Frame)
-	fmt.Printf("Fps: %f ", state.Encoder.Fps)
-	fmt.Printf("Q: %f ", state.Encoder.Q)
+	fmt.Printf("Fps: %.2f ", state.Encoder.Fps)
+	fmt.Printf("Q: %.0f ", state.Encoder.Q)
 	fmt.Printf("Size: %s ", state.Encoder.Size)
-	fmt.Printf("Position: %s ", state.Encoder.Position)
+	fmt.Printf("Position: %s ", state.Encoder.Duration.Format("15:04:05"))
 	fmt.Printf("Bitrate: %s ", state.Encoder.Bitrate)
 	fmt.Printf("Dup: %d ", state.Encoder.Dup)
 	fmt.Printf("Drop: %d ", state.Encoder.Drop)
-	fmt.Printf("Speed: %f ", state.Encoder.Speed)
+	fmt.Printf("Speed: %.1f ", state.Encoder.Speed)
 	fmt.Printf("Remaining: %s\n", state.Encoder.Remaining)
-	*/
 }
