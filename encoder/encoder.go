@@ -33,6 +33,11 @@ type Stats struct {
 var state *globalstate.Data = globalstate.Instance()
 
 func Encode(file media.File, start, duration int, overwrite bool, dstDir *string) (Stats, error) {
+	state.Encoder.Active = true
+	state.Encoder.LineOut = make([]string, 0)
+	defer func() {
+		state.Encoder.Active = false
+	}()
 	cfg := config.Instance()
 	encoderConfig, ok := cfg.Local.EncoderConfig[file.Resolution.Tag]
 	if !ok {
@@ -158,9 +163,10 @@ func parseOut(line string, customDuration bool) {
 	dropToken := "drop"
 	speedToken := "speed"
 
-	state.Encoder.LineOut = line
+	state.Encoder.LineOut = append(state.Encoder.LineOut, line)
 	if !customDuration && strings.Contains(line, durationToken) {
-		fmt.Println(line)
+		//fmt.Println(line)
+		_ = glg.Log(line)
 		keyIdx := strings.Index(line, durationToken) + len(durationToken)
 		timeIdx := strings.Index(line, ".")
 		state.Encoder.Duration, _ = time.Parse("15:04:05", strings.Trim(line[keyIdx:timeIdx], " "))
@@ -242,8 +248,7 @@ func parseOut(line string, customDuration bool) {
 		termOut += fmt.Sprintf("Drop: %d ", state.Encoder.Drop)
 		termOut += fmt.Sprintf("Speed: %.1f ", state.Encoder.Speed)
 		termOut += fmt.Sprintf("Remaining: %s", state.Encoder.Remaining)
-		fmt.Printf("\r" + termOut)
-	} else {
-		fmt.Println(line)
+		_ = glg.Log(termOut)
+		//fmt.Printf("\r" + termOut)
 	}
 }

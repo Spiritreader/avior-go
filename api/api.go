@@ -16,7 +16,7 @@ import (
 )
 
 var aviorDb *db.DataStore
-var exitCancel context.CancelFunc
+var appCancel context.CancelFunc
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: root")
@@ -26,16 +26,24 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	_ = encoder.Encode(state)
 }
 
+func getEncLineOut(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Endpoint Hit: encoder")
+	state := globalstate.Instance()
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode(state.Encoder.LineOut)
+}
+
 func requestStop(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Endpoint Hit: shut down service")
-	exitCancel()
+	appCancel()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("stop signal received")
 }
 
 func getAllJobs(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: getAllJobs")
+	fmt.Println("Endpoint Hit: all jobs")
 	jobs, err := aviorDb.GetAllJobs()
 	if err != nil {
 		_ = glg.Errorf("error getting all jobs, %s", err)
@@ -46,7 +54,7 @@ func getAllJobs(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAllClients(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: getAllClients")
+	fmt.Println("Endpoint Hit: all clients")
 	clients, err := aviorDb.GetClients()
 	if err != nil {
 		_ = glg.Errorf("error getting all clients, %s", err)
@@ -56,29 +64,15 @@ func getAllClients(w http.ResponseWriter, r *http.Request) {
 	_ = encoder.Encode(clients)
 }
 
-func Run(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc) {
-	exitCancel = cancel
+func Run(cancel context.CancelFunc, wg *sync.WaitGroup, stopChan chan string, db *db.DataStore) {
+	appCancel = cancel
+	aviorDb = db
 	_ = glg.Infof("starting api http server")
 	_ = config.LoadLocalFrom("../config.json")
 	_ = config.Save()
-	db, errConnect := db.Connect()
-	aviorDb = db
-	defer func() {
-		if errConnect == nil {
-			if err := aviorDb.Client().Disconnect(context.TODO()); err != nil {
-				if err.Error() != "client is disconnected" {
-					_ = glg.Errorf("error disconnecting CIENT, %s", err)
-				}
-			}
-		}
-	}()
-	if errConnect != nil {
-		_ = glg.Errorf("error connecting to database, %s", errConnect)
-		return
-	}
 	_ = aviorDb.LoadSharedConfig()
 	srv := startHttpServer()
-	<-ctx.Done()
+	<-stopChan
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -93,6 +87,7 @@ func startHttpServer() *http.Server {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", getStatus)
+	router.HandleFunc("/encoder", getEncLineOut)
 	router.HandleFunc("/jobs", getAllJobs)
 	router.HandleFunc("/clients", getAllClients)
 	router.HandleFunc("/shutdown", requestStop)

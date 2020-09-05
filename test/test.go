@@ -21,7 +21,8 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	glg.Get().
@@ -50,14 +51,16 @@ func main() {
 		_ = glg.Errorf("error connecting to database, %s", errConnect)
 		return
 	}
+
+	stopChan := make(chan string)
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	defer wg.Wait()
-	go api.Run(ctx, wg, cancel)
+	go api.Run(cancel, wg, stopChan, aviorDb)
 
 	dataStore := db.Get()
 	_ = dataStore.LoadSharedConfig()
-	job := &structs.Job{
+	_ = &structs.Job{
 		ID:       primitive.NewObjectID(),
 		Path:     "D:/Recording/Drogen Amerikas längster Krieg - Dokumentarfilm, USA, 2012, ZDF, ZDF, 104 Mi_2015-06-25-00-25-arte (AC3,deu).mkv",
 		Name:     "NEUES FRANZÖSISCHES KINO Drogen",
@@ -69,15 +72,17 @@ func main() {
 		Name:     "NEUES FRANZÖSISCHES KINO Neva Give üp",
 		Subtitle: "Der einzig wahre Japaner Dokumentarfilm im Ersten",
 	}
+	moi, _ := aviorDb.GetClientForMachine()
+	job, _ := aviorDb.GetNextJobForClient(moi)
 	jobFile := media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := jobFile.Update()
 	if err != nil {
-		cancel()
+		stopChan <- "stop"
 		return
 	}
 	client, _ := dataStore.GetClientForMachine()
 	worker.ProcessJob(dataStore, client, job, make(chan string))
-	cancel()
+	stopChan <- "stop"
 }
 
 func copyTest() {

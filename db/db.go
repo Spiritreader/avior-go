@@ -41,7 +41,7 @@ func Connect() (*DataStore, error) {
 			return
 		}
 		instance.client = client
-		instance.db = client.Database("Avior")
+		instance.db = client.Database("Avior_test")
 	})
 	if connectErr != nil {
 		return nil, connectErr

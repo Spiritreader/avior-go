@@ -159,12 +159,10 @@ func (f *File) LengthDifference() int {
 }
 
 func (f *File) OutName() string {
-	sanitizedName := tools.RemoveIllegalChars(f.Name)
-	sanitizedSub := tools.RemoveIllegalChars(f.Subtitle)
-	if len(sanitizedSub) == 0 {
-		return sanitizedName
+	if len(f.Subtitle) == 0 {
+		return f.Name
 	}
-	return sanitizedName + " - " + sanitizedSub
+	return f.Name + " - " + f.Subtitle
 }
 
 // getAudio retrieves the audio file from the log files and updates the struct
@@ -248,6 +246,8 @@ func (f *File) trimName() {
 			f.Subtitle = strings.Trim(f.Subtitle[:idx], " ")
 		}
 	}
+	f.Name = tools.RemoveIllegalChars(f.Name)
+	f.Subtitle = tools.RemoveIllegalChars(f.Subtitle)
 }
 
 // reads both log files and updates the struct

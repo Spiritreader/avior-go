@@ -22,10 +22,12 @@ type Data struct {
 	Encoder    Encoder
 	FileWalker FileWalker
 	Mover      Mover
+	Paused     bool
 }
 
 type Encoder struct {
-	LineOut   string
+	Active    bool
+	LineOut   []string `json:"-"`
 	Duration  time.Time
 	Frame     int
 	Fps       float64
@@ -44,11 +46,14 @@ type Encoder struct {
 }
 
 type FileWalker struct {
+	Active    bool
 	Directory string
 	Position  int
+	LibSize   int
 }
 
 type Mover struct {
+	Active   bool
 	File     string
 	Progress int
 	Position string

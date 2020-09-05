@@ -118,6 +118,10 @@ func MoppyFile(src string, dst string, move bool) error {
 	}
 
 	state := globalstate.Instance()
+	state.Mover.Active = true
+	defer func() {
+		state.Mover.Active = false
+	}()
 	source, err := os.Open(src)
 	if err != nil {
 		_ = glg.Errorf("could not open file: %s", err)
@@ -171,7 +175,8 @@ func (pt *PassThru) Read(p []byte) (int, error) {
 		pt.data.Mover.Position = ByteCountSI(pt.transferred)
 		pt.data.Mover.FileSize = ByteCountSI(pt.totalBytes)
 		if pt.transferred%100000 == 0 {
-			fmt.Printf("\rFile: %s Bytes: %s Total: %s", pt.name, ByteCountSI(pt.transferred), ByteCountSI(pt.totalBytes))
+			//fmt.Printf("\rFile: %s Bytes: %s Total: %s", pt.name, ByteCountSI(pt.transferred), ByteCountSI(pt.totalBytes))
+			fmt.Printf("File: %s Bytes: %s Total: %s\n", pt.name, ByteCountSI(pt.transferred), ByteCountSI(pt.totalBytes))
 		}
 	}
 	return n, err

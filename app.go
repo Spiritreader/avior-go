@@ -11,6 +11,7 @@ import (
 	"github.com/Spiritreader/avior-go/api"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
@@ -19,11 +20,11 @@ import (
 var (
 	resumeChan chan string
 	sleep      bool
-	paused     bool
 )
 
 func main() {
 	resumeChan = make(chan string, 1)
+	apiChan := make(chan string)
 
 	// Set up logger
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
@@ -85,8 +86,8 @@ func main() {
 	wg := new(sync.WaitGroup)
 	defer wg.Wait()
 	wg.Add(2)
-	go runService(ctx, wg, cancel)
-	go api.Run(ctx, wg, cancel)
+	go runService(ctx, wg, cancel, apiChan)
+	go api.Run(cancel, wg, apiChan, aviorDb)
 }
 
 // runService runs the main service loop
@@ -97,7 +98,8 @@ func main() {
 //
 // wg is the WaitGroup that is used to keep the main function waiting until
 // the service exits
-func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc) {
+func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc, apiChan chan string) {
+	state := globalstate.Instance()
 	var sleepTime int
 	refreshConfig()
 	dataStore := db.Get()
@@ -113,7 +115,7 @@ func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFu
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
-	paused = false
+	state.Paused = false
 MainLoop:
 	for {
 		// check if client is allowed to run
@@ -130,7 +132,7 @@ MainLoop:
 			sleepTime = 1
 		}
 
-		if !sleep && !paused {
+		if !sleep && !state.Paused {
 			refreshConfig()
 			job, err := dataStore.GetNextJobForClient(client)
 			if err != nil {
@@ -144,7 +146,7 @@ MainLoop:
 			worker.ProcessJob(dataStore, client, job, resumeChan)
 			if err != nil {
 				_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
-				paused = true
+				state.Paused = true
 			}
 		}
 
@@ -160,6 +162,7 @@ MainLoop:
 		}
 	}
 	_ = dataStore.SignOutClient(client)
+	apiChan <- "stop"
 	wg.Done()
 	cancel()
 }

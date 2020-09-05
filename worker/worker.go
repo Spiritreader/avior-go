@@ -264,6 +264,11 @@ func copyLogsToEncOut(file media.File, dstDir string) error {
 //
 // given a slice of media paths that should be searched
 func checkForDuplicates(file *media.File) []media.File {
+	state.FileWalker.Active = true
+	defer func() {
+		state.FileWalker.Active = false
+	}()
+	counter := 1
 	cfg := config.Instance()
 	state.FileWalker.Position = 0
 	matches := make([]media.File, 0)
@@ -271,7 +276,7 @@ func checkForDuplicates(file *media.File) []media.File {
 		state.FileWalker.Directory = path
 		_ = glg.Infof("scanning directory (%d/%d): %s", idx, len(cfg.Local.MediaPaths), path)
 		dir_matches, count, _ := traverseDir(file, path)
-		state.FileWalker.Position += count
+		counter += count
 		matches = append(matches, dir_matches...)
 	}
 	cfg.Local.EstimatedLibSize = state.FileWalker.Position
@@ -280,7 +285,7 @@ func checkForDuplicates(file *media.File) []media.File {
 }
 
 func traverseDir(file *media.File, path string) ([]media.File, int, error) {
-	counter := 0
+	state.FileWalker.Position = 0
 	matches := make([]media.File, 0)
 	err := godirwalk.Walk(path, &godirwalk.Options{
 		Unsorted: true,
@@ -295,7 +300,7 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 				matches = append(matches, *file)
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
-				counter++
+				state.FileWalker.Position++
 			}
 			return nil
 		},
@@ -310,5 +315,5 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 		_ = glg.Errorf("error traversing directory %s: %s", path, err)
 		return nil, 0, err
 	}
-	return matches, counter, nil
+	return matches, state.FileWalker.Position, nil
 }
