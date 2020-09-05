@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Spiritreader/avior-go/comparator"
 	"github.com/Spiritreader/avior-go/config"
@@ -35,10 +36,11 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	fmt.Println(mediaFile.Path)
 	fmt.Println(mediaFile.OutName())
 	jobLog.AddFileProperties(*mediaFile)
-	res := runModules(*jobLog, *mediaFile)
+	res := runModules(jobLog, *mediaFile)
+	jobLog.Add("")
 	switch res {
 	case comparator.KEEP:
-		_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 		Resume(resumeChan)
 		return
@@ -48,7 +50,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	duplicates := checkForDuplicates(mediaFile)
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
-		res, moduleName := runDupeModules(*jobLog, *mediaFile, duplicates[0])
+		_ = duplicates[0].Update()
+		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
+		jobLog.Add("")
 		switch res {
 		case comparator.KEEP, comparator.NOCH:
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
@@ -60,7 +64,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if err != nil {
 				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
 			}
-			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 			Resume(resumeChan)
 			return
@@ -69,14 +73,18 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 
 		errM := moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
 		errL := moveLogs(duplicates[0], obsoleteDir, &moduleName)
-		if errM != nil || errL == nil {
+		if errM != nil || errL != nil {
 			msg := "can't continue without moving duplicate files, skipping job"
 			_ = glg.Errorf(msg)
 			jobLog.Add("error:")
-			jobLog.Add(errM.Error())
-			jobLog.Add(errL.Error())
+			if errM != nil {
+				jobLog.Add(errM.Error())
+			}
+			if errL != nil {
+				jobLog.Add(errL.Error())
+			}
 			jobLog.Add(msg)
-			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
@@ -90,13 +98,13 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		if err.Error() == "no tag found" || stats.ExitCode == 1 {
 			jobLog.Add("error: " + err.Error())
-			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
 		if stats.ExitCode == 1 {
 			jobLog.Add("ffmpeg exit code 1")
-			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
@@ -104,7 +112,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
 			jobLog.Add("error: " + err.Error())
-			_ = jobLog.AppendTo(mediaFile.Path + ".INFO.log", false, false)
+			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
@@ -143,7 +151,8 @@ func Resume(resumeChan chan string) {
 	}
 }
 
-func runModules(jobLog joblog.Data, fileNew media.File) string {
+func runModules(jobLog *joblog.Data, fileNew media.File) string {
+	jobLog.Add("")
 	jobLog.Add("Module Results:")
 	modules := comparator.InitStandaloneModules()
 	for idx := range modules {
@@ -163,7 +172,8 @@ func runModules(jobLog joblog.Data, fileNew media.File) string {
 	return comparator.NOCH
 }
 
-func runDupeModules(jobLog joblog.Data, fileNew media.File, fileDup media.File) (string, string) {
+func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File) (string, string) {
+	jobLog.Add("")
 	jobLog.Add("Dupe Module Results:")
 	modules := comparator.InitDupeModules()
 	for idx := range modules {
@@ -190,7 +200,9 @@ func moveMediaFile(file media.File, dstDir string, moduleName *string) error {
 	}
 	fileOut := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
 	if moduleName != nil {
+		fileOut += " "
 		fileOut += *moduleName
+		fileOut += " " + time.Now().Format("2006-01-02 1504")
 	}
 	fileOut += filepath.Ext(file.Path)
 	fileOut = filepath.Join(dstDir, fileOut)
@@ -210,7 +222,9 @@ func moveLogs(file media.File, dstDir string, moduleName *string) error {
 	for _, log := range file.LogPaths {
 		logOut := strings.TrimSuffix(filepath.Base(log), filepath.Ext(log))
 		if moduleName != nil {
+			logOut += " "
 			logOut += *moduleName
+			logOut += " " + time.Now().Format("2006-01-02 1504")
 		}
 		logOut += filepath.Ext(log)
 		logOut = filepath.Join(dstDir, logOut)
@@ -275,7 +289,7 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 				_ = glg.Logf("skipping hidden dir %s", path)
 				return errors.New("directory ignored")
 			}
-			if !de.IsDir() && strings.Contains(de.Name(), file.OutName()) {
+			if !de.IsDir() && strings.Contains(de.Name(), file.OutName()+config.Instance().Local.Ext) {
 				file := &media.File{Path: path}
 				_ = glg.Infof("found duplicate: %s", path)
 				matches = append(matches, *file)

@@ -104,6 +104,19 @@ type PassThru struct {
 }
 
 func MoppyFile(src string, dst string, move bool) error {
+
+	if move {
+		_ = glg.Infof("moving %s to %s", src, dst)
+		err := os.Rename(src, dst)
+		if err != nil {
+			_ = glg.Warnf("could not move file directly: %s", err)
+		} else {
+			return nil
+		}
+	} else {
+		_ = glg.Infof("copy-ying %s to %s", src, dst)
+	}
+
 	state := globalstate.Instance()
 	source, err := os.Open(src)
 	if err != nil {
@@ -123,10 +136,10 @@ func MoppyFile(src string, dst string, move bool) error {
 	var reader io.Reader
 	reader = source
 	reader = &PassThru{
-		Reader: reader, 
-		data: state, 
-		totalBytes: sourceInfo.Size(), 
-		name: filepath.Base(dst), 
+		Reader:     reader,
+		data:       state,
+		totalBytes: sourceInfo.Size(),
+		name:       filepath.Base(dst),
 	}
 	_, err = io.Copy(destination, reader)
 	_ = source.Close()

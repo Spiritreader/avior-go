@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/Spiritreader/avior-go/api"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/media"
@@ -19,6 +21,7 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	glg.Get().
@@ -47,6 +50,11 @@ func main() {
 		_ = glg.Errorf("error connecting to database, %s", errConnect)
 		return
 	}
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	defer wg.Wait()
+	go api.Run(ctx, wg)
+
 	dataStore := db.Get()
 	_ = dataStore.LoadSharedConfig()
 	job := &structs.Job{
@@ -64,10 +72,12 @@ func main() {
 	jobFile := media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := jobFile.Update()
 	if err != nil {
+		cancel()
 		return
 	}
 	client, _ := dataStore.GetClientForMachine()
-	worker.ProcessJob(dataStore, client , job, make(chan string))
+	worker.ProcessJob(dataStore, client, job, make(chan string))
+	cancel()
 }
 
 func copyTest() {

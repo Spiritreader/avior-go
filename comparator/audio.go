@@ -44,7 +44,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 		if new.AudioFormat > media.AUDIO_UNKNOWN && duplicate.AudioFormat < media.AUDIO_UNKNOWN {
 			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
-		} else {
+		} else if new.AudioFormat < media.AUDIO_UNKNOWN {
 			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
@@ -52,7 +52,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 		if new.AudioFormat > media.MULTI_MAYBE && duplicate.AudioFormat < media.STEREO_MAYBE {
 			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
-		} else {
+		} else if new.AudioFormat < media.AUDIO_UNKNOWN {
 			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
@@ -60,7 +60,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 		if new.AudioFormat == media.MULTI && duplicate.AudioFormat == media.STEREO {
 			return s.Name(), REPL, fmt.Sprintf("new file better: %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
-		} else {
+		} else if new.AudioFormat < media.AUDIO_UNKNOWN {
 			return s.Name(), KEEP, fmt.Sprintf("old file better %s vs %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}

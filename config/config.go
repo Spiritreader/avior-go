@@ -73,6 +73,11 @@ func InitWithDefaults(cfg *structs.Config) {
 		Settings: &structs.SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
+	moduleConfig = &structs.ModuleConfig{
+		Enabled:  false,
+		Priority: 0,
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_LEGACY] = *moduleConfig
 }
 
 func LoadLocal() error {

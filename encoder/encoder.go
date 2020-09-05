@@ -22,9 +22,9 @@ import (
 )
 
 type Stats struct {
-	Success    bool
-	Duration   int
-	ExitCode   int
+	Success  bool
+	Duration int
+	ExitCode int
 	// Encoded output path including file name
 	OutputPath string
 	Call       string
@@ -84,13 +84,17 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	}
 
 	// determine which output path to use
+	customDuration := false
 	var outPath string
 	if duration > 0 && start > 0 {
-		outPath = filepath.Join(filepath.Dir(file.Path), fmt.Sprintf("%s.estimate", xid.New()))
-	} else if (dstDir != nil) {
-		outPath = filepath.Join(*dstDir, file.OutName() + cfg.Local.Ext)
+		outPath = filepath.Join(filepath.Dir(file.Path), fmt.Sprintf("%s.estimate.mkv", xid.New()))
+		durationTime := new(time.Time).Add(time.Duration(duration)*time.Second).AddDate(-1, 0, 0)
+		state.Encoder.Duration = durationTime
+		customDuration = true
+	} else if dstDir != nil {
+		outPath = filepath.Join(*dstDir, file.OutName()+cfg.Local.Ext)
 	} else {
-		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName() + cfg.Local.Ext)
+		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName()+cfg.Local.Ext)
 	}
 
 	// call ffmpeg
@@ -109,7 +113,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	scanner := bufio.NewScanner(multiReader)
 	scanner.Split(ScanLinesSTDOUT)
 	for scanner.Scan() {
-		parseOut(scanner.Text())
+		parseOut(scanner.Text(), customDuration)
 	}
 	if err := cmd.Wait(); err != nil {
 		_ = glg.Errorf("ffmpeg error: %s", err)
@@ -141,7 +145,7 @@ func ScanLinesSTDOUT(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 
-func parseOut(line string) {
+func parseOut(line string, customDuration bool) {
 	durationToken := "Duration:"
 	frameToken := "frame"
 	fpsToken := "fps"
@@ -153,8 +157,8 @@ func parseOut(line string) {
 	dropToken := "drop"
 	speedToken := "speed"
 
-	state.Encoder.LineOut = append(state.Encoder.LineOut, line)
-	if strings.Contains(line, durationToken) {
+	state.Encoder.LineOut = line
+	if !customDuration && strings.Contains(line, durationToken) {
 		fmt.Println(line)
 		keyIdx := strings.Index(line, durationToken) + len(durationToken)
 		timeIdx := strings.Index(line, ".")
@@ -213,10 +217,18 @@ func parseOut(line string) {
 
 		if state.Encoder.Speed > 0 {
 			// calculate ETA
+			//fmt.Printf("Duration: %s\n", state.Encoder.Duration)
+			//fmt.Printf("Position: %s\n", state.Encoder.Position)
 			diff := state.Encoder.Duration.Sub(state.Encoder.Position)
-			diff /= time.Duration(state.Encoder.Speed)
+			//fmt.Printf("Difference: %s\n", diff)
+			if state.Encoder.Speed > 0 {
+				diff /= time.Duration(state.Encoder.Speed)
+			}
 			state.Encoder.Remaining = diff
 		}
+		durationDuration := state.Encoder.Duration.Sub(new(time.Time).AddDate(-1, 0, 0)).Seconds()
+		positionDuration := state.Encoder.Position.Sub(new(time.Time).AddDate(-1, 0, 0)).Seconds()
+		state.Encoder.Progress = (positionDuration / durationDuration) * 100
 		termOut := ""
 		termOut += fmt.Sprintf("Duration: %s ", state.Encoder.Duration.Format("15:04:05"))
 		termOut += fmt.Sprintf("Frame: %d ", state.Encoder.Frame)

@@ -25,7 +25,7 @@ type Data struct {
 }
 
 type Encoder struct {
-	LineOut   []string
+	LineOut   string
 	Duration  time.Time
 	Frame     int
 	Fps       float64
@@ -39,7 +39,7 @@ type Encoder struct {
 	Slice     int
 	OfSlices  int
 	Remaining time.Duration
-	Progress  int
+	Progress  float64
 }
 
 type FileWalker struct {

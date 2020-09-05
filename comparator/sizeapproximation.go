@@ -43,6 +43,7 @@ func (s *SizeApproxModule) Run(files ...media.File) (string, string, string) {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
 		return s.Name(), NOCH, "err"
 	}
+	s.settings = *settings
 	s.new = files[0]
 	s.duplicate = files[0]
 	startTime := time.Now()
@@ -93,7 +94,8 @@ func (s *SizeApproxModule) estimate() (int64, int64, int, error) {
 
 	// Start at half the time unit to avoid hitting opening sequences / black screens in movies
 	position := timeUnits / 2
-	secondsPerEncSlice := int(math.Ceil(float64(s.duplicate.RecordedLength) * float64(s.settings.Fraction) * 0.01 * 60))
+	encSeconds := float64(s.duplicate.RecordedLength) * float64(s.settings.Fraction) * 0.01 * 60
+	secondsPerEncSlice := int(math.Ceil(encSeconds/ float64(encSlices)))
 	if secondsPerEncSlice < 60 {
 		secondsPerEncSlice = 60
 	}

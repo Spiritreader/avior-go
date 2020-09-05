@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Spiritreader/avior-go/api"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/tools"
@@ -83,8 +84,9 @@ func main() {
 	// Run service
 	wg := new(sync.WaitGroup)
 	defer wg.Wait()
-	wg.Add(1)
-	go runService(ctx, wg)
+	wg.Add(2)
+	go runService(ctx, wg, cancel)
+	go api.Run(ctx, wg)
 }
 
 // runService runs the main service loop
@@ -95,7 +97,7 @@ func main() {
 //
 // wg is the WaitGroup that is used to keep the main function waiting until
 // the service exits
-func runService(ctx context.Context, wg *sync.WaitGroup) {
+func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc) {
 	var sleepTime int
 	refreshConfig()
 	dataStore := db.Get()
@@ -144,6 +146,7 @@ MainLoop:
 				_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
 				paused = true
 			}
+			break MainLoop
 		}
 
 		// skip sleep when more jobs are queued, also serves as exit point
@@ -159,6 +162,7 @@ MainLoop:
 	}
 	_ = dataStore.SignOutClient(client)
 	wg.Done()
+	cancel()
 }
 
 func refreshConfig() {

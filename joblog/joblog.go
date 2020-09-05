@@ -57,9 +57,8 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 	for _, message := range j.messages {
 		_, _ = writer.WriteString(message + "\n")
 	}
-	_, _ = writer.WriteString("\n")
 	if separators {
-		_, _ = writer.WriteString("----------------\n\n")
+		_, _ = writer.WriteString("----------------\n")
 	}
 	err = writer.Flush()
 	if err != nil {
