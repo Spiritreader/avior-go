@@ -10,9 +10,10 @@ import (
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
-	"github.com/Spiritreader/avior-go/encoder"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
+	"github.com/Spiritreader/avior-go/tools"
+	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -59,8 +60,16 @@ func main() {
 	if err != nil {
 		return
 	}
-	stats, err := encoder.Encode(jobFile, 0, 0, true)
-	fmt.Println(stats, err)
+	client, _ := dataStore.GetClientForMachine()
+	worker.ProcessJob(dataStore, client , job, make(chan string))
+}
+
+func copyTest() {
+	srcPath := "D:/Recording/Master and Commander.mkv"
+	dstPath := "D:/Recording/Riddick_temp/Master and Commander.mkv"
+	if err := tools.MoppyFile(srcPath, dstPath, false); err != nil {
+		fmt.Printf("error: %s\n", err)
+	}
 }
 
 func insertTests(aviorDb db.DataStore) {
@@ -118,7 +127,7 @@ func readFileContent(out *[]structs.Field, filePath string) error {
 	}
 	fileHandle, err := os.Open(filePath)
 	if err != nil {
-		_ = glg.Errorf("couldn't open file %s", filePath)
+		_ = glg.Errorf("could not open file %s", filePath)
 		return err
 	}
 	defer fileHandle.Close()
@@ -134,7 +143,7 @@ func readFileContent(out *[]structs.Field, filePath string) error {
 		*out = append(*out, *newField)
 	}
 	if err := scanner.Err(); err != nil {
-		_ = glg.Errorf("couldn't read file %s", filePath)
+		_ = glg.Errorf("could not read file %s", filePath)
 		*out = nil
 		return err
 	}

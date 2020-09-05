@@ -179,7 +179,8 @@ func parseOut(line string) {
 		// calculate ETA
 		state.Encoder.Remaining = state.Encoder.Duration.Sub(state.Encoder.Position)
 	}
-
+	fmt.Println(line)
+	/*
 	fmt.Printf("Duration: %s ", state.Encoder.Duration)
 	fmt.Printf("Frame: %d ", state.Encoder.Frame)
 	fmt.Printf("Fps: %f ", state.Encoder.Fps)
@@ -191,4 +192,5 @@ func parseOut(line string) {
 	fmt.Printf("Drop: %d ", state.Encoder.Drop)
 	fmt.Printf("Speed: %f ", state.Encoder.Speed)
 	fmt.Printf("Remaining: %s\n", state.Encoder.Remaining)
+	*/
 }

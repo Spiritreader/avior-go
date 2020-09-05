@@ -51,7 +51,7 @@ for
 - [x] Remove client
 - [x] Get fields
 - [x] Add fields
-- [x] Remove fields#
+- [x] Remove fields
 
 ### Global state:
 The purpose of this module is to serve as a collection of all state data that is currently outputted by the service. This includes:
@@ -59,10 +59,10 @@ The purpose of this module is to serve as a collection of all state data that is
 - [x] Progress for size estimation
 - [x] Progress for duplicate search
 - [x] Progress for file moving
-- [ ] Encoder output string
+- [x] Encoder output string
 - [x] duplicate search current file and directory
-- [ ] current file that is moved
-- [ ] current slice that is encoded for estimation
+- [x] current file that is moved
+- [x] current slice that is encoded for estimation
   
 
 ### Duplicate search:
@@ -116,7 +116,7 @@ ____
 - [x] MaximumFileSize (whitelist)
     - if a new file is larger in Gigabytes than the specified filesize then it should not be eligible for replacement
     - return modes: `KEEP`, `NOCH`
-- [ ] Legacy checker
+- [x] Legacy checker
     - if a file is legacy, overwrite it
 
 ### Encoder

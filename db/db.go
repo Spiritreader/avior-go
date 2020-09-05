@@ -54,7 +54,7 @@ func (ds *DataStore) LoadSharedConfig() error {
 	// name excludes
 	nameExcludeFields, err := ds.GetFields("name_exclude")
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve name exclude list: %s", nameExcludeFields)
+		_ = glg.Errorf("could not retrieve name exclude list: %s", nameExcludeFields)
 		return err
 	}
 	for _, field := range nameExcludeFields {
@@ -64,7 +64,7 @@ func (ds *DataStore) LoadSharedConfig() error {
 	// subtitle excludes
 	subExcludeFields, err := ds.GetFields("sub_exclude")
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve sub exclude list: %s", subExcludeFields)
+		_ = glg.Errorf("could not retrieve sub exclude list: %s", subExcludeFields)
 		return err
 	}
 	for _, field := range subExcludeFields {
@@ -74,7 +74,7 @@ func (ds *DataStore) LoadSharedConfig() error {
 	// log excludes
 	logExcludeFields, err := ds.GetFields("log_exclude")
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve log exclude list: %s", logExcludeFields)
+		_ = glg.Errorf("could not retrieve log exclude list: %s", logExcludeFields)
 		return err
 	}
 	for _, field := range subExcludeFields {
@@ -84,7 +84,7 @@ func (ds *DataStore) LoadSharedConfig() error {
 	// log includes
 	logIncludeFields, err := ds.GetFields("log_include")
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve log include list: %s", logIncludeFields)
+		_ = glg.Errorf("could not retrieve log include list: %s", logIncludeFields)
 		return err
 	}
 	for _, field := range logIncludeFields {

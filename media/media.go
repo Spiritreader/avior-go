@@ -251,7 +251,7 @@ func (f *File) readLogs() error {
 	legacyLogPaths := []string{stem + ".mkv.log", stem + ".mpg.log"}
 
 	if err := readFileContent(&f.MetadataLog, metadataLogPath); err != nil {
-		_ = glg.Warnf("couldn't read metadata log for %s: %s", metadataLogPath, err)
+		_ = glg.Warnf("could not read metadata log for \"%s\": %s", metadataLogPath, err)
 	} else {
 		f.LogPaths = append(f.LogPaths, metadataLogPath)
 	}
@@ -319,7 +319,7 @@ func readFileContent(out *[]string, filePath string) error {
 	}
 	fileHandle, err := os.Open(filePath)
 	if err != nil {
-		_ = glg.Errorf("couldn't open log with path %s: %s", filePath, err)
+		_ = glg.Errorf("could not open log with path \"%s\": %s", filePath, err)
 		return err
 	}
 	defer fileHandle.Close()
@@ -329,7 +329,7 @@ func readFileContent(out *[]string, filePath string) error {
 		*out = append(*out, fmt.Sprintln(scanner.Text()))
 	}
 	if err := scanner.Err(); err != nil {
-		_ = glg.Errorf("error reading tuner log with path %s: %s", filePath, err)
+		_ = glg.Errorf("error reading tuner log with path \"%s\": %s", filePath, err)
 		*out = nil
 		return err
 	}

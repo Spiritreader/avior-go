@@ -21,6 +21,7 @@ func Instance() *Data {
 type Data struct {
 	Encoder    Encoder
 	FileWalker FileWalker
+	Mover      Mover
 }
 
 type Encoder struct {
@@ -43,4 +44,11 @@ type Encoder struct {
 type FileWalker struct {
 	Directory string
 	Position  int
+}
+
+type Mover struct {
+	File     string
+	Progress int
+	Position string
+	FileSize string
 }

@@ -39,7 +39,7 @@ func (s *MaxSizeModule) Run(files ...media.File) (string, string, string) {
 	}
 	fileInfo, err := os.Stat(files[0].Path)
 	if err != nil {
-		_ = glg.Warnf("couldn't open file %s for metadata retrieval: %s", files[0].Path, err)
+		_ = glg.Warnf("could not open file \"%s\" for metadata retrieval: %s", files[0].Path, err)
 		// if ms.Name(), odule fails, disable module
 		return s.Name(), NOCH, "err no access"
 	}

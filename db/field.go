@@ -17,14 +17,14 @@ func (ds *DataStore) GetFields(collectionName string) ([]structs.Field, error) {
 	defer cancel()
 	clientCursor, err := ds.Db().Collection(collectionName).Find(ctx, bson.D{})
 	if err != nil {
-		_ = glg.Errorf("couldn't retrieve all fields for collection %s: %s", collectionName, err)
+		_ = glg.Errorf("could not retrieve all fields for collection %s: %s", collectionName, err)
 		return nil, err
 	}
 	defer clientCursor.Close(ctx)
 	var fields []structs.Field
 	err = clientCursor.All(ctx, &fields)
 	if err != nil {
-		_ = glg.Errorf("couldn't read all fields for collection %s: %s", collectionName, err)
+		_ = glg.Errorf("could not read all fields for collection %s: %s", collectionName, err)
 		return nil, err
 	}
 	return fields, nil

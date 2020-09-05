@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	KEEP string = "keep duplicate"
+	KEEP string = "no encode"
 	NOCH string = "noch nicht"
 	REPL string = "allow replacement"
 )
@@ -27,8 +27,11 @@ type Module interface {
 // Initializes all modules for duplicate checking
 func InitDupeModules() []Module {
 	modules := []Module{
-		&AgeModule{},
+		&LegacyModule{},
 		&AudioModule{},
+		&ResolutionModule{},
+		&LogMatchModule{},
+		&SizeApproxModule{},
 	}
 	return initModules(modules)
 }
@@ -36,7 +39,9 @@ func InitDupeModules() []Module {
 // Initialize all modules for single file checking
 func InitStandaloneModules() []Module {
 	modules := []Module{
+		&AgeModule{},
 		&LengthModule{},
+		&MaxSizeModule{},
 	}
 	return initModules(modules)
 }

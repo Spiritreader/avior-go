@@ -120,12 +120,12 @@ func (s *SizeApproxModule) estimate() (int64, int64, int, error) {
 		}
 		outFile, err := os.Stat(stats.OutputPath)
 		if err != nil {
-			_ = glg.Errorf("couldn't open estimation file %s, err: %s", stats.OutputPath, err)
+			_ = glg.Errorf("could not open estimation file %s, err: %s", stats.OutputPath, err)
 		}
 		samples[idx] = outFile.Size()
 		err = os.Remove(stats.OutputPath)
 		if err != nil {
-			_ = glg.Warnf("couldn't delete estimation file %s, err: %s", stats.OutputPath, err)
+			_ = glg.Warnf("could not delete estimation file %s, err: %s", stats.OutputPath, err)
 		}
 		// advance position for each slice
 		position += timeUnits
@@ -143,7 +143,7 @@ func (s *SizeApproxModule) estimate() (int64, int64, int, error) {
 	estimatedFileSize := int64(math.Ceil(avg * float64(s.duplicate.RecordedLength)))
 	duplicateFileSize, err := os.Stat(s.duplicate.Path)
 	if err != nil {
-		_ = glg.Errorf("couldn't read original file %s, err: %s", s.duplicate.Path, err)
+		_ = glg.Errorf("could not read original file %s, err: %s", s.duplicate.Path, err)
 		return -1, -1, -1, err
 	}
 	difference := 100 - ((estimatedFileSize / duplicateFileSize.Size()) * 100)

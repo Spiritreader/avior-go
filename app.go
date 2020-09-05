@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	resumeChan     chan string
-	canProcessJobs bool
+	resumeChan chan string
+	sleep      bool
+	paused     bool
 )
 
 func main() {
@@ -43,7 +44,7 @@ func main() {
 	// Instantiate and load config file
 	_ = config.Instance()
 	if err := config.LoadLocal(); err != nil {
-		glg.Fatalf("couldn't load config file, shutting down: %s", err)
+		glg.Fatalf("could not load config file, shutting down: %s", err)
 	}
 
 	// connect to database
@@ -110,25 +111,39 @@ func runService(ctx context.Context, wg *sync.WaitGroup) {
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
+	paused = false
 MainLoop:
 	for {
 		// check if client is allowed to run
 		canRun := tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now())
-		if canRun && !canProcessJobs {
+		if canRun && !sleep {
 			_ = glg.Infof("client %s moving to standby, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
-			canProcessJobs = true
+			sleep = false
 			sleepTime = 5
-		} else if !canRun && canProcessJobs {
+		} else if !canRun && sleep {
 			_ = glg.Infof("client %s resuming , active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
-			canProcessJobs = false
+			sleep = true
 			sleepTime = 1
 		}
 
-		if canProcessJobs {
+		if !sleep && !paused {
 			refreshConfig()
-			worker.ProcessJob(dataStore, client, resumeChan)
+			job, err := dataStore.GetNextJobForClient(client)
+			if err != nil {
+				_ = glg.Errorf("failed getting next job: %s", err)
+				return
+			}
+			if job == nil {
+				return
+			}
+			worker.ProcessJob(dataStore, client, job, resumeChan)
+			err = dataStore.DeleteJob(job)
+			if err != nil {
+				_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
+				paused = true
+			}
 		}
 
 		// skip sleep when more jobs are queued, also serves as exit point

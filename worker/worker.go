@@ -3,61 +3,97 @@ package worker
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Spiritreader/avior-go/comparator"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/encoder"
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/joblog"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
+	"github.com/Spiritreader/avior-go/tools"
 	"github.com/karrick/godirwalk"
 	"github.com/kpango/glg"
 )
 
 var state *globalstate.Data = globalstate.Instance()
 
-func ProcessJob(dataStore *db.DataStore, client *structs.Client, resumeChan chan string) {
+func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
 	jobLog := new(joblog.Data)
-	job, err := dataStore.GetNextJobForClient(client)
-	if err != nil {
-		_ = glg.Errorf("failed getting next job: %s", err)
-		return
-	}
-	if job == nil {
-		return
-	}
 	_ = glg.Infof("processing job %s", job.Path)
-	jobFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, EncodeParams: job.CustomParameters}
-	err = jobFile.Update()
+	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, EncodeParams: job.CustomParameters}
+	err := mediaFile.Update()
 	if err != nil {
-		resume(resumeChan)
+		Resume(resumeChan)
 		return
 	}
-	fmt.Println(jobFile)
-	fmt.Println(jobFile.OutName())
-	jobLog.AddFileProperties(*jobFile)
-	res := runModules(*jobLog, *jobFile)
+	fmt.Println(mediaFile)
+	fmt.Println(mediaFile.OutName())
+	jobLog.AddFileProperties(*mediaFile)
+	res := runModules(*jobLog, *mediaFile)
 	switch res {
 	case comparator.KEEP:
-		resume(resumeChan)
+		jobLog.AppendTo(mediaFile.Path + ".INFO.log")
+		jobLog.AppendTo(filepath.Join("log", "skipped.log"))
+		Resume(resumeChan)
+		return
 	}
-	duplicates := checkForDuplicates(jobFile)
+	duplicates := checkForDuplicates(mediaFile)
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
-		res = runDupeModules(*jobLog, *jobFile, duplicates[0])
+		res, moduleName := runDupeModules(*jobLog, *mediaFile, duplicates[0])
+		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
+		err := move(duplicates[0], obsoleteDir, &moduleName)
+		if err != nil {
+			_ = glg.Errorf("can't continue without moving duplicate files, skipping job")
+			Resume(resumeChan)
+			return
+		}
 		switch res {
 		case comparator.KEEP:
-			resume(resumeChan)
+			existDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.EXIST_DIR)
+			err = move(*mediaFile, existDir, nil)
+			if err != nil {
+				_ = glg.Warnf("couldn't move source files to exist directory, err: %s", err)
+			}
+			jobLog.AppendTo(mediaFile.Path + ".INFO.log")
+			jobLog.AppendTo(filepath.Join("log", "skipped.log"))
+			Resume(resumeChan)
+			return
 		}
 	}
-	
-	resume(resumeChan)
+	_ = glg.Infof("encoding file %s")
+	stats, err := encoder.Encode(*mediaFile, 0, 0, false)
+	if err != nil {
+		glg.Warnf("encode failed, retrying")
+		stats, err = encoder.Encode(*mediaFile, 0, 0, true)
+		if err != nil {
+			Resume(resumeChan)
+			return
+		}
+	}
+	_ = glg.Infof("encode to %s done in %s", stats.OutputPath, stats.Duration)
+	jobLog.Add("")
+	jobLog.Add(fmt.Sprintf("Output Path: %s", stats.OutputPath))
+	jobLog.Add(fmt.Sprintf("Duration: %d", stats.Duration))
+	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
+	jobLog.AppendTo(filepath.Join("log", "processed.log"))
+	jobLog.AppendTo(mediaFile.LogPaths[0])
+
+	doneDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.DONE_DIR)
+	err = move(*mediaFile, doneDir, nil)
+	if err != nil {
+		_ = glg.Warnf("couldn't move source files to done directory, err: %s", err)
+	}
+	Resume(resumeChan)
 }
 
-func resume(resumeChan chan string) {
+func Resume(resumeChan chan string) {
 	select {
 	case resumeChan <- consts.RESUME:
 		_ = glg.Log("sending resume event")
@@ -86,7 +122,7 @@ func runModules(jobLog joblog.Data, fileNew media.File) string {
 	return comparator.NOCH
 }
 
-func runDupeModules(jobLog joblog.Data, fileNew media.File, fileDup media.File) string {
+func runDupeModules(jobLog joblog.Data, fileNew media.File, fileDup media.File) (string, string) {
 	jobLog.Add("Dupe Module Results:")
 	modules := comparator.InitDupeModules()
 	for idx := range modules {
@@ -98,12 +134,43 @@ func runDupeModules(jobLog joblog.Data, fileNew media.File, fileDup media.File) 
 		case comparator.NOCH:
 			continue
 		case comparator.KEEP:
-			return comparator.KEEP
+			return comparator.KEEP, name
 		case comparator.REPL:
-			return comparator.REPL
+			return comparator.REPL, name
 		}
 	}
-	return comparator.NOCH
+	return comparator.NOCH, "none"
+}
+
+func move(file media.File, dstDir string, moduleName *string) error {
+	_, err := os.Stat(dstDir)
+	if os.IsNotExist(err) {
+		_ = os.Mkdir(dstDir, os.ModePerm)
+	}
+	toMovePaths := make(map[string]string, 0)
+	fileOut := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
+	if moduleName != nil {
+		fileOut += *moduleName
+	}
+	fileOut += filepath.Ext(file.Path)
+	fileOut = filepath.Join(dstDir, fileOut)
+	toMovePaths[file.Path] = fileOut
+	for _, log := range file.LogPaths {
+		logOut := strings.TrimSuffix(filepath.Base(log), filepath.Ext(log))
+		if moduleName != nil {
+			logOut += *moduleName
+		}
+		logOut += filepath.Ext(log)
+		logOut = filepath.Join(dstDir, logOut)
+		toMovePaths[log] = logOut
+	}
+	for src, dst := range toMovePaths {
+		err := tools.MoppyFile(src, dst, true)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // checkForDuplicates retrieves all duplicates for the given file,
@@ -147,7 +214,7 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 		},
 		ErrorCallback: func(path string, err error) godirwalk.ErrorAction {
 			if err != nil && err.Error() != "directory ignored" {
-				_ = glg.Warnf("couldn't read %s, skipping: %s", path, err)
+				_ = glg.Warnf("could not read %s, skipping: %s", path, err)
 			}
 			return godirwalk.SkipNode
 		},

@@ -8,6 +8,7 @@ const (
 	MODULE_NAME_MAXSIZE    string = "MaxSizeModule"
 	MODULE_NAME_RESOLUTION string = "ResolutionModule"
 	MODULE_NAME_SIZEAPPROX string = "SizeApproxModule"
+	MODULE_NAME_LEGACY     string = "LegacyModule"
 	AUDIO_ACC_LOW          string = "low"
 	AUDIO_ACC_MED          string = "med"
 	AUDIO_ACC_HIGH         string = "high"
@@ -15,4 +16,7 @@ const (
 	LOGMATCH_MODE_NEUTRAL  string = "neutral"
 	LOGMATCH_MODE_EXCLUDE  string = "exclude"
 	RESUME                 string = "resume signal"
+	OBSOLETE_DIR           string = ".obsolete"
+	DONE_DIR               string = "done"
+	EXIST_DIR              string = "exists"
 )

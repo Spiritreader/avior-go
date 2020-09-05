@@ -41,7 +41,7 @@ func (j *Data) AppendTo(path string) error {
 		}
 	}()
 	if err != nil {
-		_ = glg.Errorf("couldn't write media info to %s, err: %s", path, err)
+		_ = glg.Errorf("could not write media info to %s, err: %s", path, err)
 		return err
 	}
 	hostname, _ := os.Hostname()
@@ -56,7 +56,7 @@ func (j *Data) AppendTo(path string) error {
 	_, _ = writer.WriteString("----------------\n")
 	err = writer.Flush()
 	if err != nil {
-		_ = glg.Errorf("couldn't write media info to %s, err: %s", path, err)
+		_ = glg.Errorf("could not write media info to %s, err: %s", path, err)
 		return err
 	}
 	return nil
