@@ -34,23 +34,24 @@ type Data struct {
 }
 
 type Encoder struct {
-	Active    bool
-	LineOut   []string `json:"-"`
-	Duration  time.Time
-	Frame     int
-	Fps       float64
-	Q         float64
-	Size      string
-	Position  time.Time
-	Bitrate   string
-	Dup       int
-	Drop      int
-	Speed     float64
-	Slice     int
-	OfSlices  int
-	Remaining time.Duration
-	Progress  float64
-	OutPath   string
+	Active            bool
+	LineOut           []string `json:"-"`
+	Duration          time.Time
+	Frame             int
+	Fps               float64
+	Q                 float64
+	Size              string
+	Position          time.Time
+	Bitrate           string
+	Dup               int
+	Drop              int
+	Speed             float64
+	Slice             int
+	OfSlices          int
+	Remaining         time.Duration
+	Progress          float64
+	ReplacementReason string
+	OutPath           string
 }
 
 type FileWalker struct {

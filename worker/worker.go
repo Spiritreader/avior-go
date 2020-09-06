@@ -199,6 +199,7 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 		case comparator.KEEP:
 			return comparator.KEEP, name
 		case comparator.REPL:
+			state.Encoder.ReplacementReason = fmt.Sprintf("%s: %s - %s", name, result, message)
 			return comparator.REPL, name
 		}
 	}
@@ -293,12 +294,12 @@ func checkForDuplicates(file *media.File) []media.File {
 		matches = append(matches, dir_matches...)
 	}
 	cfg.Local.EstimatedLibSize = state.FileWalker.Position
+	state.FileWalker.Position = 0
 	_ = config.Save()
 	return matches
 }
 
 func traverseDir(file *media.File, path string) ([]media.File, int, error) {
-	state.FileWalker.Position = 0
 	matches := make([]media.File, 0)
 	err := godirwalk.Walk(path, &godirwalk.Options{
 		Unsorted: true,
