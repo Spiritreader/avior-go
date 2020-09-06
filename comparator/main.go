@@ -5,7 +5,6 @@ import (
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/media"
-	"github.com/Spiritreader/avior-go/structs"
 )
 
 const (
@@ -21,7 +20,7 @@ type Module interface {
 	Run(...media.File) (string, string, string)
 	Priority() int
 	Name() string
-	Init(structs.ModuleConfig)
+	Init(config.ModuleConfig)
 }
 
 // Initializes all modules for duplicate checking

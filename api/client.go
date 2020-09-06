@@ -54,7 +54,7 @@ func modifyClient(w http.ResponseWriter, r *http.Request, mode string) error {
 	err := json.Unmarshal(reqBody, client)
 	_ = glg.Logf("%s", string(reqBody))
 	if err != nil {
-		_ = glg.Errorf("could not unmarshall client %+v: %s", string(reqBody), err)
+		_ = glg.Errorf("could not unmarshal client %+v: %s", string(reqBody), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
 		_ = encoder.Encode(err)

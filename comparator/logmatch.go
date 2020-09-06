@@ -6,16 +6,15 @@ import (
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/media"
-	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"github.com/mitchellh/mapstructure"
 )
 
 type LogMatchModule struct {
-	moduleConfig *structs.ModuleConfig
+	moduleConfig *config.ModuleConfig
 }
 
-func (s *LogMatchModule) Init(mcfg structs.ModuleConfig) {
+func (s *LogMatchModule) Init(mcfg config.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
@@ -27,7 +26,7 @@ func (s *LogMatchModule) Run(files ...media.File) (string, string, string) {
 	if !s.moduleConfig.Enabled {
 		return s.Name(), NOCH, "disabled"
 	}
-	settings := &structs.LogMatchModuleSettings{}
+	settings := &config.LogMatchModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
 		return s.Name(), NOCH, "err"

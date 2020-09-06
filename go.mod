@@ -10,4 +10,5 @@ require (
 	github.com/rs/xid v1.2.1
 	go.mongodb.org/mongo-driver v1.4.1
 	golang.org/x/sys v0.0.0-20190531175056-4c3a928424d2
+	honnef.co/go/tools v0.0.1-2019.2.3
 )

@@ -3,18 +3,18 @@ package comparator
 import (
 	"fmt"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/media"
-	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"github.com/mitchellh/mapstructure"
 )
 
 type AudioModule struct {
-	moduleConfig *structs.ModuleConfig
+	moduleConfig *config.ModuleConfig
 }
 
-func (s *AudioModule) Init(mcfg structs.ModuleConfig) {
+func (s *AudioModule) Init(mcfg config.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
@@ -26,7 +26,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 	if !s.moduleConfig.Enabled {
 		return s.Name(), NOCH, "disabled"
 	}
-	settings := &structs.AudioModuleSettings{}
+	settings := &config.AudioModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
 		return s.Name(), NOCH, "err"

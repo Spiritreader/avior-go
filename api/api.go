@@ -95,6 +95,9 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/", getStatus).Methods("GET")
 	router.HandleFunc("/encoder", getEncLineOut).Methods("GET")
 
+	router.HandleFunc("/config", getConfig).Methods("GET")
+	router.HandleFunc("/config", modifyConfig).Methods("PUT")
+
 	router.HandleFunc("/fields/", getAllFields).Methods("GET")
 	router.HandleFunc("/fields/{id}", insertField).Methods("POST")
 	router.HandleFunc("/fields/{id}", deleteField).Methods("DELETE")

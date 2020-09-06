@@ -3,18 +3,18 @@ package comparator
 import (
 	"fmt"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/media"
-	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 )
 
 
 type LegacyModule struct {
-	moduleConfig *structs.ModuleConfig
+	moduleConfig *config.ModuleConfig
 }
 
-func (s *LegacyModule) Init(mcfg structs.ModuleConfig) {
+func (s *LegacyModule) Init(mcfg config.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 

@@ -7,11 +7,86 @@ import (
 	"sync"
 
 	"github.com/Spiritreader/avior-go/consts"
-	"github.com/Spiritreader/avior-go/structs"
 )
 
 var once sync.Once
-var instance *structs.Config
+var instance *Data
+
+
+type Data struct {
+	Local  Local
+	Shared Shared
+}
+
+// Local is the main application configuration
+type Local struct {
+	DatabaseURL      string
+	Ext              string
+	AudioFormats     AudioFormats
+	Resolutions      map[string]string
+	ObsoletePath     string
+	MediaPaths       []string
+	EstimatedLibSize int
+	Modules          map[string]ModuleConfig
+	EncoderConfig    map[string]EncoderConfig
+	EncoderPriority  string
+}
+
+type Shared struct {
+	NameExclude []string
+	SubExclude  []string
+	LogInclude  []string
+	LogExclude  []string
+}
+
+type AudioFormats struct {
+	StereoTags []string
+	MultiTags  []string
+}
+
+type ModuleConfig struct {
+	Enabled  bool
+	Priority int
+	Settings interface{}
+}
+
+type AgeModuleSettings struct {
+	MaxAge int
+}
+
+type AudioModuleSettings struct {
+	Accuracy string
+}
+
+type LengthModuleSettings struct {
+	Threshold int
+}
+
+type LogMatchModuleSettings struct {
+	Mode string
+}
+
+type MaxSizeModuleSettings struct {
+	MaxSize int
+}
+
+type ResolutionModuleSettings struct {
+	MinResolution int
+}
+
+type SizeApproxModuleSettings struct {
+	Difference  int
+	SampleCount int
+	Fraction    int
+}
+
+type EncoderConfig struct {
+	OutDirectory  string
+	PreArguments  []string
+	PostArguments []string
+	Stash         []string
+}
+
 
 const (
 	PRIORITY_ABOVE_NORMAL Priority = 0x00008000
@@ -58,75 +133,75 @@ func PriorityUint32(p string) uint32 {
 // Instance retrieves the current configuration file instance
 //
 // Creates a new one if it doesn't exist
-func Instance() *structs.Config {
+func Instance() *Data {
 	once.Do(func() {
-		instance = new(structs.Config)
+		instance = new(Data)
 		InitWithDefaults(instance)
 	})
 	return instance
 }
 
-func InitWithDefaults(cfg *structs.Config) {
+func InitWithDefaults(cfg *Data) {
 	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
 	cfg.Local.Ext = ".mkv"
-	cfg.Local.Modules = make(map[string]structs.ModuleConfig)
+	cfg.Local.Modules = make(map[string]ModuleConfig)
 	cfg.Local.Resolutions = map[string]string{"hd": "1280x720", "fhd": "1920x1080"}
-	cfg.Local.EncoderConfig = map[string]structs.EncoderConfig{"hd": *new(structs.EncoderConfig)}
+	cfg.Local.EncoderConfig = map[string]EncoderConfig{"hd": *new(EncoderConfig)}
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
 
 	// AgeModule Config Defaults
-	moduleConfig := &structs.ModuleConfig{
+	moduleConfig := &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.AgeModuleSettings{MaxAge: 90},
+		Settings: &AgeModuleSettings{MaxAge: 90},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_AGE] = *moduleConfig
 	// AudioModule Config Defaults
-	moduleConfig = &structs.ModuleConfig{
+	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.AudioModuleSettings{Accuracy: consts.AUDIO_ACC_MED},
+		Settings: &AudioModuleSettings{Accuracy: consts.AUDIO_ACC_MED},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_AUDIO] = *moduleConfig
 	// LengthModule Config Defaults
-	moduleConfig = &structs.ModuleConfig{
+	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.LengthModuleSettings{Threshold: 25},
+		Settings: &LengthModuleSettings{Threshold: 25},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_LENGTH] = *moduleConfig
 	// LogMatch Config Defaults
-	moduleConfig = &structs.ModuleConfig{
+	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.LogMatchModuleSettings{Mode: consts.LOGMATCH_MODE_NEUTRAL},
+		Settings: &LogMatchModuleSettings{Mode: consts.LOGMATCH_MODE_NEUTRAL},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_LOGMATCH] = *moduleConfig
 	// MaxSize Config Defaults
-	moduleConfig = &structs.ModuleConfig{
+	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.MaxSizeModuleSettings{MaxSize: 30},
+		Settings: &MaxSizeModuleSettings{MaxSize: 30},
 	}
 	// SizeApprox Config Defaults
 	cfg.Local.Modules[consts.MODULE_NAME_MAXSIZE] = *moduleConfig
-	moduleConfig = &structs.ModuleConfig{
+	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
+		Settings: &SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
 	// ResolutionModule Config Defaults
-	moduleConfig = &structs.ModuleConfig{
+	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &structs.ResolutionModuleSettings{MinResolution: 20},
+		Settings: &ResolutionModuleSettings{MinResolution: 20},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
 }
 
 func LoadLocal() error {
-	err := LoadLocalFrom("config.json")
+	err := LoadLocalFrom("json")
 	return err
 }
 
@@ -150,12 +225,16 @@ func LoadLocalFrom(path string) error {
 	return nil
 }
 
+func (cfg *Data) Update(inCfg Local) {
+	cfg.Local = inCfg
+}
+
 func Save() error {
 	encoded, err := json.MarshalIndent(instance.Local, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile("config.json", encoded, 0644); err != nil {
+	if err := ioutil.WriteFile("json", encoded, 0644); err != nil {
 		return err
 	}
 	return nil

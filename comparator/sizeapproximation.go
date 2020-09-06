@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/encoder"
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/media"
-	"github.com/Spiritreader/avior-go/structs"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 	"github.com/mitchellh/mapstructure"
@@ -20,13 +20,13 @@ import (
 var state *globalstate.Data = globalstate.Instance()
 
 type SizeApproxModule struct {
-	moduleConfig *structs.ModuleConfig
-	settings     structs.SizeApproxModuleSettings
+	moduleConfig *config.ModuleConfig
+	settings     config.SizeApproxModuleSettings
 	new          media.File
 	duplicate    media.File
 }
 
-func (s *SizeApproxModule) Init(mcfg structs.ModuleConfig) {
+func (s *SizeApproxModule) Init(mcfg config.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
@@ -38,7 +38,7 @@ func (s *SizeApproxModule) Run(files ...media.File) (string, string, string) {
 	if !s.moduleConfig.Enabled {
 		return s.Name(), NOCH, "disabled"
 	}
-	settings := &structs.SizeApproxModuleSettings{}
+	settings := &config.SizeApproxModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
 		return s.Name(), NOCH, "err"
