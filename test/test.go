@@ -56,23 +56,9 @@ func main() {
 
 	stopChan := make(chan string)
 	wg := new(sync.WaitGroup)
+	wg.Add(1)
 	go api.Run(cancel, wg, stopChan, aviorDb)
 	<-ctx.Done()
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
-	stopChan <- "stop"
 	stopChan <- "stop"
 }
 

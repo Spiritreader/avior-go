@@ -21,7 +21,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}\\app.go",
             "env": {},
-            "args": []
+            "args": ["pause"]
         }
     ]
 }

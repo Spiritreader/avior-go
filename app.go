@@ -27,7 +27,7 @@ var (
 func main() {
 	resumeChan = make(chan string, 1)
 	apiChan := make(chan string)
-
+	
 	// Set up logger
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
@@ -44,6 +44,12 @@ func main() {
 		SetLevelColor(glg.DEBG, glg.Cyan)
 	_ = glg.Info("version ==>", "hey")
 	defer log.Close()
+
+	// read cli args
+	arg := os.Args[1]
+	if arg == "pause" {
+		globalstate.Instance().Paused = true
+	}
 
 	// Instantiate and load config file
 	_ = config.Instance()
@@ -117,7 +123,6 @@ func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFu
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
-	state.Paused = false
 MainLoop:
 	for {
 		// check if client is allowed to run
@@ -165,7 +170,8 @@ MainLoop:
 			continue
 		default:
 		}
-
+		// send this timer message to resume chan instead, register resumechan with the API 
+		// make the send non-blocking!
 		<-time.After(time.Duration(sleepTime) * time.Minute)
 		continue
 	}
