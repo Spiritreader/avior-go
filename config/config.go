@@ -12,7 +12,6 @@ import (
 var once sync.Once
 var instance *Data
 
-
 type Data struct {
 	Local  Local
 	Shared Shared
@@ -86,7 +85,6 @@ type EncoderConfig struct {
 	PostArguments []string
 	Stash         []string
 }
-
 
 const (
 	PRIORITY_ABOVE_NORMAL Priority = 0x00008000

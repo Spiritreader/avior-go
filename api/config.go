@@ -14,8 +14,10 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	cfg := config.Instance()
 	w.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(w)
+	send := cfg.Local
+	send.DatabaseURL = ""
 	encoder.SetIndent("", " ")
-	_ = encoder.Encode(cfg)
+	_ = encoder.Encode(send)
 }
 
 func modifyConfig(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +33,7 @@ func modifyConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg := config.Instance()
+	configNew.DatabaseURL = cfg.Local.DatabaseURL
 	cfg.Update(*configNew)
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
