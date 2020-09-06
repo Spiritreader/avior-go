@@ -201,7 +201,7 @@ func InitWithDefaults(cfg *Data) {
 }
 
 func LoadLocal() error {
-	err := LoadLocalFrom("json")
+	err := LoadLocalFrom("config.json")
 	return err
 }
 
