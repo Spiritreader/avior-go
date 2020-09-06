@@ -12,6 +12,7 @@ import (
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/gorilla/mux"
 	"github.com/kpango/glg"
+	"github.com/rs/cors"
 )
 
 var aviorDb *db.DataStore
@@ -116,7 +117,12 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/shutdown", requestStop).Methods("PUT")
 	router.HandleFunc("/resume", resume).Methods("PUT")
 	router.HandleFunc("/pause", pause).Methods("PUT")
-	srv.Handler = router
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+	})
+
+	srv.Handler = c.Handler(router)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {

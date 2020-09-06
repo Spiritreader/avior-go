@@ -234,7 +234,7 @@ func Save() error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile("json", encoded, 0644); err != nil {
+	if err := ioutil.WriteFile("config.json", encoded, 0644); err != nil {
 		return err
 	}
 	return nil
