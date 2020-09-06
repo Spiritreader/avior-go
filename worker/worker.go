@@ -105,7 +105,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 
 	// encode with one retry that overwrites (in case the old one failed)
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
-	_ = glg.Logf("media struct: %+v", mediaFile)
+	_ = glg.Logf("media struct: %+v", *mediaFile)
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	if err != nil {
 		if err.Error() == "no tag found" || stats.ExitCode == 1 {
@@ -130,10 +130,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			return
 		}
 	}
-	_ = glg.Infof("encode to %s done in %d", stats.OutputPath, stats.Duration)
+	_ = glg.Infof("encode to %s done in %s", stats.OutputPath, stats.Duration)
 	jobLog.Add("")
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", stats.OutputPath))
-	jobLog.Add(fmt.Sprintf("Duration: %d", stats.Duration))
+	jobLog.Add(fmt.Sprintf("Duration: %s", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
 	_ = jobLog.AppendTo(filepath.Join("log", "processed.log"), false, true)
 	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
