@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -24,7 +23,7 @@ import (
 
 type Stats struct {
 	Success  bool
-	Duration int
+	Duration time.Duration
 	ExitCode int
 	// Encoded output path including file name
 	OutputPath string
@@ -140,7 +139,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		_ = glg.Errorf("ffmpeg error: %s", err)
 	}
 	exitCode := cmd.ProcessState.ExitCode()
-	encTime := int(math.Round(time.Since(startTime).Minutes()))
+	encTime := time.Since(startTime)
 	if exitCode != 0 {
 		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, errors.New("exit code not ok")
 	}
