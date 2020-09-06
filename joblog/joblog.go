@@ -26,7 +26,7 @@ func (j* Data) AddFileProperties(file media.File) {
 	if j.messages == nil {
 		j.messages = make([]string, 0)
 	}
-	j.messages = append(j.messages, fmt.Sprintf("Original Path: %s", file.Path))
+	j.messages = append(j.messages, fmt.Sprintf("OriginalPath: %s", file.Path))
 	j.messages = append(j.messages, fmt.Sprintf("Recorded/Length: %dm/%dm", file.RecordedLength, file.Length))
 	j.messages = append(j.messages, fmt.Sprintf("Audio: %s", file.AudioFormat.String()))
 	j.messages = append(j.messages, fmt.Sprintf("EncodeParams: %s", file.CustomParams))
@@ -52,13 +52,13 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 	if separators {
 		_, _ = writer.WriteString("----------------\n")
 	}
-	_, _ = writer.WriteString(fmt.Sprintf("%s - %s \n", hostname, time.Now()))
+	_, _ = writer.WriteString(fmt.Sprintf("%s - %s \n", hostname, time.Now().Format("Monday 2006-01-02 15:04:05 -0700 MST")))
 	_, _ = writer.WriteString("\n")
 	for _, message := range j.messages {
 		_, _ = writer.WriteString(message + "\n")
 	}
 	if separators {
-		_, _ = writer.WriteString("----------------\n")
+		_, _ = writer.WriteString("----------------\n\n")
 	}
 	err = writer.Flush()
 	if err != nil {

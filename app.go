@@ -33,7 +33,7 @@ func main() {
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	glg.Get().
 		SetMode(glg.BOTH).
-		AddLevelWriter(glg.LOG, log).
+		//AddLevelWriter(glg.LOG, log).
 		AddLevelWriter(glg.INFO, log).
 		AddLevelWriter(glg.WARN, log).
 		AddLevelWriter(glg.DEBG, log).

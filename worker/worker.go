@@ -43,8 +43,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.AddFileProperties(*mediaFile)
 
 	// run single file moduels
-	res := runModules(jobLog, *mediaFile)
 	jobLog.Add("")
+	res := runModules(jobLog, *mediaFile)
 	switch res {
 	case comparator.KEEP:
 		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
@@ -61,8 +61,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		_ = duplicates[0].Update()
 
 		// run dupe file modules and prevent replacement if necessary
-		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		jobLog.Add("")
+		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		switch res {
 		case comparator.KEEP, comparator.NOCH:
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
@@ -105,6 +105,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 
 	// encode with one retry that overwrites (in case the old one failed)
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
+	_ = glg.Logf("media struct: %+v", mediaFile)
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	if err != nil {
 		if err.Error() == "no tag found" || stats.ExitCode == 1 {
@@ -131,7 +132,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	}
 	_ = glg.Infof("encode to %s done in %d", stats.OutputPath, stats.Duration)
 	jobLog.Add("")
-	jobLog.Add(fmt.Sprintf("Output Path: %s", stats.OutputPath))
+	jobLog.Add(fmt.Sprintf("OutputPath: %s", stats.OutputPath))
 	jobLog.Add(fmt.Sprintf("Duration: %d", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
 	_ = jobLog.AppendTo(filepath.Join("log", "processed.log"), false, true)
@@ -164,7 +165,6 @@ func Resume(resumeChan chan string) {
 }
 
 func runModules(jobLog *joblog.Data, fileNew media.File) string {
-	jobLog.Add("")
 	jobLog.Add("Module Results:")
 	modules := comparator.InitStandaloneModules()
 	for idx := range modules {
@@ -185,8 +185,8 @@ func runModules(jobLog *joblog.Data, fileNew media.File) string {
 }
 
 func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File) (string, string) {
-	jobLog.Add("")
 	jobLog.Add("Dupe Module Results:")
+	jobLog.Add(fmt.Sprintf("DupPath: %s", fileDup.Path))
 	modules := comparator.InitDupeModules()
 	for idx := range modules {
 		name, result, message := modules[idx].Run(fileNew, fileDup)
