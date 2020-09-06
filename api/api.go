@@ -18,22 +18,31 @@ var aviorDb *db.DataStore
 var appCancel context.CancelFunc
 
 func pause(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Info("endpoint hit: pause service")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	state.Paused = true
+	if globalstate.WaitCtxCancel != nil {
+		globalstate.WaitCtxCancel()
+	}
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("paused")
 }
 
 func resume(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Info("endpoint hit: resume service")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	state.Paused = false
+	if globalstate.WaitCtxCancel != nil {
+		globalstate.WaitCtxCancel()
+	}
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("resumed")
 }
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Info("endpoint hit: get status")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -41,6 +50,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func getEncLineOut(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Info("endpoint hit: get encoder")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -49,6 +59,9 @@ func getEncLineOut(w http.ResponseWriter, r *http.Request) {
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Info("endpoint hit: shut down service")
+	if globalstate.WaitCtxCancel != nil {
+		globalstate.WaitCtxCancel()
+	}
 	appCancel()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")

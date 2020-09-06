@@ -111,6 +111,7 @@ func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFu
 	var sleepTime int
 	refreshConfig()
 	dataStore := db.Get()
+	sleepTime = 5
 
 	client, err := dataStore.GetClientForMachine()
 	if err != nil {
@@ -172,8 +173,11 @@ MainLoop:
 		}
 		// send this timer message to resume chan instead, register resumechan with the API 
 		// make the send non-blocking!
-		<-time.After(time.Duration(sleepTime) * time.Minute)
-		continue
+		waitCtx, cancel := context.WithTimeout(context.Background(), time.Duration(sleepTime)* time.Minute)
+		globalstate.WaitCtxCancel = cancel
+		<-waitCtx.Done()
+
+
 	}
 	_ = dataStore.SignOutClient(client)
 	apiChan <- "stop"

@@ -1,12 +1,14 @@
 package globalstate
 
 import (
+	"context"
 	"sync"
 	"time"
 )
 
 var once sync.Once
 var instance *Data
+var WaitCtxCancel context.CancelFunc
 
 // Instance retrieves the current configuration file instance
 //
