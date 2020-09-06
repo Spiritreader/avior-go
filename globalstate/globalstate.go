@@ -27,10 +27,11 @@ func (d *Data) Clear() {
 }
 
 type Data struct {
-	Encoder    Encoder
-	FileWalker FileWalker
-	Mover      Mover
-	Paused     bool
+	Encoder         Encoder
+	FileWalker      FileWalker
+	Mover           Mover
+	Paused          bool
+	ShutdownPending bool
 }
 
 type Encoder struct {

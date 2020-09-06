@@ -62,6 +62,8 @@ func requestStop(w http.ResponseWriter, r *http.Request) {
 	if globalstate.WaitCtxCancel != nil {
 		globalstate.WaitCtxCancel()
 	}
+	state := globalstate.Instance()
+	state.ShutdownPending = true
 	appCancel()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
