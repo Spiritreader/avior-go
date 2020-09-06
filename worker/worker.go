@@ -314,7 +314,8 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
 				if state.FileWalker.Position % 1000 == 0 {
-					_ = glg.Logf("current dir: %s, position: %d/%d", de.Name(), state.FileWalker.Position, state.FileWalker.LibSize)
+					_ = glg.Logf("current dir: %s, position: %d/%d", 
+					filepath.Dir(path), state.FileWalker.Position, state.FileWalker.LibSize)
 				}
 				state.FileWalker.Position++
 			}
