@@ -2,19 +2,105 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
+	"io/ioutil"
 	"net/http"
 
+	"github.com/Spiritreader/avior-go/consts"
+	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func getAllJobs(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: all jobs")
+	_ = glg.Log("endpoint hit: all jobs")
 	jobs, err := aviorDb.GetAllJobs()
 	if err != nil {
 		_ = glg.Errorf("error getting all jobs, %s", err)
+		encoder := json.NewEncoder(w)
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(err)
+		return
+	}
+	encoder := json.NewEncoder(w)
+	w.WriteHeader(http.StatusOK)
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode(jobs)
+}
+
+func getJobsForClient(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Log("endpoint hit: get jobs for client")
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var client structs.Client
+	err := json.Unmarshal(reqBody, &client)
+	if err != nil {
+		_ = glg.Errorf("could not unmarshall client %+v: %s", string(reqBody), err)
+		encoder := json.NewEncoder(w)
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(err)
+		return
+	}
+	jobs, err := aviorDb.GetJobsForClient(client)
+	if err != nil {
+		_ = glg.Errorf("error getting jobs for client %s: %s", client.Name, err)
+		encoder := json.NewEncoder(w)
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = encoder.Encode(err)
+		return
+	}
+	encoder := json.NewEncoder(w)
+	w.WriteHeader(http.StatusOK)
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode(jobs)
+}
+
+func insertJob(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Log("endpoint hit: insert job")
+	err := modifyJob(w, r, consts.INSERT)
+	if err != nil {
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
+
+func updateJob(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Log("endpoint hit: update job")
+	err := modifyJob(w, r, consts.UPDATE)
+	if err != nil {
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func deleteJob(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Log("endpoint hit: delete job")
+	err := modifyJob(w, r, consts.DELETE)
+	if err != nil {
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var job structs.Job
+	err := json.Unmarshal(reqBody, &job)
+	if err != nil {
+		_ = glg.Errorf("could not unmarshall job %+v: %s", string(reqBody), err)
+		w.WriteHeader(http.StatusInternalServerError)
+		encoder := json.NewEncoder(w)
+		_ = encoder.Encode(err)
+		return err
+	}
+	err = aviorDb.ModifyJob(&job, primitive.NilObjectID, mode)
+	if err != nil {
+		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		encoder := json.NewEncoder(w)
+		_ = encoder.Encode(err)
+		return err
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
-	_ = encoder.Encode(jobs)
+	_ = encoder.Encode(job)
+	return nil
 }

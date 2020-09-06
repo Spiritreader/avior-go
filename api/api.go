@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -35,7 +34,6 @@ func resume(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: root")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -43,7 +41,6 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func getEncLineOut(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: encoder")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -51,7 +48,7 @@ func getEncLineOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: shut down service")
+	_ = glg.Info("endpoint hit: shut down service")
 	appCancel()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -81,13 +78,22 @@ func startHttpServer() *http.Server {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", getStatus).Methods("GET")
-	router.HandleFunc("/encoder", getEncLineOut)
-	router.HandleFunc("/jobs", getAllJobs)
-	router.HandleFunc("/clients", getAllClients)
+	router.HandleFunc("/encoder", getEncLineOut).Methods("GET")
 
-	router.HandleFunc("/insertclient", insertClient).Methods("POST")
-	router.HandleFunc("/updateclient", updateClient).Methods("PUT")
-	router.HandleFunc("/deleteclient", deleteClient).Methods("DELETE")
+	router.HandleFunc("/fields/", getAllFields).Methods("GET")
+	router.HandleFunc("/fields/{id}", insertField).Methods("POST")
+	router.HandleFunc("/fields/{id}", deleteField).Methods("DELETE")
+
+	router.HandleFunc("/jobs/jobsforclient", getJobsForClient).Methods("GET")
+	router.HandleFunc("/jobs/", getAllJobs).Methods("GET")
+	router.HandleFunc("/jobs/", insertJob).Methods("POST")
+	router.HandleFunc("/jobs/", updateJob).Methods("PUT")
+	router.HandleFunc("/jobs/", deleteJob).Methods("DELETE")
+
+	router.HandleFunc("/clients/", getAllClients).Methods("GET")
+	router.HandleFunc("/clients/", insertClient).Methods("POST")
+	router.HandleFunc("/clients/", updateClient).Methods("PUT")
+	router.HandleFunc("/clients/", deleteClient).Methods("DELETE")
 
 	router.HandleFunc("/shutdown", requestStop).Methods("PUT")
 	router.HandleFunc("/resume", resume).Methods("PUT")

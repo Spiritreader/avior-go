@@ -47,6 +47,8 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	return thisMachine, nil
 }
 
+
+
 // GetClients retrieves all clients that have been registered
 func (ds *DataStore) GetClients() ([]structs.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -68,24 +70,26 @@ func (ds *DataStore) GetClients() ([]structs.Client, error) {
 	return aviorClients, nil
 }
 
-func (ds *DataStore) ModifyClient(client *structs.Client, method string) error {
+func (ds *DataStore) ModifyClient(client *structs.Client, mode string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	clientColl := ds.Db().Collection("clients")
 	defer cancel()
+	clientColl := ds.Db().Collection("clients")
 	var err error
-	switch method {
+	switch mode {
 	case consts.INSERT:
-		_, err = clientColl.InsertOne(ctx, client)
+		var res *mongo.InsertOneResult
+		res, err = clientColl.InsertOne(ctx, client)
+		client.ID = res.InsertedID.(primitive.ObjectID)
 	case consts.UPDATE:
 		_, err = clientColl.ReplaceOne(ctx, bson.M{"_id": client.ID}, client)
 	case consts.DELETE:
 		_, err = clientColl.DeleteOne(ctx, bson.M{"_id": client.ID})
 	}
 	if err != nil {
-		_ = glg.Errorf("could not %s client %s: %s", method, client.Name, err)
+		_ = glg.Errorf("could not %s client %s: %s", mode, client.Name, err)
 		return err
 	}
-	_ = glg.Infof("%sd client %s", method, client.Name)
+	_ = glg.Infof("%sd client %s", mode, client.Name)
 	return nil
 }
 

@@ -30,15 +30,18 @@ func (ds *DataStore) GetFields(collectionName string) ([]structs.Field, error) {
 	return fields, nil
 }
 
-func (ds *DataStore) InsertFields(collection *mongo.Collection, fields []structs.Field) error {
-	fieldSlice := make([]interface{}, len(fields))
-	for idx, field := range fields {
+func (ds *DataStore) InsertFields(collection *mongo.Collection, fields *[]structs.Field) error {
+	fieldSlice := make([]interface{}, len(*fields))
+	for idx, field := range *fields {
 		field.ID = primitive.NewObjectID()
 		fieldSlice[idx] = field
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	insAmt, err := collection.InsertMany(ctx, fieldSlice)
+	for idx, id := range insAmt.InsertedIDs {
+		(*fields)[idx].ID = id.(primitive.ObjectID)
+	}
 	if err != nil {
 		_ = glg.Errorf("could not insert documents into %s: %s", collection.Name(), err)
 		return err
@@ -54,11 +57,11 @@ func (ds *DataStore) InsertFields(collection *mongo.Collection, fields []structs
 // collection is the database collection to delete structs.Field structs from
 //
 // fields is the structs.Field slice containing all Fields that should be deleted
-func (ds *DataStore) DeleteFields(collection *mongo.Collection, fields []structs.Field) error {
+func (ds *DataStore) DeleteFields(collection *mongo.Collection, fields *[]structs.Field) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	valueSlice := make([]string, len(fields))
-	for idx, field := range fields {
+	valueSlice := make([]string, len(*fields))
+	for idx, field := range *fields {
 		valueSlice[idx] = field.Value
 	}
 	delAmt, err := collection.DeleteMany(ctx, bson.M{"Name": bson.M{"$in": valueSlice}})

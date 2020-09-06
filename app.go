@@ -10,11 +10,13 @@ import (
 
 	"github.com/Spiritreader/avior-go/api"
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -143,7 +145,7 @@ MainLoop:
 			if job == nil {
 				return
 			}
-			err = dataStore.DeleteJob(job)
+			err = dataStore.ModifyJob(job, primitive.NilObjectID, consts.DELETE)
 			worker.ProcessJob(dataStore, client, job, resumeChan)
 			if err != nil {
 				_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")

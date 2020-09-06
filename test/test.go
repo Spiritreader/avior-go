@@ -11,6 +11,7 @@ import (
 
 	"github.com/Spiritreader/avior-go/api"
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
@@ -21,8 +22,6 @@ import (
 )
 
 func main() {
-	_, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	glg.Get().
@@ -51,6 +50,43 @@ func main() {
 		_ = glg.Errorf("error connecting to database, %s", errConnect)
 		return
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stopChan := make(chan string)
+	wg := new(sync.WaitGroup)
+	go api.Run(cancel, wg, stopChan, aviorDb)
+	<-ctx.Done()
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+	stopChan <- "stop"
+}
+
+func copyTest() {
+	srcPath := "D:/Recording/Master and Commander.mkv"
+	dstPath := "D:/Recording/Riddick_temp/Master and Commander.mkv"
+	if err := tools.MoppyFile(srcPath, dstPath, false); err != nil {
+		fmt.Printf("error: %s\n", err)
+	}
+}
+
+func encodeTests(aviorDb *db.DataStore) {
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	stopChan := make(chan string)
 	wg := new(sync.WaitGroup)
@@ -85,15 +121,7 @@ func main() {
 	stopChan <- "stop"
 }
 
-func copyTest() {
-	srcPath := "D:/Recording/Master and Commander.mkv"
-	dstPath := "D:/Recording/Riddick_temp/Master and Commander.mkv"
-	if err := tools.MoppyFile(srcPath, dstPath, false); err != nil {
-		fmt.Printf("error: %s\n", err)
-	}
-}
-
-func insertTests(aviorDb db.DataStore) {
+func insertTests(aviorDb *db.DataStore) {
 	dataStore := db.Get()
 	//database := aviorDb.Db()
 	_ = dataStore.LoadSharedConfig()
@@ -116,7 +144,7 @@ func insertTests(aviorDb db.DataStore) {
 		Subtitle: "DonnerstagsKrimi im Ersten",
 	}
 	client, _ := aviorDb.GetClientForMachine()
-	_ = aviorDb.InsertJobForClient(newJob, client)
+	_ = aviorDb.ModifyJob(newJob, client.ID, consts.INSERT)
 	/*
 		_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempOne)
 		_ = aviorDb.InsertFields(database.Collection("name_exclude"), tempMany)

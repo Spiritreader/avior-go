@@ -4,9 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -80,44 +82,29 @@ func (ds *DataStore) GetNextJobForClient(client *structs.Client) (*structs.Job, 
 	return result, nil
 }
 
-func (ds *DataStore) InsertJobForClient(job *structs.Job, client *structs.Client) error {
+func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mode string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	job.AssignedClient = structs.DBRef{
-		Ref: "clients",
-		ID:  client.ID,
-		DB:  "undefined",
+	jobColl := ds.Db().Collection("jobs")
+	var err error
+	switch mode {
+	case consts.INSERT:
+		job.AssignedClient = structs.DBRef{
+			Ref: "clients",
+			ID:  clientID,
+			DB:  "undefined",
+		}
+		job.AssignedClientLoaded = nil
+		_, err = jobColl.InsertOne(ctx, job)
+	case consts.UPDATE:
+		_, err = jobColl.ReplaceOne(ctx, bson.M{"_id": job.ID}, job)
+	case consts.DELETE:
+		_, err = jobColl.DeleteOne(ctx, bson.M{"_id": job.ID})
 	}
-	job.AssignedClientLoaded = nil
-	_, err := ds.Db().Collection("jobs").InsertOne(ctx, job)
 	if err != nil {
-		_ = glg.Errorf("could not insert job \"%s\" for client %s: %s", job.Name, client.Name, err)
+		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
 		return err
 	}
-	_ = glg.Infof("inserted job \"%s\" for client %s", job.Name, client.Name)
-	return nil
-}
-
-func (ds *DataStore) UpdateJob(job *structs.Job) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	_, err := ds.Db().Collection("jobs").ReplaceOne(ctx, bson.M{"_id": job.ID}, job)
-	if err != nil {
-		_ = glg.Errorf("could not update job %s: %s", job.Name, err)
-		return err
-	}
-	_ = glg.Infof("updated job %s", job.Name)
-	return nil
-}
-
-func (ds *DataStore) DeleteJob(job *structs.Job) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	_, err := ds.Db().Collection("jobs").DeleteOne(ctx, bson.M{"_id": job.ID})
-	if err != nil {
-		_ = glg.Errorf("could not delete job %s: %s", job.Name, err)
-		return err
-	}
-	_ = glg.Infof("deleted job %s", job.Name)
+	_ = glg.Infof("%sd job %s", mode, job.Name)
 	return nil
 }

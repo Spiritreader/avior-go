@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -48,56 +49,56 @@ func TestDataStore_Job(t *testing.T) {
 	testJobID4, _ := primitive.ObjectIDFromHex("5f4ab0161844fc0ed8ee9cd9")
 
 	testJob1 := &structs.Job{
-		ID: testJobID1,
-		Path: "\\\\UMS\\wd_usb_8tb\\Recording\\Praxis mit Meerblick - Der Prozess_2020-08-29-01-23-01-Das Erste HD (AC3,deu).ts",            
-		Name: "Praxis mit Meerblick - Der Prozess",            
-		Subtitle: "Spielfilm Deutschland 2018",            
-		CustomParameters: nil,          
+		ID:               testJobID1,
+		Path:             "\\\\UMS\\wd_usb_8tb\\Recording\\Praxis mit Meerblick - Der Prozess_2020-08-29-01-23-01-Das Erste HD (AC3,deu).ts",
+		Name:             "Praxis mit Meerblick - Der Prozess",
+		Subtitle:         "Spielfilm Deutschland 2018",
+		CustomParameters: nil,
 		AssignedClient: structs.DBRef{
 			Ref: "clients",
 			ID:  "5ae721280b6d431584127c19",
 			DB:  "undefined",
-		},             
-		AssignedClientLoaded: nil,           
+		},
+		AssignedClientLoaded: nil,
 	}
-	testJob2 :=  &structs.Job{
-		ID: testJobID2,
-		Path: "\\\\UMS\\wd_usb_8tb\\Recording\\Uncle (1)_2020-08-29-02-48-00-Einsfestival HD (AC3,deu).ts",            
-		Name: "Uncle (1)",            
-		Subtitle: "Zurück auf Los",            
-		CustomParameters: nil,          
+	testJob2 := &structs.Job{
+		ID:               testJobID2,
+		Path:             "\\\\UMS\\wd_usb_8tb\\Recording\\Uncle (1)_2020-08-29-02-48-00-Einsfestival HD (AC3,deu).ts",
+		Name:             "Uncle (1)",
+		Subtitle:         "Zurück auf Los",
+		CustomParameters: nil,
 		AssignedClient: structs.DBRef{
 			Ref: "clients",
 			ID:  client1.ID,
 			DB:  "undefined",
-		},             
-		AssignedClientLoaded: nil,           
+		},
+		AssignedClientLoaded: nil,
 	}
-	testJob3 :=  &structs.Job{
-		ID: testJobID3,
-		Path: "\\\\UMS\\wd_usb_8tb\\Recording\\Uncle (3)_2020-08-29-03-43-00-Einsfestival HD (AC3,deu).ts",            
-		Name: "Uncle (3)",            
-		Subtitle: "Letzter Versuch",            
-		CustomParameters: nil,          
+	testJob3 := &structs.Job{
+		ID:               testJobID3,
+		Path:             "\\\\UMS\\wd_usb_8tb\\Recording\\Uncle (3)_2020-08-29-03-43-00-Einsfestival HD (AC3,deu).ts",
+		Name:             "Uncle (3)",
+		Subtitle:         "Letzter Versuch",
+		CustomParameters: nil,
 		AssignedClient: structs.DBRef{
 			Ref: "clients",
 			ID:  client1.ID,
 			DB:  "undefined",
-		},             
-		AssignedClientLoaded: nil,           
+		},
+		AssignedClientLoaded: nil,
 	}
-	testJob4 :=  &structs.Job{
-		ID: testJobID4,
-		Path: "\\\\UMS\\wd_usb_8tb\\Recording\\Zu schön für mich_2020-08-29-20-13-02-BR Süd HD (AC3,deu).ts",            
-		Name: "Zu schön für mich",            
-		Subtitle: "Fernsehfilm Deutschland 2007",            
-		CustomParameters: nil,          
+	testJob4 := &structs.Job{
+		ID:               testJobID4,
+		Path:             "\\\\UMS\\wd_usb_8tb\\Recording\\Zu schön für mich_2020-08-29-20-13-02-BR Süd HD (AC3,deu).ts",
+		Name:             "Zu schön für mich",
+		Subtitle:         "Fernsehfilm Deutschland 2007",
+		CustomParameters: nil,
 		AssignedClient: structs.DBRef{
 			Ref: "clients",
 			ID:  client2.ID,
 			DB:  "undefined",
-		},             
-		AssignedClientLoaded: nil,           
+		},
+		AssignedClientLoaded: nil,
 	}
 
 	// Insert job for client
@@ -111,41 +112,41 @@ func TestDataStore_Job(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:	"InsertJobForClientTest_1",
+			name: "InsertJobForClientTest_1",
 			args: args{
-				job: 		testJob1,
+				job:    testJob1,
 				client: client1,
 			},
 			wantErr: false,
 		},
 		{
-			name: 		"InsertJobForClientTest_2",
+			name: "InsertJobForClientTest_2",
 			args: args{
-				job: 		testJob2,
+				job:    testJob2,
 				client: client1,
 			},
-			wantErr: 	false,
+			wantErr: false,
 		},
 		{
-			name: 		"InsertJobForClientTest_3",
+			name: "InsertJobForClientTest_3",
 			args: args{
-				job: 		testJob3,
+				job:    testJob3,
 				client: client1,
 			},
-			wantErr: 	false,
+			wantErr: false,
 		},
 		{
-			name: 		"InsertJobForClientTest_4",
+			name: "InsertJobForClientTest_4",
 			args: args{
-				job: 		testJob4,
+				job:    testJob4,
 				client: client2,
 			},
-			wantErr: 	false,
+			wantErr: false,
 		},
 	}
 	for _, tt := range insertJobForClientTests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ds.InsertJobForClient(tt.args.job, tt.args.client); (err != nil) != tt.wantErr {
+			if err := ds.ModifyJob(tt.args.job, tt.args.client.ID, consts.INSERT); (err != nil) != tt.wantErr {
 				t.Errorf("DataStore.InsertJobForClient() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -157,18 +158,18 @@ func TestDataStore_Job(t *testing.T) {
 	testJob1.Subtitle = "Durch dick und dünn"
 	UpdateJobTests := []struct {
 		name    string
-		job 		*structs.Job
+		job     *structs.Job
 		wantErr bool
 	}{
 		{
-			name: 	 "UpdateJobTest_1",
-			job: 		 testJob1,
+			name:    "UpdateJobTest_1",
+			job:     testJob1,
 			wantErr: false,
 		},
 	}
 	for _, tt := range UpdateJobTests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ds.UpdateJob(tt.job); (err != nil) != tt.wantErr {
+			if err := ds.ModifyJob(tt.job, primitive.NilObjectID, consts.UPDATE); (err != nil) != tt.wantErr {
 				t.Errorf("DataStore.UpdateJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -181,8 +182,8 @@ func TestDataStore_Job(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:		 "GetAllJobsTest_1",
-			want:		 []structs.Job{*testJob1, *testJob2, *testJob3, *testJob4},
+			name:    "GetAllJobsTest_1",
+			want:    []structs.Job{*testJob1, *testJob2, *testJob3, *testJob4},
 			wantErr: false,
 		},
 	}
@@ -193,7 +194,7 @@ func TestDataStore_Job(t *testing.T) {
 				t.Errorf("DataStore.GetAllJobs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want)  {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DataStore.GetAllJobs() = %d, want %d", len(got), len(tt.want))
 			}
 		})
@@ -206,20 +207,20 @@ func TestDataStore_Job(t *testing.T) {
 	testJob4.AssignedClientLoaded = client2
 	getJobsForClientTests := []struct {
 		name    string
-		client 	structs.Client
+		client  structs.Client
 		want    []structs.Job
 		wantErr bool
 	}{
 		{
-			name:		 "GetJobsForClientTest_1",
-			client:	 *client1,
-			want:		 []structs.Job{*testJob1, *testJob2, *testJob3},
+			name:    "GetJobsForClientTest_1",
+			client:  *client1,
+			want:    []structs.Job{*testJob1, *testJob2, *testJob3},
 			wantErr: false,
 		},
 		{
-			name:		 "GetJobsForClientTest_2",
-			client:	 *client2,
-			want:		 []structs.Job{*testJob4},
+			name:    "GetJobsForClientTest_2",
+			client:  *client2,
+			want:    []structs.Job{*testJob4},
 			wantErr: false,
 		},
 	}
@@ -230,7 +231,7 @@ func TestDataStore_Job(t *testing.T) {
 				t.Errorf("DataStore.GetJobsForClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want)  {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DataStore.GetJobsForClient() = %v, want %v", got, tt.want)
 			}
 		})
@@ -239,7 +240,7 @@ func TestDataStore_Job(t *testing.T) {
 	// Get next job for client
 	getNextJobForClientTests := []struct {
 		name    string
-		client 	*structs.Client
+		client  *structs.Client
 		want    *structs.Job
 		wantErr bool
 	}{
@@ -276,29 +277,29 @@ func TestDataStore_Job(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: 	 "DeleteTest_1",
-			job: 		 testJob1,
+			name:    "DeleteTest_1",
+			job:     testJob1,
 			wantErr: false,
 		},
 		{
-			name: 	 "DeleteTest_2",
-			job: 		 testJob2,
+			name:    "DeleteTest_2",
+			job:     testJob2,
 			wantErr: false,
 		},
 		{
-			name: 	 "DeleteTest_3",
-			job: 		 testJob3,
+			name:    "DeleteTest_3",
+			job:     testJob3,
 			wantErr: false,
 		},
 		{
-			name: 	 "DeleteTest_4",
-			job: 		 testJob4,
+			name:    "DeleteTest_4",
+			job:     testJob4,
 			wantErr: false,
 		},
 	}
 	for _, tt := range deleteJobTests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ds.DeleteJob(tt.job); (err != nil) != tt.wantErr {
+			if err := ds.ModifyJob(tt.job, primitive.NilObjectID, consts.DELETE); (err != nil) != tt.wantErr {
 				t.Errorf("DataStore.DeleteJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
