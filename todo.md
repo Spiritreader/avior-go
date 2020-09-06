@@ -1,42 +1,12 @@
-## Example cut file:
-```
-__nameToCut.txt__
-Filmnacht im ZDF
-Der Fernsehfilm der Woche
-Der Samstagskrimi
-Hollywood-Freitag
-Montagskino im ZDF
-SommerKino im Ersten
-FilmDebüt im Ersten
-FilmMittwoch im Ersten
-KinoFestival im Ersten
-Das kleine Fernsehspiel
-Dokumentarfilm im Ersten
-JUNGER FILM
-NEUES FRANZÖSISCHES KINO
-Kleines Fernsehspiel
-BEZIEHUNGSKISTEN
-Dokumentarfilm im Ersten - 
-Freitag im Ersten
-PremierenKino im Ersten
-Kinofestival im Ersten
-DonnerstagsKrimi im Ersten
-
----NAME-----------------------------    __SUBTITLE__________
-Ying's Bassabenteuer - Teil 1
-```
+# DONE!
 
 ## Avior Db structure
 - clients
 - jobs
 - sub_exclude
 - name_exclude
-
-## Insert + Delete
-for
-- sub_exclude
-- name_exclude
-
+- log_include
+- log_exclude
 
 ## Tasks
 
@@ -69,7 +39,7 @@ The purpose of this module is to serve as a collection of all state data that is
 - [x] find duplicates on disk
 - [x] config file entry
 - [x] global state integration
-- [ ] moving of old files when modules result is REPL
+- [x] moving of old files when modules result is REPL
 
 
 ### Modules:
@@ -92,16 +62,13 @@ ____
 - [x] Compare resolutions:
     - better resolution should allow replacement
     - return modes: `REPL`, `NOCH`, `KEEP`
-
 - [x] Compare audioformat:
     - better audio format should allow replacement
     - return modes: `REPL`, `NOCH`, `KEEP`
-
 - [x] Estimate size of new file
     - better file size should allow (percentage threshold)
     - depends on: encoder
     - return modes: `REPL`, `NOCH`, `KEEP`
-
 - [x] Check for include/exclude terms in logfile
     - include mode: if include and exclude match, include takes priority
     - neutral mode: swiss
@@ -159,3 +126,10 @@ PI -test
 - [x] global state integation
 - [x] estimate remaining time
 
+### http API
+
+- [x] resume service
+- [x] pause service
+- [x] stop service
+- [x] expose database operations outwards
+- [x] export statistics
