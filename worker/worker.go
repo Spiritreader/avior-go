@@ -27,15 +27,22 @@ var state *globalstate.Data = globalstate.Instance()
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
 	jobLog := new(joblog.Data)
 	_ = glg.Infof("processing job %s", job.Path)
+
+	//reset global state after job
+	defer state.Clear()
+	
+	//populate media file
 	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := mediaFile.Update()
 	if err != nil {
 		Resume(resumeChan)
 		return
 	}
-	fmt.Println(mediaFile.Path)
-	fmt.Println(mediaFile.OutName())
+	_ = glg.Logf("input file: %s", mediaFile.Path)
+	_ = glg.Logf("trimmed name: %s", mediaFile.OutName())
 	jobLog.AddFileProperties(*mediaFile)
+
+	// run single file moduels
 	res := runModules(jobLog, *mediaFile)
 	jobLog.Add("")
 	switch res {
@@ -46,11 +53,14 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		return
 	}
 
+	// check for duplicates and run modules
 	var redirectDir *string = nil
 	duplicates := checkForDuplicates(mediaFile)
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
 		_ = duplicates[0].Update()
+
+		// run dupe file modules and prevent replacement if necessary
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		jobLog.Add("")
 		switch res {
@@ -69,8 +79,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			Resume(resumeChan)
 			return
 		}
-		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
 
+		// if dupe file is eligible for replacement, move it to the .obsolete dir
+		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
 		errM := moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
 		errL := moveLogs(duplicates[0], obsoleteDir, &moduleName)
 		if errM != nil || errL != nil {
@@ -109,6 +120,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			return
 		}
 		_ = glg.Warnf("encode failed, retrying")
+		// allow overwrite for retry to avoid it failing imdmediately
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
 			jobLog.Add("error: " + err.Error())
@@ -300,6 +312,9 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 				matches = append(matches, *file)
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
+				if state.FileWalker.Position % 1000 == 0 {
+					_ = glg.Logf("current dir: %s, position: %d/%d", de.Name(), state.FileWalker.Position, state.FileWalker.LibSize)
+				}
 				state.FileWalker.Position++
 			}
 			return nil

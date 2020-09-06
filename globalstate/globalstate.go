@@ -20,6 +20,12 @@ func Instance() *Data {
 	return instance
 }
 
+func (d *Data) Clear() {
+	d.Encoder = Encoder{}
+	d.FileWalker = FileWalker{}
+	d.Mover = Mover{}
+}
+
 type Data struct {
 	Encoder    Encoder
 	FileWalker FileWalker
