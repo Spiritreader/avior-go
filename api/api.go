@@ -10,9 +10,9 @@ import (
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/globalstate"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/kpango/glg"
-	"github.com/rs/cors"
 )
 
 var aviorDb *db.DataStore
@@ -118,11 +118,17 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/resume", resume).Methods("PUT")
 	router.HandleFunc("/pause", pause).Methods("PUT")
 
-	c := cors.New(cors.Options{
+	/*c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
-	})
+	})*/
 
-	srv.Handler = c.Handler(router)
+	/*handlers.CORS()(router)*/
+	//headersOk := handlers.AllowedHeaders([]string{"Access-Control-Allow-Origin"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+
+	//srv.Handler = handlers.CORS(headersOk, originsOk, methodsOk)(router)
+	srv.Handler = handlers.CORS(originsOk, methodsOk)(router)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
