@@ -98,8 +98,10 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		customDuration = true
 	} else if dstDir != nil {
 		outPath = filepath.Join(*dstDir, file.OutName()+cfg.Local.Ext)
+		_ = glg.Infof("OutPath: %s", outPath)
 	} else {
 		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName()+cfg.Local.Ext)
+		_ = glg.Infof("OutPath: %s", outPath)
 	}
 	state.Encoder.OutPath = outPath
 
@@ -242,8 +244,8 @@ func parseOut(line string, customDuration bool) {
 			//fmt.Printf("Position: %s\n", state.Encoder.Position)
 			diff := state.Encoder.Duration.Sub(state.Encoder.Position)
 			//fmt.Printf("Difference: %s\n", diff)
-			if state.Encoder.Speed > 0 {
-				diff /= time.Duration(state.Encoder.Speed)
+			if speed := time.Duration(state.Encoder.Speed); speed > 0 {
+				diff /= speed
 			}
 			state.Encoder.Remaining = diff
 		}
