@@ -155,7 +155,7 @@ func (f *File) LogsContain(terms []string) (bool, string) {
 
 // Returns, in percent from 0-100, the difference in length between the recorded and actual length
 func (f *File) LengthDifference() int {
-	return int(math.Round(100 - (float64(f.Length) / float64(f.RecordedLength) * 100)))
+	return int(math.Round(100 - (float64(f.RecordedLength) / float64(f.Length) * 100)))
 }
 
 func (f *File) OutName() string {

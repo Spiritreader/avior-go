@@ -43,7 +43,7 @@ func resume(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Info("endpoint hit: get status")
+	_ = glg.Log("endpoint hit: get status")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
