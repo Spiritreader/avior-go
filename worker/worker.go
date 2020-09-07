@@ -55,7 +55,15 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 
 	// check for duplicates and run modules
 	var redirectDir *string = nil
-	duplicates := checkForDuplicates(mediaFile)
+	duplicates, err := checkForDuplicates(mediaFile)
+	if err != nil {
+		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior")
+		state.Paused = true
+		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
+		Resume(resumeChan)
+		return
+	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
 		_ = duplicates[0].Update()
@@ -276,7 +284,7 @@ func copyLogsToEncOut(file media.File, dstDir string) error {
 // checkForDuplicates retrieves all duplicates for the given file,
 //
 // given a slice of media paths that should be searched
-func checkForDuplicates(file *media.File) []media.File {
+func checkForDuplicates(file *media.File) ([]media.File, error) {
 	cfg := config.Instance()
 	state.FileWalker.Active = true
 	defer func() {
@@ -289,14 +297,17 @@ func checkForDuplicates(file *media.File) []media.File {
 	for idx, path := range cfg.Local.MediaPaths {
 		state.FileWalker.Directory = path
 		_ = glg.Infof("scanning directory (%d/%d): %s", idx+1, len(cfg.Local.MediaPaths), path)
-		dir_matches, count, _ := traverseDir(file, path)
+		dir_matches, count, err := traverseDir(file, path)
+		if err != nil {
+			return []media.File{}, err
+		}
 		counter += count
 		matches = append(matches, dir_matches...)
 	}
 	cfg.Local.EstimatedLibSize = state.FileWalker.Position
 	state.FileWalker.Position = 0
 	_ = config.Save()
-	return matches
+	return matches, nil
 }
 
 func traverseDir(file *media.File, path string) ([]media.File, int, error) {
