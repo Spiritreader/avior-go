@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Spiritreader/avior-go/consts"
+	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/bson"
@@ -21,6 +22,8 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	hostname, _ := os.Hostname()
+	state := globalstate.Instance()
+	state.HostName = hostname
 	var thisMachine *structs.Client
 	err := ds.Db().Collection("clients").FindOne(ctx, bson.M{"Name": strings.ToUpper(hostname)}).Decode(&thisMachine)
 	if err == mongo.ErrNoDocuments {

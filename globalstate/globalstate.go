@@ -32,6 +32,7 @@ type Data struct {
 	Mover           Mover
 	Paused          bool
 	ShutdownPending bool
+	HostName        string
 }
 
 type Encoder struct {
