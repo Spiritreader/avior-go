@@ -25,11 +25,16 @@ import (
 var state *globalstate.Data = globalstate.Instance()
 
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
+	state.InFile = job.Path
 	jobLog := new(joblog.Data)
 	_ = glg.Infof("processing job %s", job.Path)
 
 	//reset global state after job
-	defer state.Clear()
+	defer func() {
+		lineOut := state.Encoder.LineOut
+		state.Clear()
+		state.Encoder.LineOut = lineOut
+	}()
 	
 	//populate media file
 	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
