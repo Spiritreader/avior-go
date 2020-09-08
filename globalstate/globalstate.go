@@ -24,6 +24,7 @@ func (d *Data) Clear() {
 	d.Encoder = Encoder{}
 	d.FileWalker = FileWalker{}
 	d.Mover = Mover{}
+	d.InFile = ""
 }
 
 type Data struct {
