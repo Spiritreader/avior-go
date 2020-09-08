@@ -129,7 +129,6 @@ func startHttpServer() *http.Server {
 
 	//srv.Handler = handlers.CORS(headersOk, originsOk, methodsOk)(router)
 	srv.Handler = handlers.CORS(originsOk, methodsOk)(router)
-
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error. port in use?

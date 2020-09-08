@@ -89,6 +89,7 @@ func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mo
 	var err error
 	switch mode {
 	case consts.INSERT:
+		job.ID = primitive.NewObjectID()
 		job.AssignedClient = structs.DBRef{
 			Ref: "clients",
 			ID:  clientID,

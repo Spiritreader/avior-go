@@ -15,7 +15,7 @@ type Job struct {
 	Subtitle             string             `bson:"Subtitle"`
 	CustomParameters     []string           `bson:"CustomParameters,omitempty"`
 	AssignedClient       DBRef              `bson:"AssignedClient"`
-	AssignedClientLoaded *Client            `bson:"AssignedClientLoaded,omitempty"`
+	AssignedClientLoaded *Client            `bson:"AssignedClientLoaded,omitempty" json:"-"`
 }
 
 // Client is a target machine for Avior

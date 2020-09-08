@@ -45,7 +45,7 @@ func (s *SizeApproxModule) Run(files ...media.File) (string, string, string) {
 	}
 	s.settings = *settings
 	s.new = files[0]
-	s.duplicate = files[0]
+	s.duplicate = files[1]
 	startTime := time.Now()
 	estimatedSize, duplicateSize, difference, err := s.estimate()
 	state.Encoder.Slice = 0

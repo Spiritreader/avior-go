@@ -91,7 +91,16 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 		_ = encoder.Encode(err)
 		return err
 	}
-	err = aviorDb.ModifyJob(&job, primitive.NilObjectID, mode)
+	if mode == consts.INSERT {
+		var poid primitive.ObjectID
+		poid, err = primitive.ObjectIDFromHex(job.AssignedClient.ID.(string))
+		if err != nil {
+			_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
+		}
+		err = aviorDb.ModifyJob(&job, poid ,mode)
+	} else {
+		err = aviorDb.ModifyJob(&job, primitive.NilObjectID, mode)
+	}
 	if err != nil {
 		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
 		w.WriteHeader(http.StatusInternalServerError)
