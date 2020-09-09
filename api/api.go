@@ -51,7 +51,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func getEncLineOut(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Info("endpoint hit: get encoder")
+	_ = glg.Log("endpoint hit: get encoder")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")

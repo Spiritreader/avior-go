@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -35,7 +36,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		state.Clear()
 		state.Encoder.LineOut = lineOut
 	}()
-	
+
 	//populate media file
 	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := mediaFile.Update()
@@ -52,6 +53,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	res := runModules(jobLog, *mediaFile)
 	switch res {
 	case comparator.KEEP:
+
 		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 		Resume(resumeChan)
@@ -64,6 +66,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior")
 		state.Paused = true
+		appendJobTemplate(job, jobLog)
 		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 		Resume(resumeChan)
@@ -78,6 +81,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		switch res {
 		case comparator.KEEP, comparator.NOCH:
+			//todo: if parent directory of file is already exists, don't move it one layer deeper
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
 			err = moveMediaFile(*mediaFile, existDir, nil)
 			if err != nil {
@@ -87,6 +91,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if err != nil {
 				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
 			}
+			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 			Resume(resumeChan)
@@ -108,7 +113,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 				jobLog.Add(errL.Error())
 			}
 			jobLog.Add(msg)
+			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 			Resume(resumeChan)
 			return
 		}
@@ -123,12 +130,14 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		if err.Error() == "no tag found" || stats.ExitCode == 1 {
 			jobLog.Add("error: " + err.Error())
+			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
 		if stats.ExitCode == 1 {
 			jobLog.Add("ffmpeg exit code 1")
+			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
@@ -138,6 +147,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
 			jobLog.Add("error: " + err.Error())
+			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
@@ -174,6 +184,16 @@ func Resume(resumeChan chan string) {
 		_ = glg.Log("sending resume event")
 	default:
 		_ = glg.Log("resume event already waiting for consumption")
+	}
+}
+
+func appendJobTemplate(job *structs.Job, jobLog *joblog.Data) {
+	bytes, err := json.Marshal(job)
+	if err != nil {
+		_ = glg.Warnf("couldn't attach database job to job log, err %s", err)
+	} else {
+		jobLog.Add("Job Database Template: ")
+		jobLog.Add(string(bytes))
 	}
 }
 
@@ -329,9 +349,9 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 				matches = append(matches, *file)
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
-				if state.FileWalker.Position % 1000 == 0 {
-					_ = glg.Logf("current dir: %s, position: %d/%d", 
-					filepath.Dir(path), state.FileWalker.Position, state.FileWalker.LibSize)
+				if state.FileWalker.Position%1000 == 0 {
+					_ = glg.Logf("current dir: %s, position: %d/%d",
+						filepath.Dir(path), state.FileWalker.Position, state.FileWalker.LibSize)
 				}
 				state.FileWalker.Position++
 			}
