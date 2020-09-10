@@ -303,7 +303,7 @@ func findAll(slice []string, terms []string) []string {
 	found := make([]string, 0)
 	for _, line := range slice {
 		for _, term := range terms {
-			if strings.Contains(line, term) {
+			if len(term) > 0 && strings.Contains(line, term) {
 				found = append(found, term)
 			}
 		}
