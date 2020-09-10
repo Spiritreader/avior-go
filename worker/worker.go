@@ -188,6 +188,7 @@ func Resume(resumeChan chan string) {
 }
 
 func appendJobTemplate(job *structs.Job, jobLog *joblog.Data) {
+	job.CustomParameters = append(job.CustomParameters, "lengthOverride")
 	bytes, err := json.MarshalIndent(job, "", "  ")
 	if err != nil {
 		_ = glg.Warnf("couldn't attach database job to job log, err %s", err)
