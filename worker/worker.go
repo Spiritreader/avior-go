@@ -79,9 +79,12 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		switch res {
 		case comparator.KEEP, comparator.NOCH:
-			//todo: if parent directory of file is already exists, don't move it one layer deeper
 			appendJobTemplate(job, jobLog)
 			writeSkippedLog(mediaFile, jobLog)
+			if (filepath.Dir(mediaFile.Path) == consts.EXIST_DIR) {
+				Resume(resumeChan)
+				return
+			}
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
 			err = moveMediaFile(*mediaFile, existDir, nil)
 			if err != nil {
