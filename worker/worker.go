@@ -53,9 +53,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	res := runModules(jobLog, *mediaFile)
 	switch res {
 	case comparator.KEEP:
-
-		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
+		appendJobTemplate(job, jobLog)
+		writeSkippedLog(mediaFile, jobLog)
 		Resume(resumeChan)
 		return
 	}
@@ -67,8 +66,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior")
 		state.Paused = true
 		appendJobTemplate(job, jobLog)
-		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-		_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
+		writeSkippedLog(mediaFile, jobLog)
 		Resume(resumeChan)
 		return
 	}
@@ -82,6 +80,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		switch res {
 		case comparator.KEEP, comparator.NOCH:
 			//todo: if parent directory of file is already exists, don't move it one layer deeper
+			appendJobTemplate(job, jobLog)
+			writeSkippedLog(mediaFile, jobLog)
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
 			err = moveMediaFile(*mediaFile, existDir, nil)
 			if err != nil {
@@ -91,9 +91,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if err != nil {
 				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
 			}
-			appendJobTemplate(job, jobLog)
-			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 			Resume(resumeChan)
 			return
 		}
@@ -114,8 +111,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			}
 			jobLog.Add(msg)
 			appendJobTemplate(job, jobLog)
-			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-			_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
+			writeSkippedLog(mediaFile, jobLog)
 			Resume(resumeChan)
 			return
 		}
@@ -123,20 +119,23 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		redirectDir = &duplicateDir
 	}
 
+	jobLog.Add("")
 	// encode with one retry that overwrites (in case the old one failed)
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
 	_ = glg.Logf("media struct: %+v", *mediaFile)
+	jobLog.Add("Encoder Info:")
+	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	if err != nil {
-		if err.Error() == "no tag found" || stats.ExitCode == 1 {
-			jobLog.Add("error: " + err.Error())
+		if err.Error() == "no resolution tag found" || stats.ExitCode == 1 {
+			jobLog.Add(fmt.Sprintf("encode error: %s", err.Error()))
 			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
 		if stats.ExitCode == 1 {
-			jobLog.Add("ffmpeg exit code 1")
+			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
@@ -146,7 +145,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// allow overwrite for retry to avoid it failing imdmediately
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
-			jobLog.Add("error: " + err.Error())
+			jobLog.Add("\nencode retry error: " + err.Error())
 			appendJobTemplate(job, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
@@ -154,8 +153,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		}
 	}
 	_ = glg.Infof("encode to %s done in %s", stats.OutputPath, stats.Duration)
-	jobLog.Add("")
-	jobLog.Add(fmt.Sprintf("OutputPath: %s", stats.OutputPath))
 	jobLog.Add(fmt.Sprintf("Duration: %s", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
 	_ = jobLog.AppendTo(filepath.Join("log", "processed.log"), false, true)
@@ -237,6 +234,12 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 		}
 	}
 	return comparator.NOCH, "none"
+}
+
+func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data) {
+	mediaFile.LogPaths = append(mediaFile.LogPaths, mediaFile.Path+".INFO.log")
+	_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+	_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
 }
 
 func moveMediaFile(file media.File, dstDir string, moduleName *string) error {
