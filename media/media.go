@@ -291,7 +291,7 @@ func (f *File) Legacy() bool {
 func find(slice []string, terms []string) (bool, string, int) {
 	for idx, line := range slice {
 		for _, term := range terms {
-			if strings.Contains(line, term) {
+			if len(term) > 0 && strings.Contains(line, term) {
 				return true, term, idx
 			}
 		}
