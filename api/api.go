@@ -123,12 +123,12 @@ func startHttpServer() *http.Server {
 	})*/
 
 	/*handlers.CORS()(router)*/
-	//headersOk := handlers.AllowedHeaders([]string{"Access-Control-Allow-Origin"})
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Access-Control-Allow-Origin"})
 	originsOk := handlers.AllowedOrigins([]string{"*"})
 	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 
 	//srv.Handler = handlers.CORS(headersOk, originsOk, methodsOk)(router)
-	srv.Handler = handlers.CORS(originsOk, methodsOk)(router)
+	srv.Handler = handlers.CORS(headersOk, originsOk, methodsOk)(router)
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error. port in use?

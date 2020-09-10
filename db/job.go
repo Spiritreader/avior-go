@@ -98,6 +98,11 @@ func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mo
 		job.AssignedClientLoaded = nil
 		_, err = jobColl.InsertOne(ctx, job)
 	case consts.UPDATE:
+		job.AssignedClient = structs.DBRef{
+			Ref: "clients",
+			ID:  clientID,
+			DB:  "undefined",
+		}
 		_, err = jobColl.ReplaceOne(ctx, bson.M{"_id": job.ID}, job)
 	case consts.DELETE:
 		_, err = jobColl.DeleteOne(ctx, bson.M{"_id": job.ID})

@@ -27,7 +27,7 @@ var (
 func main() {
 	resumeChan = make(chan string, 1)
 	apiChan := make(chan string)
-	
+
 	// Set up logger
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
@@ -146,16 +146,13 @@ MainLoop:
 			job, err := dataStore.GetNextJobForClient(client)
 			if err != nil {
 				_ = glg.Errorf("failed getting next job: %s", err)
-				return
-			}
-			if job == nil {
-				return
-			}
-			err = dataStore.ModifyJob(job, primitive.NilObjectID, consts.DELETE)
-			worker.ProcessJob(dataStore, client, job, resumeChan)
-			if err != nil {
-				_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
-				state.Paused = true
+			} else if job != nil {
+				err = dataStore.ModifyJob(job, primitive.NilObjectID, consts.DELETE)
+				worker.ProcessJob(dataStore, client, job, resumeChan)
+				if err != nil {
+					_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
+					state.Paused = true
+				}
 			}
 		}
 
@@ -171,12 +168,11 @@ MainLoop:
 			continue
 		default:
 		}
-		// send this timer message to resume chan instead, register resumechan with the API 
+		// send this timer message to resume chan instead, register resumechan with the API
 		// make the send non-blocking!
-		waitCtx, cancel := context.WithTimeout(context.Background(), time.Duration(sleepTime)* time.Minute)
+		waitCtx, cancel := context.WithTimeout(context.Background(), time.Duration(sleepTime)*time.Minute)
 		globalstate.WaitCtxCancel = cancel
 		<-waitCtx.Done()
-
 
 	}
 	_ = dataStore.SignOutClient(client)

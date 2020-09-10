@@ -59,7 +59,6 @@ func insertJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
 }
 
 func updateJob(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +67,6 @@ func updateJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func deleteJob(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +75,6 @@ func deleteJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
@@ -96,10 +93,18 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 		poid, err = primitive.ObjectIDFromHex(job.AssignedClient.ID.(string))
 		if err != nil {
 			_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
+		} else {
+			err = aviorDb.ModifyJob(&job, poid, mode)
 		}
-		err = aviorDb.ModifyJob(&job, poid ,mode)
 	} else {
-		err = aviorDb.ModifyJob(&job, primitive.NilObjectID, mode)
+		// update and delete follow the same path, just the right mode has to be set.
+		var poid primitive.ObjectID
+		poid, err = primitive.ObjectIDFromHex(job.AssignedClient.ID.(string))
+		if err != nil {
+			_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
+		} else {
+			err = aviorDb.ModifyJob(&job, poid, mode)
+		}
 	}
 	if err != nil {
 		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
