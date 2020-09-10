@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Spiritreader/avior-go/consts"
@@ -104,8 +105,6 @@ func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mo
 			DB:  "undefined",
 		}
 		_, err = jobColl.ReplaceOne(ctx, bson.M{"_id": job.ID}, job)
-	case consts.DELETE:
-		_, err = jobColl.DeleteOne(ctx, bson.M{"_id": job.ID})
 	}
 	if err != nil {
 		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
@@ -113,4 +112,22 @@ func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mo
 	}
 	_ = glg.Infof("%sd job %s", mode, job.Name)
 	return nil
+}
+
+func (ds *DataStore) DeleteJob(jobId string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	jobPOID, _ := primitive.ObjectIDFromHex(jobId)
+	res, err := ds.Db().Collection("jobs").DeleteOne(ctx, bson.M{"_id": jobPOID})
+	if err != nil {
+		_ = glg.Errorf("could not delete job %s: %s", jobId, err)
+		return 0, err
+	}
+	if res.DeletedCount == 0 {
+		_ = glg.Warnf("job %s to be deleted not found", jobId)
+		return 0, fmt.Errorf("job %s to be deleted not found", jobId)
+	} else {
+		_ = glg.Infof("deleted job %s", jobId)
+		return res.DeletedCount, nil
+	}
 }

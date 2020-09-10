@@ -107,7 +107,7 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/jobs/", getAllJobs).Methods("GET")
 	router.HandleFunc("/jobs/", insertJob).Methods("POST")
 	router.HandleFunc("/jobs/", updateJob).Methods("PUT")
-	router.HandleFunc("/jobs/", deleteJob).Methods("DELETE")
+	router.HandleFunc("/jobs/{id}", deleteJob).Methods("DELETE")
 
 	router.HandleFunc("/clients/", getAllClients).Methods("GET")
 	router.HandleFunc("/clients/", insertClient).Methods("POST")
