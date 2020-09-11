@@ -50,6 +50,24 @@ func (ds *DataStore) InsertFields(collection *mongo.Collection, fields *[]struct
 	return nil
 }
 
+func (ds *DataStore) DeleteField(collectionName string, id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	poid, _ := primitive.ObjectIDFromHex(id)
+	res, err := ds.Db().Collection(collectionName).DeleteOne(ctx, bson.M{"_id": poid})
+	if err != nil {
+		_ = glg.Errorf("could not delete field with id %s from %s", id, collectionName)
+		return err
+	}
+	if (res.DeletedCount > 0) {
+		_ = glg.Infof("deleted field with id %s from %s", id, collectionName)
+	} else {
+		_ = glg.Infof("got id %s, but deleted nothing", id)
+	}
+
+	return nil
+}
+
 // DeleteFields deletes fields from the database
 //
 // Params:

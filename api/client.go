@@ -7,6 +7,7 @@ import (
 
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
+	"github.com/gorilla/mux"
 	"github.com/kpango/glg"
 )
 
@@ -39,11 +40,23 @@ func updateClient(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+
 func deleteClient(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Log("endpoint hit: delete client")
-	err := modifyClient(w, r, consts.DELETE)
+	keys := mux.Vars(r)
+	delAmnt, err := aviorDb.DeleteClient(keys["id"])
 	if err != nil {
-		return
+		if delAmnt == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			encoder := json.NewEncoder(w)
+			_ = encoder.Encode(err)
+			return
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			encoder := json.NewEncoder(w)
+			_ = encoder.Encode(err)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusOK)
 }

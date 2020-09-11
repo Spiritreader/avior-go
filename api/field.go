@@ -51,8 +51,17 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 		_ = encoder.Encode(fields)
 		return
 	} else if mode == consts.DELETE {
-		w.WriteHeader(http.StatusOK)
-		err = aviorDb.DeleteFields(aviorDb.Db().Collection(keys["id"]), &fields)
+		var val string
+		var ok bool
+		if val, ok = keys["el"]; !ok {
+			_ = glg.Error("hmm that shouldn't be... %s")
+			w.WriteHeader(http.StatusInternalServerError)
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "  ")
+			_ = encoder.Encode("key not found")
+			return
+		}
+		err = aviorDb.DeleteField(keys["id"], val)
 		if err != nil {
 			_ = glg.Errorf("could not delete fields from %s: %s", keys["id"], err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -61,9 +70,10 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 			_ = encoder.Encode(err)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		_ = encoder.Encode(fields)
+		_ = encoder.Encode(val)
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)
@@ -81,27 +91,20 @@ func deleteField(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAllFields(w http.ResponseWriter, r *http.Request) {
-	keys, ok := r.URL.Query()["type"]
-	if !ok || len(keys[0]) < 1 {
-		_ = glg.Errorf("field request error")
+	keys := mux.Vars(r)
+	if keys["id"] != "log_exclude" &&
+		keys["id"] != "log_include" &&
+		keys["id"] != "name_exclude" &&
+		keys["id"] != "sub_exclude" {
+		_ = glg.Errorf("invalid key %s", keys["id"])
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
-		_ = encoder.Encode("field request error")
+		_ = encoder.Encode("invalid name")
 		return
 	}
-	var fields []structs.Field
-	var err error
-	if keys[0] == "sub_exclude" {
-		fields, err = aviorDb.GetFields(keys[0])
-	} else if keys[0] == "name_exclude" {
-		fields, err = aviorDb.GetFields(keys[0])
-	} else if keys[0] == "log_exclude" {
-		fields, err = aviorDb.GetFields(keys[0])
-	} else if keys[0] == "log_include" {
-		fields, err = aviorDb.GetFields(keys[0])
-	}
+	fields, err := aviorDb.GetFields(keys["id"])
 	if err != nil {
-		_ = glg.Errorf("error while retrieving %s fields, err: %s", keys[0], err)
+		_ = glg.Errorf("error while retrieving %s fields, err: %s", keys["id"], err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")

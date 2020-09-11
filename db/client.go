@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -80,6 +81,7 @@ func (ds *DataStore) ModifyClient(client *structs.Client, mode string) error {
 	var err error
 	switch mode {
 	case consts.INSERT:
+		client.ID = primitive.NewObjectID()
 		var res *mongo.InsertOneResult
 		res, err = clientColl.InsertOne(ctx, client)
 		client.ID = res.InsertedID.(primitive.ObjectID)
@@ -94,6 +96,24 @@ func (ds *DataStore) ModifyClient(client *structs.Client, mode string) error {
 	}
 	_ = glg.Infof("%sd client %s", mode, client.Name)
 	return nil
+}
+
+func (ds *DataStore) DeleteClient(clientId string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	clientPOID, _ := primitive.ObjectIDFromHex(clientId)
+	res, err := ds.Db().Collection("clients").DeleteOne(ctx, bson.M{"_id": clientPOID})
+	if err != nil {
+		_ = glg.Errorf("could not delete client %s: %s", clientId, err)
+		return 0, err
+	}
+	if res.DeletedCount == 0 {
+		_ = glg.Warnf("client %s to be deleted not found", clientId)
+		return 0, fmt.Errorf("client %s to be deleted not found", clientId)
+	} else {
+		_ = glg.Infof("deleted client %s", clientId)
+		return res.DeletedCount, nil
+	}
 }
 
 // Signs out the current machine

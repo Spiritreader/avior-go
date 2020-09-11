@@ -99,9 +99,9 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/config", getConfig).Methods("GET")
 	router.HandleFunc("/config", modifyConfig).Methods("PUT")
 
-	router.HandleFunc("/fields/", getAllFields).Methods("GET")
+	router.HandleFunc("/fields/{id}", getAllFields).Methods("GET")
 	router.HandleFunc("/fields/{id}", insertField).Methods("POST")
-	router.HandleFunc("/fields/{id}", deleteField).Methods("DELETE")
+	router.HandleFunc("/fields/{id}/{el}", deleteField).Methods("DELETE")
 
 	router.HandleFunc("/jobs/jobsforclient", getJobsForClient).Methods("GET")
 	router.HandleFunc("/jobs/", getAllJobs).Methods("GET")
@@ -112,7 +112,7 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/clients/", getAllClients).Methods("GET")
 	router.HandleFunc("/clients/", insertClient).Methods("POST")
 	router.HandleFunc("/clients/", updateClient).Methods("PUT")
-	router.HandleFunc("/clients/", deleteClient).Methods("DELETE")
+	router.HandleFunc("/clients/{id}", deleteClient).Methods("DELETE")
 
 	router.HandleFunc("/shutdown", requestStop).Methods("PUT")
 	router.HandleFunc("/resume", resume).Methods("PUT")
