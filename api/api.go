@@ -94,29 +94,29 @@ func startHttpServer() *http.Server {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", getStatus).Methods("GET")
-	router.HandleFunc("/encoder", getEncLineOut).Methods("GET")
+	router.HandleFunc("/encoder/", getEncLineOut).Methods("GET")
 
-	router.HandleFunc("/config", getConfig).Methods("GET")
-	router.HandleFunc("/config", modifyConfig).Methods("PUT")
+	router.HandleFunc("/config/", getConfig).Methods("GET")
+	router.HandleFunc("/config/", modifyConfig).Methods("PUT")
 
-	router.HandleFunc("/fields/{id}", getAllFields).Methods("GET")
-	router.HandleFunc("/fields/{id}", insertField).Methods("POST")
-	router.HandleFunc("/fields/{id}/{el}", deleteField).Methods("DELETE")
+	router.HandleFunc("/fields/{id}/", getAllFields).Methods("GET")
+	router.HandleFunc("/fields/{id}/", insertField).Methods("POST")
+	router.HandleFunc("/fields/{id}/{el}/", deleteField).Methods("DELETE")
 
-	router.HandleFunc("/jobs/jobsforclient", getJobsForClient).Methods("GET")
+	router.HandleFunc("/jobs/jobsforclient/", getJobsForClient).Methods("GET")
 	router.HandleFunc("/jobs/", getAllJobs).Methods("GET")
 	router.HandleFunc("/jobs/", insertJob).Methods("POST")
 	router.HandleFunc("/jobs/", updateJob).Methods("PUT")
-	router.HandleFunc("/jobs/{id}", deleteJob).Methods("DELETE")
+	router.HandleFunc("/jobs/{id}/", deleteJob).Methods("DELETE")
 
 	router.HandleFunc("/clients/", getAllClients).Methods("GET")
 	router.HandleFunc("/clients/", insertClient).Methods("POST")
 	router.HandleFunc("/clients/", updateClient).Methods("PUT")
-	router.HandleFunc("/clients/{id}", deleteClient).Methods("DELETE")
+	router.HandleFunc("/clients/{id}/", deleteClient).Methods("DELETE")
 
-	router.HandleFunc("/shutdown", requestStop).Methods("PUT")
-	router.HandleFunc("/resume", resume).Methods("PUT")
-	router.HandleFunc("/pause", pause).Methods("PUT")
+	router.HandleFunc("/shutdown/", requestStop).Methods("PUT")
+	router.HandleFunc("/resume/", resume).Methods("PUT")
+	router.HandleFunc("/pause/", pause).Methods("PUT")
 
 	/*c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},

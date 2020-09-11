@@ -50,6 +50,16 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 		encoder.SetIndent("", "  ")
 		_ = encoder.Encode(fields)
 		return
+	} else if mode == consts.UPDATE {
+		err = aviorDb.UpdateFields(keys["id"], &fields)
+		if err != nil {
+			_ = glg.Errorf("could not update fields in %s: %s", keys["id"], err)
+			w.WriteHeader(http.StatusInternalServerError)
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "  ")
+			_ = encoder.Encode(err.Error())
+			return
+		}
 	} else if mode == consts.DELETE {
 		var val string
 		var ok bool

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Spiritreader/avior-go/structs"
@@ -46,7 +47,26 @@ func (ds *DataStore) InsertFields(collection *mongo.Collection, fields *[]struct
 		_ = glg.Errorf("could not insert documents into %s: %s", collection.Name(), err)
 		return err
 	}
-	_ = glg.Infof("inserted %d documents from %s", len(insAmt.InsertedIDs), collection.Name())
+	_ = glg.Infof("insertd %d documents from %s", len(insAmt.InsertedIDs), collection.Name())
+	return nil
+}
+
+func (ds *DataStore) UpdateFields(collectionName string, fields *[]structs.Field) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	collection := ds.Db().Collection(collectionName)
+	errs := make([]error, 0)
+	for idx := range *fields {
+		_, err := collection.ReplaceOne(ctx, bson.M{"_id": (*fields)[idx].ID}, (*fields)[idx])
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		_ = glg.Errorf("could not update fields %s: %s", fields, errs)
+		return fmt.Errorf("error updating fields: %s", errs)
+	}
+	_ = glg.Infof("updated fields %s", fields)
 	return nil
 }
 
@@ -59,7 +79,7 @@ func (ds *DataStore) DeleteField(collectionName string, id string) error {
 		_ = glg.Errorf("could not delete field with id %s from %s", id, collectionName)
 		return err
 	}
-	if (res.DeletedCount > 0) {
+	if res.DeletedCount > 0 {
 		_ = glg.Infof("deleted field with id %s from %s", id, collectionName)
 	} else {
 		_ = glg.Infof("got id %s, but deleted nothing", id)
