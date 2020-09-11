@@ -29,7 +29,7 @@ func modifyConfig(w http.ResponseWriter, r *http.Request) {
 		_ = glg.Errorf("could not unmarshal job %+v: %s", string(reqBody), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return
 	}
 	cfg := config.Instance()

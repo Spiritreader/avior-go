@@ -32,7 +32,7 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return
 	}
 	if mode == consts.INSERT {
@@ -42,7 +42,7 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 			w.WriteHeader(http.StatusInternalServerError)
 			encoder := json.NewEncoder(w)
 			encoder.SetIndent("", "  ")
-			_ = encoder.Encode(err)
+			_ = encoder.Encode(err.Error())
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -67,7 +67,7 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 			w.WriteHeader(http.StatusInternalServerError)
 			encoder := json.NewEncoder(w)
 			encoder.SetIndent("", "  ")
-			_ = encoder.Encode(err)
+			_ = encoder.Encode(err.Error())
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -108,7 +108,7 @@ func getAllFields(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return
 	}
 	encoder := json.NewEncoder(w)

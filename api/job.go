@@ -19,7 +19,7 @@ func getAllJobs(w http.ResponseWriter, r *http.Request) {
 		_ = glg.Errorf("error getting all jobs, %s", err)
 		encoder := json.NewEncoder(w)
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return
 	}
 	encoder := json.NewEncoder(w)
@@ -37,7 +37,7 @@ func getJobsForClient(w http.ResponseWriter, r *http.Request) {
 		_ = glg.Errorf("could not unmarshall client %+v: %s", string(reqBody), err)
 		encoder := json.NewEncoder(w)
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return
 	}
 	jobs, err := aviorDb.GetJobsForClient(client)
@@ -45,7 +45,7 @@ func getJobsForClient(w http.ResponseWriter, r *http.Request) {
 		_ = glg.Errorf("error getting jobs for client %s: %s", client.Name, err)
 		encoder := json.NewEncoder(w)
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return
 	}
 	encoder := json.NewEncoder(w)
@@ -78,12 +78,12 @@ func deleteJob(w http.ResponseWriter, r *http.Request) {
 		if delAmnt == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			encoder := json.NewEncoder(w)
-			_ = encoder.Encode(err)
+			_ = encoder.Encode(err.Error())
 			return
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			encoder := json.NewEncoder(w)
-			_ = encoder.Encode(err)
+			_ = encoder.Encode(err.Error())
 			return
 		}
 	}
@@ -95,10 +95,10 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 	var job structs.Job
 	err := json.Unmarshal(reqBody, &job)
 	if err != nil {
-		_ = glg.Errorf("could not unmarshall job %+v: %s", string(reqBody), err)
+		_ = glg.Errorf("could not unmarshal job %+v: %s", string(reqBody), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return err
 	}
 	if mode == consts.INSERT {
@@ -123,7 +123,7 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return err
 	}
 	encoder := json.NewEncoder(w)

@@ -41,6 +41,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := mediaFile.Update()
 	if err != nil {
+		_ = glg.Errorf("couldn't parse media file: %s", err)
 		Resume(resumeChan)
 		return
 	}

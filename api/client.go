@@ -49,12 +49,12 @@ func deleteClient(w http.ResponseWriter, r *http.Request) {
 		if delAmnt == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			encoder := json.NewEncoder(w)
-			_ = encoder.Encode(err)
+			_ = encoder.Encode(err.Error())
 			return
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			encoder := json.NewEncoder(w)
-			_ = encoder.Encode(err)
+			_ = encoder.Encode(err.Error())
 			return
 		}
 	}
@@ -70,7 +70,7 @@ func modifyClient(w http.ResponseWriter, r *http.Request, mode string) error {
 		_ = glg.Errorf("could not unmarshal client %+v: %s", string(reqBody), err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return err
 	}
 	err = aviorDb.ModifyClient(client, mode)
@@ -78,7 +78,7 @@ func modifyClient(w http.ResponseWriter, r *http.Request, mode string) error {
 		_ = glg.Errorf("could not %s client %s: %s", mode, client.Name, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
-		_ = encoder.Encode(err)
+		_ = encoder.Encode(err.Error())
 		return err
 	}
 	encoder := json.NewEncoder(w)
