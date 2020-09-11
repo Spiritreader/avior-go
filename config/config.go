@@ -224,7 +224,9 @@ func LoadLocalFrom(path string) error {
 }
 
 func (cfg *Data) Update(inCfg Local) {
+	databaseURL := cfg.Local.DatabaseURL
 	cfg.Local = inCfg
+	cfg.Local.DatabaseURL = databaseURL
 }
 
 func Save() error {

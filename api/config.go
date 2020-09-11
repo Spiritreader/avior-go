@@ -35,6 +35,7 @@ func modifyConfig(w http.ResponseWriter, r *http.Request) {
 	cfg := config.Instance()
 	configNew.DatabaseURL = cfg.Local.DatabaseURL
 	cfg.Update(*configNew)
+	_ = config.Save()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode(config.Instance())
