@@ -10,7 +10,7 @@ import (
 )
 
 func getConfig(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Log("endpoint hit: get config")
+	_ = glg.Debug("endpoint hit: get config")
 	cfg := config.Instance()
 	w.WriteHeader(http.StatusOK)
 	encoder := json.NewEncoder(w)

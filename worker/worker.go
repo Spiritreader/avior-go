@@ -54,7 +54,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	res := runModules(jobLog, *mediaFile)
 	switch res {
 	case comparator.KEEP:
-		appendJobTemplate(job, jobLog)
+		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog)
 		Resume(resumeChan)
 		return
@@ -66,7 +66,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior")
 		state.Paused = true
-		appendJobTemplate(job, jobLog)
+		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog)
 		Resume(resumeChan)
 		return
@@ -80,7 +80,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		switch res {
 		case comparator.KEEP, comparator.NOCH:
-			appendJobTemplate(job, jobLog)
+			appendJobTemplate(*job, jobLog, true)
 			writeSkippedLog(mediaFile, jobLog)
 			if (filepath.Dir(mediaFile.Path) == consts.EXIST_DIR) {
 				Resume(resumeChan)
@@ -114,7 +114,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 				jobLog.Add(errL.Error())
 			}
 			jobLog.Add(msg)
-			appendJobTemplate(job, jobLog)
+			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
 			Resume(resumeChan)
 			return
@@ -133,14 +133,14 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		if err.Error() == "no resolution tag found" || stats.ExitCode == 1 {
 			jobLog.Add(fmt.Sprintf("encode error: %s", err.Error()))
-			appendJobTemplate(job, jobLog)
+			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
 		}
 		if stats.ExitCode == 1 {
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
-			appendJobTemplate(job, jobLog)
+			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
@@ -150,7 +150,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
 			jobLog.Add("\nencode retry error: " + err.Error())
-			appendJobTemplate(job, jobLog)
+			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			Resume(resumeChan)
 			return
@@ -188,8 +188,11 @@ func Resume(resumeChan chan string) {
 	}
 }
 
-func appendJobTemplate(job *structs.Job, jobLog *joblog.Data) {
+func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
 	job.CustomParameters = append(job.CustomParameters, "lengthOverride")
+	if moved {
+		job.Path = filepath.Join( filepath.Dir(job.Path), consts.EXIST_DIR, filepath.Base(job.Path))
+	}
 	bytes, err := json.MarshalIndent(job, "", "  ")
 	if err != nil {
 		_ = glg.Warnf("couldn't attach database job to job log, err %s", err)
