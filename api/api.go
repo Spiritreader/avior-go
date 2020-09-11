@@ -101,6 +101,7 @@ func startHttpServer() *http.Server {
 
 	router.HandleFunc("/fields/{id}/", getAllFields).Methods("GET")
 	router.HandleFunc("/fields/{id}/", insertField).Methods("POST")
+	router.HandleFunc("/fields/{id}/", updateField).Methods("PUT")
 	router.HandleFunc("/fields/{id}/{el}/", deleteField).Methods("DELETE")
 
 	router.HandleFunc("/jobs/jobsforclient/", getJobsForClient).Methods("GET")

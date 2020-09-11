@@ -24,16 +24,19 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 		_ = encoder.Encode("invalid name")
 		return
 	}
+	var err error
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var fields []structs.Field = make([]structs.Field, 0)
-	err := json.Unmarshal(reqBody, &fields)
-	if err != nil {
-		_ = glg.Errorf("could not unmarshal field %+v: %s", string(reqBody), err)
-		w.WriteHeader(http.StatusInternalServerError)
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		_ = encoder.Encode(err.Error())
-		return
+	if mode != consts.DELETE {
+		err = json.Unmarshal(reqBody, &fields)
+		if err != nil {
+			_ = glg.Errorf("could not unmarshal field %+v: %s", string(reqBody), err)
+			w.WriteHeader(http.StatusInternalServerError)
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "  ")
+			_ = encoder.Encode(err.Error())
+			return
+		}
 	}
 	if mode == consts.INSERT {
 		err = aviorDb.InsertFields(aviorDb.Db().Collection(keys["id"]), &fields)
@@ -60,6 +63,11 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 			_ = encoder.Encode(err.Error())
 			return
 		}
+		w.WriteHeader(http.StatusCreated)
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		_ = encoder.Encode(fields)
+		return
 	} else if mode == consts.DELETE {
 		var val string
 		var ok bool
@@ -98,6 +106,10 @@ func insertField(w http.ResponseWriter, r *http.Request) {
 
 func deleteField(w http.ResponseWriter, r *http.Request) {
 	modifyFields(w, r, consts.DELETE)
+}
+
+func updateField(w http.ResponseWriter, r *http.Request) {
+	modifyFields(w, r, consts.UPDATE)
 }
 
 func getAllFields(w http.ResponseWriter, r *http.Request) {
