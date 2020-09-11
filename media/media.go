@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -235,12 +236,18 @@ func (f *File) getLength() {
 func (f *File) trimName() {
 	cfg := config.Instance()
 	terms := findAll([]string{f.Name}, cfg.Shared.NameExclude)
+	sort.Slice(terms, func(i, j int) bool {
+		return len(terms[i]) > len(terms[j])
+	})
 	for _, term := range terms {
 		if idx := strings.Index(f.Name, term); idx != -1 {
 			f.Name = strings.Trim(f.Name[idx+len(term):], " ")
 		}
 	}
 	terms = findAll([]string{f.Subtitle}, cfg.Shared.SubExclude)
+	sort.Slice(terms, func(i, j int) bool {
+		return len(terms[i]) > len(terms[j])
+	})
 	for _, term := range terms {
 		if idx := strings.Index(f.Subtitle, term); idx != -1 {
 			f.Subtitle = strings.Trim(f.Subtitle[:idx], " ")

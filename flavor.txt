@@ -1,0 +1,17 @@
+package main
+
+import (
+	"fmt"
+	"sort"
+)
+
+func main() {
+	var terms []string
+	terms = []string{"i", "bims", "einsnachlängesortierter", "array"}
+	sort.Slice(terms, func(i, j int) bool {
+		return len(terms[i]) > len(terms[j])
+	})
+	fmt.Printf("terms %v", terms);
+}
+
+>> terms [einsnachlängesortierter array bims i]
