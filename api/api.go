@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -57,6 +59,29 @@ func getEncLineOut(w http.ResponseWriter, r *http.Request) {
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode(state.Encoder.LineOut)
 }
+
+func getLog(w http.ResponseWriter, r *http.Request, logName string) {
+	content, err := ioutil.ReadFile(filepath.Join("log", logName))
+	if err != nil {
+		_ = glg.Errorf("could not read logfile, err: %s", err)
+		_ = json.NewEncoder(w).Encode(err.Error())
+		return
+	}
+	_, _ = w.Write(content)
+}
+
+func getMainLog(w http.ResponseWriter, r *http.Request) {
+	getLog(w, r, "main.log")
+}
+
+func getErrorLog(w http.ResponseWriter, r *http.Request) {
+	getLog(w, r, "err.log")
+}
+
+func getSkippedLog(w http.ResponseWriter, r *http.Request) {
+	getLog(w, r, "skipped.log")
+}
+
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Info("endpoint hit: shut down service")
@@ -118,6 +143,10 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/shutdown/", requestStop).Methods("PUT")
 	router.HandleFunc("/resume/", resume).Methods("PUT")
 	router.HandleFunc("/pause/", pause).Methods("PUT")
+
+	router.HandleFunc("/logs/main", getMainLog).Methods("GET")
+	router.HandleFunc("/logs/err", getErrorLog).Methods("GET")
+	router.HandleFunc("/logs/skipped", getSkippedLog).Methods("GET")
 
 	/*c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},

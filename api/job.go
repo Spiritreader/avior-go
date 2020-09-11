@@ -34,7 +34,7 @@ func getJobsForClient(w http.ResponseWriter, r *http.Request) {
 	var client structs.Client
 	err := json.Unmarshal(reqBody, &client)
 	if err != nil {
-		_ = glg.Errorf("could not unmarshall client %+v: %s", string(reqBody), err)
+		_ = glg.Errorf("could not unmarshal client %+v: %s", string(reqBody), err)
 		encoder := json.NewEncoder(w)
 		w.WriteHeader(http.StatusInternalServerError)
 		_ = encoder.Encode(err.Error())
