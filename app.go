@@ -52,7 +52,9 @@ func main() {
 	// Instantiate and load config file
 	_ = config.Instance()
 	if err := config.LoadLocal(); err != nil {
-		glg.Fatalf("could not load config file, shutting down: %s", err)
+		_ = config.Save()
+		_ = glg.Error("config file could not be loaded\nif this is the first startup, a new one has been created for you.\nPlease set the database url and restart the application")
+		glg.Fatalf("Shutting down: %s", err)
 	}
 
 	// connect to database
