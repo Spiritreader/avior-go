@@ -8,8 +8,8 @@ import (
 
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/kpango/glg"
+	"github.com/natefinch/lumberjack"
 )
-
 
 type Data struct {
 	messages []string
@@ -22,7 +22,7 @@ func (j *Data) Add(line string) {
 	j.messages = append(j.messages, line)
 }
 
-func (j* Data) AddFileProperties(file media.File) {
+func (j *Data) AddFileProperties(file media.File) {
 	if j.messages == nil {
 		j.messages = make([]string, 0)
 	}
@@ -33,7 +33,7 @@ func (j* Data) AddFileProperties(file media.File) {
 }
 
 func (j *Data) AppendTo(path string, newline bool, separators bool) error {
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	/*file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err := file.Close()
 		if err != nil {
@@ -43,7 +43,20 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 	if err != nil {
 		_ = glg.Errorf("could not write media info to %s, err: %s", path, err)
 		return err
+	}*/
+	file := &lumberjack.Logger{
+		Filename: path,
+		MaxSize:  10, // megabytes
+		//MaxBackups: 3,
+		//MaxAge:     28,   //days
+		//Compress:   false, // disabled by default
 	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			_ = glg.Errorf("error closing file: %s", err)
+		}
+	}()
 	hostname, _ := os.Hostname()
 	writer := bufio.NewWriter(file)
 	if newline {
@@ -60,7 +73,7 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 	if separators {
 		_, _ = writer.WriteString("----------------\n\n")
 	}
-	err = writer.Flush()
+	err := writer.Flush()
 	if err != nil {
 		_ = glg.Errorf("could not write media info to %s, err: %s", path, err)
 		return err

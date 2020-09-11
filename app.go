@@ -15,6 +15,7 @@ import (
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
+	"github.com/natefinch/lumberjack"
 )
 
 var (
@@ -27,8 +28,16 @@ func main() {
 	apiChan := make(chan string)
 
 	// Set up logger
-	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
+	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
+	log := &lumberjack.Logger{
+		Filename:   filepath.Join("log", "main.log"),
+		MaxSize:    10, // megabytes
+		//MaxBackups: 3,
+		//MaxAge:     28,   //days
+		//Compress:   false, // disabled by default
+	}
+
 	glg.Get().
 		SetMode(glg.BOTH).
 		//AddLevelWriter(glg.LOG, log).

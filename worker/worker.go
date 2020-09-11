@@ -82,7 +82,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		case comparator.KEEP, comparator.NOCH:
 			appendJobTemplate(*job, jobLog, true)
 			writeSkippedLog(mediaFile, jobLog)
-			if (filepath.Dir(mediaFile.Path) == consts.EXIST_DIR) {
+			if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
 				Resume(resumeChan)
 				return
 			}
@@ -128,8 +128,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
 	_ = glg.Logf("media struct: %+v", *mediaFile)
 	jobLog.Add("Encoder Info:")
-	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
+	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 	if err != nil {
 		if err.Error() == "no resolution tag found" || stats.ExitCode == 1 {
 			jobLog.Add(fmt.Sprintf("encode error: %s", err.Error()))
@@ -191,7 +191,7 @@ func Resume(resumeChan chan string) {
 func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
 	job.CustomParameters = append(job.CustomParameters, "lengthOverride")
 	if moved {
-		job.Path = filepath.Join( filepath.Dir(job.Path), consts.EXIST_DIR, filepath.Base(job.Path))
+		job.Path = filepath.Join(filepath.Dir(job.Path), consts.EXIST_DIR, filepath.Base(job.Path))
 	}
 	bytes, err := json.MarshalIndent(job, "", "  ")
 	if err != nil {

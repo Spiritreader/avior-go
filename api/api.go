@@ -45,7 +45,7 @@ func resume(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Debug("endpoint hit: get status")
+	_ = glg.Log("endpoint hit: get status")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -53,7 +53,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func getEncLineOut(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Debug("endpoint hit: get encoder")
+	_ = glg.Log("endpoint hit: get encoder")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -82,6 +82,9 @@ func getSkippedLog(w http.ResponseWriter, r *http.Request) {
 	getLog(w, r, "skipped.log")
 }
 
+func getProcessedLog(w http.ResponseWriter, r *http.Request) {
+	getLog(w, r, "processe.log")
+}
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Info("endpoint hit: shut down service")
@@ -147,6 +150,7 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/logs/main", getMainLog).Methods("GET")
 	router.HandleFunc("/logs/err", getErrorLog).Methods("GET")
 	router.HandleFunc("/logs/skipped", getSkippedLog).Methods("GET")
+	router.HandleFunc("/logs/processed", getProcessedLog).Methods("GET")
 
 	/*c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
