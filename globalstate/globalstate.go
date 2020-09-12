@@ -20,12 +20,12 @@ var reflectionPath string
 // Creates a new one if it doesn't exist
 func Instance() *Data {
 	once.Do(func() {
-		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		ex, err := os.Executable()
 		if err != nil {
 				log.Fatal(err)
 		}
-		fmt.Println(dir)
-		reflectionPath = dir
+		fmt.Println(ex)
+		reflectionPath = filepath.Dir(ex)
 		instance = new(Data)
 	})
 	return instance
