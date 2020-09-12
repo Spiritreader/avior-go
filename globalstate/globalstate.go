@@ -25,6 +25,7 @@ func Instance() *Data {
 				log.Fatal(err)
 		}
 		fmt.Println(dir)
+		reflectionPath = dir
 		instance = new(Data)
 	})
 	return instance
