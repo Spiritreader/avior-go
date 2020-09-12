@@ -31,8 +31,8 @@ func main() {
 	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	log := &lumberjack.Logger{
-		Filename:   filepath.Join("log", "main.log"),
-		MaxSize:    10, // megabytes
+		Filename: filepath.Join("log", "main.log"),
+		MaxSize:  10, // megabytes
 		//MaxBackups: 3,
 		//MaxAge:     28,   //days
 		//Compress:   false, // disabled by default
@@ -53,9 +53,11 @@ func main() {
 	defer log.Close()
 
 	// read cli args
-	arg := os.Args[1]
-	if arg == "pause" {
-		globalstate.Instance().Paused = true
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+		if arg == "pause" {
+			globalstate.Instance().Paused = true
+		}
 	}
 
 	// Instantiate and load config file
