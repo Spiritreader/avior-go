@@ -2,6 +2,10 @@ package globalstate
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -9,15 +13,25 @@ import (
 var once sync.Once
 var instance *Data
 var WaitCtxCancel context.CancelFunc
+var reflectionPath string
 
 // Instance retrieves the current configuration file instance
 //
 // Creates a new one if it doesn't exist
 func Instance() *Data {
 	once.Do(func() {
+		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		if err != nil {
+				log.Fatal(err)
+		}
+		fmt.Println(dir)
 		instance = new(Data)
 	})
 	return instance
+}
+
+func ReflectionPath() string {
+	return reflectionPath
 }
 
 func (d *Data) Clear() {

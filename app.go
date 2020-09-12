@@ -26,12 +26,14 @@ var (
 func main() {
 	resumeChan = make(chan string, 1)
 	apiChan := make(chan string)
+	_ = globalstate.Instance()
+
 
 	// Set up logger
 	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
-	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
+	errlog := glg.FileWriter(filepath.Join(globalstate.ReflectionPath(), "log", "err.log"), os.ModeAppend)
 	log := &lumberjack.Logger{
-		Filename: filepath.Join("log", "main.log"),
+		Filename: filepath.Join(globalstate.ReflectionPath(), "log", "main.log"),
 		MaxSize:  10, // megabytes
 		//MaxBackups: 3,
 		//MaxAge:     28,   //days

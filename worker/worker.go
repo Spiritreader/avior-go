@@ -134,7 +134,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		if err.Error() == "no resolution tag found" || stats.ExitCode == 1 {
 			jobLog.Add(fmt.Sprintf("encode error: %s", err.Error()))
 			appendJobTemplate(*job, jobLog, false)
-			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+			writeSkippedLog(mediaFile, jobLog)
 			Resume(resumeChan)
 			return
 		}
@@ -159,7 +159,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Infof("encode to %s done in %s", stats.OutputPath, stats.Duration)
 	jobLog.Add(fmt.Sprintf("Duration: %s", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
-	_ = jobLog.AppendTo(filepath.Join("log", "processed.log"), false, true)
+	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "processed.log"), false, true)
 	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
 
 	// move files, cleanup
@@ -247,7 +247,7 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data) {
 	mediaFile.LogPaths = append(mediaFile.LogPaths, mediaFile.Path+".INFO.log")
 	_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-	_ = jobLog.AppendTo(filepath.Join("log", "skipped.log"), false, true)
+	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "skipped.log"), false, true)
 }
 
 func moveMediaFile(file media.File, dstDir string, moduleName *string) error {

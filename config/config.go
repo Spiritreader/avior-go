@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/Spiritreader/avior-go/consts"
+	"github.com/Spiritreader/avior-go/globalstate"
 )
 
 var once sync.Once
@@ -199,7 +201,7 @@ func InitWithDefaults(cfg *Data) {
 }
 
 func LoadLocal() error {
-	err := LoadLocalFrom("config.json")
+	err := LoadLocalFrom(filepath.Join(globalstate.ReflectionPath(), "config.json"))
 	return err
 }
 
@@ -234,7 +236,7 @@ func Save() error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile("config.json", encoded, 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(globalstate.ReflectionPath(), "config.json"), encoded, 0644); err != nil {
 		return err
 	}
 	return nil
