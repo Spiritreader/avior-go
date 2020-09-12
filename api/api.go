@@ -83,7 +83,7 @@ func getSkippedLog(w http.ResponseWriter, r *http.Request) {
 }
 
 func getProcessedLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, "processe.log")
+	getLog(w, r, "processed.log")
 }
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
