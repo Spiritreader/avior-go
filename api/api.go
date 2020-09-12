@@ -61,7 +61,7 @@ func getEncLineOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func getLog(w http.ResponseWriter, r *http.Request, logName string) {
-	content, err := ioutil.ReadFile(filepath.Join("log", logName))
+	content, err := ioutil.ReadFile(filepath.Join(globalstate.ReflectionPath(), "log", logName))
 	if err != nil {
 		_ = glg.Errorf("could not read logfile, err: %s", err)
 		_ = json.NewEncoder(w).Encode(err.Error())
@@ -71,19 +71,19 @@ func getLog(w http.ResponseWriter, r *http.Request, logName string) {
 }
 
 func getMainLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "main.log"))
+	getLog(w, r, "main.log")
 }
 
 func getErrorLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "err.log"))
+	getLog(w, r, "err.log")
 }
 
 func getSkippedLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "skipped.log"))
+	getLog(w, r, "skipped.log")
 }
 
 func getProcessedLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "processed.log"))
+	getLog(w, r, "processed.log")
 }
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
