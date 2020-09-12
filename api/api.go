@@ -71,19 +71,19 @@ func getLog(w http.ResponseWriter, r *http.Request, logName string) {
 }
 
 func getMainLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, "main.log")
+	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "main.log"))
 }
 
 func getErrorLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, "err.log")
+	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "err.log"))
 }
 
 func getSkippedLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, "skipped.log")
+	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "skipped.log"))
 }
 
 func getProcessedLog(w http.ResponseWriter, r *http.Request) {
-	getLog(w, r, "processed.log")
+	getLog(w, r, filepath.Join(globalstate.ReflectionPath(), "processed.log"))
 }
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
