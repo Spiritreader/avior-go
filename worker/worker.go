@@ -354,7 +354,7 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 			if de.IsDir() && strings.HasPrefix(de.Name(), ".") {
 				return errors.New("directory ignored")
 			}
-			if !de.IsDir() && strings.Contains(de.Name(), file.OutName()+config.Instance().Local.Ext) {
+			if !de.IsDir() && de.Name() == (file.OutName()+config.Instance().Local.Ext) {
 				file := &media.File{Path: path}
 				_ = glg.Infof("found duplicate: %s", path)
 				matches = append(matches, *file)
