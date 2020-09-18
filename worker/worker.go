@@ -30,11 +30,12 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog := new(joblog.Data)
 	_ = glg.Infof("processing job %s", job.Path)
 
-	//reset global state after job
+	//reset global state after job, allow resume without pause
 	defer func() {
 		lineOut := state.Encoder.LineOut
 		state.Clear()
 		state.Encoder.LineOut = lineOut
+		Resume(resumeChan)
 	}()
 
 	//populate media file
@@ -42,7 +43,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	err := mediaFile.Update()
 	if err != nil {
 		_ = glg.Errorf("couldn't parse media file: %s", err)
-		Resume(resumeChan)
 		return
 	}
 	_ = glg.Logf("input file: %s", mediaFile.Path)
@@ -56,7 +56,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	case comparator.KEEP:
 		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog)
-		Resume(resumeChan)
 		return
 	}
 
@@ -68,7 +67,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		state.Paused = true
 		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog)
-		Resume(resumeChan)
 		return
 	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
@@ -83,7 +81,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			appendJobTemplate(*job, jobLog, true)
 			writeSkippedLog(mediaFile, jobLog)
 			if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
-				Resume(resumeChan)
 				return
 			}
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
@@ -95,7 +92,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if err != nil {
 				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
 			}
-			Resume(resumeChan)
 			return
 		}
 
@@ -116,7 +112,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			jobLog.Add(msg)
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
-			Resume(resumeChan)
 			return
 		}
 		duplicateDir := filepath.Dir(duplicates[0].Path)
@@ -135,14 +130,12 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			jobLog.Add(fmt.Sprintf("encode error: %s", err.Error()))
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
-			Resume(resumeChan)
 			return
 		}
 		if stats.ExitCode == 1 {
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-			Resume(resumeChan)
 			return
 		}
 		_ = glg.Warnf("encode failed, retrying")
@@ -152,7 +145,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			jobLog.Add("\nencode retry error: " + err.Error())
 			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
-			Resume(resumeChan)
 			return
 		}
 	}
@@ -176,7 +168,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
 	}
-	Resume(resumeChan)
 }
 
 func Resume(resumeChan chan string) {
