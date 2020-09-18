@@ -1,7 +1,6 @@
 # avior-go
 reimplementation of the VDR Avior Client in Go
 
-### third party software used:
 This software uses:
 - https://github.com/kpango/glg
 - https://github.com/gorilla/mux
