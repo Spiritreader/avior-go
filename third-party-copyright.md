@@ -11,6 +11,7 @@ Copyright (c) 2013 The Gorilla Handlers Authors. All rights reserved.
 BSD 2-Clause License
 
 Copyright (c) 2017, Karrick McDermott
+
 All rights reserved.
 
 ## mapstructure
@@ -28,5 +29,7 @@ Copyright (c) 2015 Olivier Poitrey <rs@dailymotion.com>
 
 ## mongodb driver
 Apache License
+
 Version 2.0, January 2004
+
 http://www.apache.org/licenses/
