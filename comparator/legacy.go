@@ -26,7 +26,7 @@ func (s *LegacyModule) Run(files ...media.File) (string, string, string) {
 	if !s.moduleConfig.Enabled {
 		return s.Name(), NOCH, "disabled"
 	}
-	if files[0].Legacy() {
+	if files[1].Legacy() {
 		return s.Name(), REPL, fmt.Sprintf("\"%s\" is legacy", files[0].Name)
 	} else {
 		return s.Name(), NOCH, "ok"

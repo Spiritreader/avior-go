@@ -2,6 +2,7 @@ package media
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -266,7 +267,8 @@ func (f *File) readLogs() error {
 
 	mErr := readFileContent(&f.MetadataLog, metadataLogPath)
 	if err := readFileContent(&f.TunerLog, tunerLogPath); err != nil {
-		if err == os.ErrNotExist {
+		var pe *os.PathError
+		if err == os.ErrNotExist || errors.As(err, &pe) {
 			for _, legacyLogPath := range legacyLogPaths {
 				if err := readFileContent(&f.TunerLog, legacyLogPath); err == nil {
 					_ = glg.Logf("legacy log file detected: %s", legacyLogPath)
