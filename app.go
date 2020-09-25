@@ -28,7 +28,6 @@ func main() {
 	apiChan := make(chan string)
 	_ = globalstate.Instance()
 
-
 	// Set up logger
 	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join(globalstate.ReflectionPath(), "log", "err.log"), os.ModeAppend)
@@ -98,6 +97,7 @@ func main() {
 	go func() {
 		select {
 		case <-c:
+			globalstate.WaitCtxCancel()
 			cancel()
 		case <-ctx.Done():
 		}
