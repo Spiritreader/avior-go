@@ -125,6 +125,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
+	_ = glg.Infof("output file was: %s", state.Encoder.OutPath)
+
 	if err != nil {
 		if err.Error() == "no resolution tag found" {
 			appendJobTemplate(*job, jobLog, false)
@@ -132,7 +134,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			return
 		}
 		if stats.ExitCode == 1 {
-			_ = glg.Error("encoding of %s failed, err: %s (file already exists)", job.Path, err)
+			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			_ = glg.Infof("skipping file")
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			appendJobTemplate(*job, jobLog, false)
