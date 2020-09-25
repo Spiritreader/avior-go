@@ -126,13 +126,14 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 	if err != nil {
-		if err.Error() == "no resolution tag found" || stats.ExitCode == 1 {
-			jobLog.Add(fmt.Sprintf("encode error: %s", err.Error()))
+		if err.Error() == "no resolution tag found" {
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
 			return
 		}
 		if stats.ExitCode == 1 {
+			_ = glg.Error("encoding of %s failed, err: %s (file already exists)", job.Path, err)
+			_ = glg.Infof("skipping file")
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
@@ -142,6 +143,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// allow overwrite for retry to avoid it failing imdmediately
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
+			_ = glg.Error("re-encoding of %s failed, err: %s", job.Path, err)
+			_ = glg.Infof("skipping file")
 			jobLog.Add("\nencode retry error: " + err.Error())
 			appendJobTemplate(*job, jobLog, false)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
@@ -184,7 +187,7 @@ func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
 	if moved {
 		job.Path = filepath.Join(filepath.Dir(job.Path), consts.EXIST_DIR, filepath.Base(job.Path))
 	}
-	bytes, err := json.MarshalIndent(job, "", "  ")
+	bytes, err := json.MarshalIndent([]structs.Job{job}, "", "  ")
 	if err != nil {
 		_ = glg.Warnf("couldn't attach database job to job log, err %s", err)
 	} else {
