@@ -45,15 +45,22 @@ func resume(w http.ResponseWriter, r *http.Request) {
 }
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Log("endpoint hit: get status")
+	//_ = glg.Log("endpoint hit: get status")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode(state)
 }
 
+func getAlive(w http.ResponseWriter, r *http.Request) {
+	_ = glg.Log("endpoint hit: get alive")
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", " ")
+	_ = encoder.Encode("all fine and dandy :)")
+}
+
 func getEncLineOut(w http.ResponseWriter, r *http.Request) {
-	_ = glg.Log("endpoint hit: get encoder")
+	//_ = glg.Log("endpoint hit: get encoder")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
@@ -123,6 +130,7 @@ func startHttpServer() *http.Server {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", getStatus).Methods("GET")
 	router.HandleFunc("/encoder/", getEncLineOut).Methods("GET")
+	router.HandleFunc("/alive/", getAlive).Methods("GET")
 
 	router.HandleFunc("/config/", getConfig).Methods("GET")
 	router.HandleFunc("/config/", modifyConfig).Methods("PUT")
