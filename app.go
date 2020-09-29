@@ -97,7 +97,9 @@ func main() {
 	go func() {
 		select {
 		case <-c:
-			globalstate.WaitCtxCancel()
+			if globalstate.WaitCtxCancel != nil {
+				globalstate.WaitCtxCancel()
+			}
 			cancel()
 		case <-ctx.Done():
 		}
