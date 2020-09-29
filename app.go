@@ -153,7 +153,7 @@ MainLoop:
 			sleepTime = 1
 		}
 
-		if !sleep && !state.Paused {
+		if !sleep && !state.Paused && !state.ShutdownPending {
 
 			refreshConfig()
 			job, err := dataStore.GetNextJobForClient(client)
