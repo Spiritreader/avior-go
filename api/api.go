@@ -34,7 +34,7 @@ func resume(w http.ResponseWriter, r *http.Request) {
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	state.Paused = false
-	globalstate.CancelSleep()
+	globalstate.SendWake()
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("resumed")
 }
@@ -95,7 +95,7 @@ func requestStop(w http.ResponseWriter, r *http.Request) {
 		_ = glg.Info("stop signal sent to channel")
 	default:
 	}
-	globalstate.CancelSleep()
+	globalstate.SendWake()
 	state := globalstate.Instance()
 	state.ShutdownPending = true
 	encoder := json.NewEncoder(w)

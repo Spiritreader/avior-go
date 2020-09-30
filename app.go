@@ -104,7 +104,7 @@ func main() {
 				_ = glg.Info("stop signal sent to channel")
 			default:
 			}
-			globalstate.CancelSleep()
+			globalstate.SendWake()
 			cancel()
 		case <-ctx.Done():
 		}
@@ -192,7 +192,7 @@ MainLoop:
 		}
 
 		select {
-		case <- globalstate.SleepChan():
+		case <- globalstate.WakeChan():
 		case <- time.After(time.Duration(sleepTime)*time.Minute):
 		}
 	}

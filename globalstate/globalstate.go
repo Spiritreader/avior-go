@@ -11,18 +11,18 @@ import (
 
 var once sync.Once
 var instance *Data
-var sleepChan chan string
+var wakeChan chan string
 var reflectionPath string
 
-func CancelSleep() {
+func SendWake() {
 	select {
-	case sleepChan <- "wakeup":
+	case wakeChan <- "wakeup":
 	default:
 	}
 }
 
-func SleepChan() chan string {
-	return sleepChan
+func WakeChan() chan string {
+	return wakeChan
 }
 
 // Instance retrieves the current configuration file instance
@@ -35,7 +35,7 @@ func Instance() *Data {
 			log.Fatal(err)
 		}
 		fmt.Println(ex)
-		sleepChan = make(chan string)
+		wakeChan = make(chan string)
 		reflectionPath = filepath.Dir(ex)
 		instance = new(Data)
 	})
