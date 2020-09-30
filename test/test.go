@@ -51,15 +51,14 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	apiStopChan := make(chan string)
+	serviceStopChan := make(chan string, 1)
 
-	stopChan := make(chan string)
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
-	go api.Run(cancel, wg, stopChan, aviorDb)
-	<-ctx.Done()
-	stopChan <- "stop"
+	go api.Run(serviceStopChan, wg, apiStopChan, aviorDb)
+	<-serviceStopChan
+	apiStopChan <- "stop"
 }
 
 func copyTest() {
@@ -71,14 +70,13 @@ func copyTest() {
 }
 
 func encodeTests(aviorDb *db.DataStore) {
-	_, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	serviceStopChan :=  make(chan string, 1)
+	defer func() { <-serviceStopChan }()
 	stopChan := make(chan string)
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	defer wg.Wait()
-	go api.Run(cancel, wg, stopChan, aviorDb)
+	go api.Run(serviceStopChan, wg, stopChan, aviorDb)
 
 	dataStore := db.Get()
 	_ = dataStore.LoadSharedConfig()

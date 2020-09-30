@@ -12,4 +12,5 @@ require (
 	github.com/rs/xid v1.2.1
 	go.mongodb.org/mongo-driver v1.4.1
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )

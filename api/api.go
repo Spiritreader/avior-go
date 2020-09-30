@@ -18,7 +18,7 @@ import (
 )
 
 var aviorDb *db.DataStore
-var appCancel context.CancelFunc
+var controlChan chan string
 
 func pause(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Info("endpoint hit: pause service")
@@ -95,26 +95,31 @@ func getProcessedLog(w http.ResponseWriter, r *http.Request) {
 
 func requestStop(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Info("endpoint hit: shut down service")
+	select {
+	case controlChan <- "stop":
+		_ = glg.Info("stop signal sent to channel")
+	default:
+	}
+
 	if globalstate.WaitCtxCancel != nil {
 		globalstate.WaitCtxCancel()
 	}
 	state := globalstate.Instance()
 	state.ShutdownPending = true
-	appCancel()
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("stop signal received")
 }
 
-func Run(cancel context.CancelFunc, wg *sync.WaitGroup, stopChan chan string, db *db.DataStore) {
-	appCancel = cancel
+func Run(serviceChan chan string, wg *sync.WaitGroup, apiChan chan string, db *db.DataStore) {
+	controlChan = serviceChan
 	aviorDb = db
 	_ = glg.Infof("starting api http server")
 	_ = config.LoadLocalFrom("../config.json")
 	_ = config.Save()
 	_ = aviorDb.LoadSharedConfig()
 	srv := startHttpServer()
-	<-stopChan
+	<-apiChan
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {

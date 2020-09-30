@@ -26,6 +26,7 @@ var (
 func main() {
 	resumeChan = make(chan string, 1)
 	apiChan := make(chan string)
+	serviceChan := make(chan string, 1)
 	_ = globalstate.Instance()
 
 	// Set up logger
@@ -97,8 +98,14 @@ func main() {
 	go func() {
 		select {
 		case <-c:
+			_ = glg.Info("interrupt signal received, finishing all operations, please stand by")
 			if globalstate.WaitCtxCancel != nil {
 				globalstate.WaitCtxCancel()
+			}
+			select {
+			case serviceChan <- "stop":
+				_ = glg.Info("stop signal sent to channel")
+			default:
 			}
 			cancel()
 		case <-ctx.Done():
@@ -109,8 +116,8 @@ func main() {
 	wg := new(sync.WaitGroup)
 	defer wg.Wait()
 	wg.Add(2)
-	go runService(ctx, wg, cancel, apiChan)
-	go api.Run(cancel, wg, apiChan, aviorDb)
+	go runService(ctx, wg, cancel, apiChan, serviceChan)
+	go api.Run(serviceChan, wg, apiChan, aviorDb)
 }
 
 // runService runs the main service loop
@@ -121,7 +128,7 @@ func main() {
 //
 // wg is the WaitGroup that is used to keep the main function waiting until
 // the service exits
-func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc, apiChan chan string) {
+func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFunc, apiChan chan string, serviceChan chan string) {
 	state := globalstate.Instance()
 	var sleepTime int
 	refreshConfig()
@@ -173,9 +180,11 @@ MainLoop:
 
 		// skip sleep when more jobs are queued, also serves as exit point
 		select {
-		case <-ctx.Done():
-			_ = glg.Info("service stop signal received")
-			break MainLoop
+		case msg := <-serviceChan:
+			if msg == "stop" {
+				_ = glg.Info("service stop signal received")
+				break MainLoop
+			}
 		default:
 		}
 		select {
