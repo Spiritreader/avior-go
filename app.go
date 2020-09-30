@@ -99,14 +99,12 @@ func main() {
 		select {
 		case <-c:
 			_ = glg.Info("interrupt signal received, finishing all operations, please stand by")
-			if globalstate.WaitCtxCancel != nil {
-				globalstate.WaitCtxCancel()
-			}
 			select {
 			case serviceChan <- "stop":
 				_ = glg.Info("stop signal sent to channel")
 			default:
 			}
+			globalstate.CancelSleep()
 			cancel()
 		case <-ctx.Done():
 		}
@@ -192,12 +190,11 @@ MainLoop:
 			continue
 		default:
 		}
-		// send this timer message to resume chan instead, register resumechan with the API
-		// make the send non-blocking!
-		waitCtx, cancel := context.WithTimeout(context.Background(), time.Duration(sleepTime)*time.Minute)
-		globalstate.WaitCtxCancel = cancel
-		<-waitCtx.Done()
 
+		select {
+		case <- globalstate.SleepChan():
+		case <- time.After(time.Duration(sleepTime)*time.Minute):
+		}
 	}
 	_ = dataStore.SignOutClient(client)
 	apiChan <- "stop"

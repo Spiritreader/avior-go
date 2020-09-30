@@ -1,7 +1,6 @@
 package globalstate
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -12,8 +11,19 @@ import (
 
 var once sync.Once
 var instance *Data
-var WaitCtxCancel context.CancelFunc
+var sleepChan chan string
 var reflectionPath string
+
+func CancelSleep() {
+	select {
+	case sleepChan <- "wakeup":
+	default:
+	}
+}
+
+func SleepChan() chan string {
+	return sleepChan
+}
 
 // Instance retrieves the current configuration file instance
 //
@@ -22,9 +32,10 @@ func Instance() *Data {
 	once.Do(func() {
 		ex, err := os.Executable()
 		if err != nil {
-				log.Fatal(err)
+			log.Fatal(err)
 		}
 		fmt.Println(ex)
+		sleepChan = make(chan string)
 		reflectionPath = filepath.Dir(ex)
 		instance = new(Data)
 	})
