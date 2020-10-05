@@ -27,10 +27,10 @@ type Module interface {
 func InitDupeModules() []Module {
 	modules := []Module{
 		&LegacyModule{},
+		&AgeModule{},
 		&AudioModule{},
 		&ResolutionModule{},
 		&LogMatchModule{},
-		&AgeModule{},
 		&SizeApproxModule{},
 	}
 	return initModules(modules)
