@@ -40,7 +40,7 @@ func (s *AgeModule) Run(files ...media.File) (string, string, string) {
 		// if module fails, disable module
 		return s.Name(), NOCH, "err no access"
 	}
-	thresholdTime := time.Now().Add(time.Duration(-1*settings.MaxAge) * time.Hour)
+	thresholdTime := time.Now().Before(time.Duration(-1*settings.MaxAge) * time.Hour)
 	_ = glg.Debugf("age module threshold time: %s", thresholdTime)
 	_ = glg.Debugf("age module duplicate modtime: %s", duplicateFileInfo.ModTime())
 	if duplicateFileInfo.ModTime().After(thresholdTime) {
