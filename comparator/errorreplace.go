@@ -48,5 +48,5 @@ func (s *ErrorReplaceModule) Priority() int {
 }
 
 func (s *ErrorReplaceModule) Name() string {
-	return consts.MODULE_NAME_LEGACY
+	return consts.MODULE_NAME_ERRORREPLACE
 }

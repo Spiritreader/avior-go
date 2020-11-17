@@ -48,5 +48,5 @@ func (s *ErrorSkipModule) Priority() int {
 }
 
 func (s *ErrorSkipModule) Name() string {
-	return consts.MODULE_NAME_LEGACY
+	return consts.MODULE_NAME_ERRORSKIP
 }
