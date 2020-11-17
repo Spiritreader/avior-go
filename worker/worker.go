@@ -125,7 +125,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
-	if len(state.Encoder.OutPath > 0 {
+	if len(state.Encoder.OutPath) > 0 {
 		_ = glg.Infof("output file was: %s", state.Encoder.OutPath)
 	}
 
