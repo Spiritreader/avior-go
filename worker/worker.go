@@ -125,7 +125,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
-	_ = glg.Infof("output file was: %s", state.Encoder.OutPath)
+	if len(state.Encoder.OutPath > 0 {
+		_ = glg.Infof("output file was: %s", state.Encoder.OutPath)
+	}
 
 	if err != nil {
 		if err.Error() == "no resolution tag found" {
@@ -138,6 +140,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			_ = glg.Infof("skipping file")
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			appendJobTemplate(*job, jobLog, false)
+			writeSkippedLog(mediaFile, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			return
 		}
@@ -145,10 +148,11 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// allow overwrite for retry to avoid it failing imdmediately
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
-			_ = glg.Error("re-encoding of %s failed, err: %s", job.Path, err)
+			_ = glg.Errorf("re-encoding of %s failed, err: %s", job.Path, err)
 			_ = glg.Infof("skipping file")
 			jobLog.Add("\nencode retry error: " + err.Error())
 			appendJobTemplate(*job, jobLog, false)
+			writeSkippedLog(mediaFile, jobLog)
 			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			return
 		}
