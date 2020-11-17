@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	KEEP string = "no encode"
+	DISC string = "no encode"
 	NOCH string = "noch nicht"
 	REPL string = "allow replacement"
 )
@@ -41,6 +41,7 @@ func InitStandaloneModules() []Module {
 	modules := []Module{
 		&LengthModule{},
 		&MaxSizeModule{},
+		&ErrorSkipModule{},
 	}
 	return initModules(modules)
 }

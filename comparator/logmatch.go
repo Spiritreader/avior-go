@@ -41,20 +41,20 @@ func (s *LogMatchModule) Run(files ...media.File) (string, string, string) {
 		if includeMatches {
 			return s.Name(), REPL, fmt.Sprintf("include match (mode %s): %s", consts.LOGMATCH_MODE_INCLUDE, includeTerm)
 		} else if excludeMatches {
-			return s.Name(), KEEP, fmt.Sprintf("exclude match (mode %s): %s", consts.LOGMATCH_MODE_INCLUDE, excludeTerm)
+			return s.Name(), DISC, fmt.Sprintf("exclude match (mode %s): %s", consts.LOGMATCH_MODE_INCLUDE, excludeTerm)
 		}
 	case consts.LOGMATCH_MODE_NEUTRAL:
 		if includeMatches && excludeMatches {
-			return s.Name(), KEEP, fmt.Sprintf("include and exclude match (mode %s): %s | %s",
+			return s.Name(), DISC, fmt.Sprintf("include and exclude match (mode %s): %s | %s",
 				consts.LOGMATCH_MODE_NEUTRAL, includeTerm, excludeTerm)
 		} else if includeMatches {
 			return s.Name(), REPL, fmt.Sprintf("include match (mode %s): %s", consts.LOGMATCH_MODE_NEUTRAL, includeTerm)
 		} else if excludeMatches {
-			return s.Name(), KEEP, fmt.Sprintf("exclude match (mode %s): %s", consts.LOGMATCH_MODE_NEUTRAL, excludeTerm)
+			return s.Name(), DISC, fmt.Sprintf("exclude match (mode %s): %s", consts.LOGMATCH_MODE_NEUTRAL, excludeTerm)
 		}
 	case consts.LOGMATCH_MODE_EXCLUDE:
 		if excludeMatches {
-			return s.Name(), KEEP, fmt.Sprintf("exclude match (mode %s): %s", consts.LOGMATCH_MODE_EXCLUDE, includeTerm)
+			return s.Name(), DISC, fmt.Sprintf("exclude match (mode %s): %s", consts.LOGMATCH_MODE_EXCLUDE, includeTerm)
 		} else if includeMatches {
 			return s.Name(), REPL, fmt.Sprintf("include match (mode %s): %s", consts.LOGMATCH_MODE_EXCLUDE, excludeTerm)
 		}

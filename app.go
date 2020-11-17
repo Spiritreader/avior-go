@@ -205,7 +205,7 @@ MainLoop:
 func refreshConfig() {
 	err := config.LoadLocal()
 	if err != nil {
-		_ = glg.Infof("could not load config: %s", err)
+		_ = glg.Warnf("could not load config: %s", err)
 		return
 	}
 	err = db.Get().LoadSharedConfig()

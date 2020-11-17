@@ -46,7 +46,7 @@ func (s *AgeModule) Run(files ...media.File) (string, string, string) {
 	if duplicateFileInfo.ModTime().After(thresholdTime) {
 		//difference := duplicateFileInfo.ModTime().Sub(thresholdTime).Hours() / 24
 		difference := thresholdTime.Sub(duplicateFileInfo.ModTime()).Hours() / 24
-		return s.Name(), KEEP, fmt.Sprintf("%.1f days old, /%d days minimum", difference, settings.MaxAge)
+		return s.Name(), DISC, fmt.Sprintf("%.1f days old, /%d days minimum", difference, settings.MaxAge)
 	}
 	return s.Name(), NOCH, "ok"
 }

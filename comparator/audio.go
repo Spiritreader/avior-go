@@ -34,9 +34,9 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 	new := files[0]
 	duplicate := files[1]
 	if new.AudioFormat == media.AUDIO_UNKNOWN {
-		return s.Name(), KEEP, "new file audio unknown"
+		return s.Name(), DISC, "new file audio unknown"
 	} else if duplicate.AudioFormat == media.AUDIO_UNKNOWN {
-		return s.Name(), KEEP, "old file audio unknown"
+		return s.Name(), DISC, "old file audio unknown"
 	}
 
 	switch settings.Accuracy {
@@ -45,7 +45,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 			return s.Name(), REPL, fmt.Sprintf("new file better: n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else if duplicate.AudioFormat > media.AUDIO_UNKNOWN && new.AudioFormat < media.AUDIO_UNKNOWN {
-			return s.Name(), KEEP, fmt.Sprintf("old file better n:%s vso: %s",
+			return s.Name(), DISC, fmt.Sprintf("old file better n:%s vso: %s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	case consts.AUDIO_ACC_MED:
@@ -53,7 +53,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 			return s.Name(), REPL, fmt.Sprintf("new file better: n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else if duplicate.AudioFormat > media.MULTI_MAYBE && new.AudioFormat < media.STEREO_MAYBE {
-			return s.Name(), KEEP, fmt.Sprintf("old file better n:%s vs o:%s",
+			return s.Name(), DISC, fmt.Sprintf("old file better n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	case consts.AUDIO_ACC_HIGH:
@@ -61,7 +61,7 @@ func (s *AudioModule) Run(files ...media.File) (string, string, string) {
 			return s.Name(), REPL, fmt.Sprintf("new file better: n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		} else if duplicate.AudioFormat == media.MULTI_MAYBE && new.AudioFormat == media.STEREO_MAYBE {
-			return s.Name(), KEEP, fmt.Sprintf("old file better n:%s vs o:%s",
+			return s.Name(), DISC, fmt.Sprintf("old file better n:%s vs o:%s",
 				new.AudioFormat.String(), duplicate.AudioFormat.String())
 		}
 	}

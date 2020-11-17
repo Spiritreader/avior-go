@@ -47,7 +47,7 @@ func (s *MaxSizeModule) Run(files ...media.File) (string, string, string) {
 	maxSize, _ := tools.ByteCountDownSI(float64(settings.MaxSize), 4, 4)
 	if int64(fileSizeGb) > int64(settings.MaxSize) {
 		difference := tools.ByteCountSI(fileInfo.Size() - int64(maxSize))
-		return s.Name(), KEEP, fmt.Sprintf("file %s larger than %dGB", difference, settings.MaxSize)
+		return s.Name(), DISC, fmt.Sprintf("file %s larger than %dGB", difference, settings.MaxSize)
 	}
 	return s.Name(), NOCH, "ok"
 }

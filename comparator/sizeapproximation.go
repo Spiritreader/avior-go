@@ -62,10 +62,10 @@ func (s *SizeApproxModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), NOCH, fmt.Sprintf("new/old: ratio: %s/%s: %d",
 			tools.ByteCountSI(estimatedSize), tools.ByteCountSI(duplicateSize), difference)
 	} else if difference < 0 {
-		return s.Name(), KEEP, fmt.Sprintf("new/old: ratio: %s/%s: %d",
+		return s.Name(), DISC, fmt.Sprintf("new/old: ratio: %s/%s: %d",
 			tools.ByteCountSI(estimatedSize), tools.ByteCountSI(duplicateSize), difference)
 	}
-	return s.Name(), KEEP, "no criteria matched for replacement"
+	return s.Name(), DISC, "no criteria matched for replacement"
 }
 
 func (s *SizeApproxModule) Priority() int {

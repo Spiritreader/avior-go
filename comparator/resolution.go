@@ -54,7 +54,7 @@ func (s *ResolutionModule) Run(files ...media.File) (string, string, string) {
 			return s.Name(), NOCH, fmt.Sprintf("minimum resolution improvement of %d%% not met: %d%%", settings.MinResolution, ratio - 100)
 		}
 	} else {
-		return s.Name(), KEEP, fmt.Sprintf("old file better: %s vs %s", new.Resolution.Value, old.Resolution.Value)
+		return s.Name(), DISC, fmt.Sprintf("old file better: %s vs %s", new.Resolution.Value, old.Resolution.Value)
 	}
 }
 

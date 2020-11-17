@@ -10,15 +10,16 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type LengthModule struct {
+
+type ErrorSkipModule struct {
 	moduleConfig *config.ModuleConfig
 }
 
-func (s *LengthModule) Init(mcfg config.ModuleConfig) {
+func (s *ErrorSkipModule) Init(mcfg config.ModuleConfig) {
 	s.moduleConfig = &mcfg
 }
 
-func (s *LengthModule) Run(files ...media.File) (string, string, string) {
+func (s *ErrorSkipModule) Run(files ...media.File) (string, string, string) {
 	if s.moduleConfig == nil {
 		_ = glg.Warnf("module %s has never been initialized and has thus been disabled", s.Name())
 		return s.Name(), NOCH, "err no init"
@@ -26,31 +27,26 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 	if !s.moduleConfig.Enabled {
 		return s.Name(), NOCH, "disabled"
 	}
-	settings := &config.LengthModuleSettings{}
+	settings := &config.ErrorModuleSettings{}
 	if err := mapstructure.Decode(s.moduleConfig.Settings, settings); err != nil {
 		_ = glg.Errorf("could not convert settings map to %s, module has been disabled: %s", s.Name(), err)
 		return s.Name(), NOCH, "err"
 	}
-	file := files[0]
-	if file.IgnoreLength {
-		return s.Name(), NOCH, "module has been overridden"
+
+	if files[0].Errors > settings.Threshold {
+		return s.Name(), DISC, fmt.Sprintf("file has too many errors (count/allowed): %d/%d", files[0].Errors, settings.Threshold)
+	} else {
+		return s.Name(), NOCH, "ok"
 	}
-	diff := file.LengthDifference()
-	if diff > settings.Threshold {
-		return s.Name(), DISC, fmt.Sprintf("recording too short: r:%dm / l:%dm (d:%d%% / t:%d%%",
-			file.RecordedLength, file.Length, diff, settings.Threshold)
-	}
-	return s.Name(), NOCH, fmt.Sprintf("ok: r:%dm / l:%dm (d:%d%% / t:%d%%)",
-		file.RecordedLength, file.Length, diff, settings.Threshold)
 }
 
-func (s *LengthModule) Priority() int {
+func (s *ErrorSkipModule) Priority() int {
 	if s.moduleConfig == nil {
 		return -1
 	}
 	return s.moduleConfig.Priority
 }
 
-func (s *LengthModule) Name() string {
-	return consts.MODULE_NAME_LENGTH
+func (s *ErrorSkipModule) Name() string {
+	return consts.MODULE_NAME_LEGACY
 }

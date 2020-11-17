@@ -81,6 +81,10 @@ type SizeApproxModuleSettings struct {
 	Fraction    int
 }
 
+type ErrorModuleSettings struct {
+	Threshold int
+}
+
 type EncoderConfig struct {
 	OutDirectory  string
 	PreArguments  []string
@@ -197,7 +201,21 @@ func InitWithDefaults(cfg *Data) {
 		Priority: 0,
 		Settings: &ResolutionModuleSettings{MinResolution: 20},
 	}
-	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
+	cfg.Local.Modules[consts.MODULE_NAME_RESOLUTION] = *moduleConfig
+	// ErrorSkipModule Config Defaults
+	moduleConfig = &ModuleConfig{
+		Enabled: false,
+		Priority: 0,
+		Settings: &ErrorModuleSettings{Threshold: 3},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_ERRORSKIP] = *moduleConfig
+	// ErrorReplaceModule Config Defaults
+	moduleConfig = &ModuleConfig{
+		Enabled: false,
+		Priority: 0,
+		Settings: &ErrorModuleSettings{Threshold: 0},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_ERRORREPLACE] = *moduleConfig
 }
 
 func LoadLocal() error {

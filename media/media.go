@@ -115,6 +115,7 @@ type File struct {
 	//
 	// Probability Low: tuner + meta without tag
 	AudioFormat  AudioFormat
+	Errors       int
 	CustomParams []string
 	MetadataLog  []string
 	TunerLog     []string
@@ -131,6 +132,7 @@ func (f *File) Update() error {
 	f.getAudio()
 	f.getResolution()
 	f.getLength()
+	f.getErrors()
 	f.trimName()
 	found, _, idx := find(f.CustomParams, []string{"lengthOverride"})
 	if found {
@@ -206,6 +208,7 @@ func (f *File) getResolution() {
 	}
 }
 
+// retrieves the recorded length and the expected length from the metadata
 func (f *File) getLength() {
 	f.RecordedLength = -1
 	for _, line := range f.TunerLog {
@@ -233,10 +236,29 @@ func (f *File) getLength() {
 	}
 }
 
+// collect the amount of errors found in the recording
+func (f *File) getErrors() {
+	f.Errors = -1
+	// disable legacy error counting for now, needs more investigation
+	if f.legacy {
+		return
+	}
+	errors := findAllLines(f.TunerLog, []string{"Errors:"})
+	errorCount := 0
+	for _, line := range(errors) {
+		countString := strings.Split(line[strings.Index(line, "Errors:"):], ":")[1]
+		count, err := strconv.ParseInt(strings.Trim(countString, " \n"), 10, 32)
+		if err == nil {
+			errorCount += int(count)
+		}		
+	}
+	f.Errors = errorCount
+}
+
 // Removes unwanted strings from the Output file name
 func (f *File) trimName() {
 	cfg := config.Instance()
-	terms := findAll([]string{f.Name}, cfg.Shared.NameExclude)
+	terms := findAllTerms([]string{f.Name}, cfg.Shared.NameExclude)
 	sort.Slice(terms, func(i, j int) bool {
 		return len(terms[i]) > len(terms[j])
 	})
@@ -245,7 +267,7 @@ func (f *File) trimName() {
 			f.Name = strings.Trim(f.Name[idx+len(term):], " ")
 		}
 	}
-	terms = findAll([]string{f.Subtitle}, cfg.Shared.SubExclude)
+	terms = findAllTerms([]string{f.Subtitle}, cfg.Shared.SubExclude)
 	sort.Slice(terms, func(i, j int) bool {
 		return len(terms[i]) > len(terms[j])
 	})
@@ -308,7 +330,10 @@ func find(slice []string, terms []string) (bool, string, int) {
 	return false, "", -1
 }
 
-func findAll(slice []string, terms []string) []string {
+// Returns all lines in the slice that match one of the terms in the terms slice
+//
+// Returns all terms that have been found
+func findAllTerms(slice []string, terms []string) []string {
 	found := make([]string, 0)
 	for _, line := range slice {
 		for _, term := range terms {
@@ -320,6 +345,24 @@ func findAll(slice []string, terms []string) []string {
 	return found
 }
 
+// Returns all lines in the slice that match one of the terms in the terms slice
+//
+// Returns all lines where a match occurred
+func findAllLines(slice []string, terms []string) []string {
+	found := make([]string, 0)
+	for _, line := range slice {
+		for _, term := range terms {
+			if len(term) > 0 && strings.Contains(line, term) {
+				found = append(found, line)
+			}
+		}
+	}
+	return found
+}
+
+// Checks if the value of a map is present within any line within the slice.
+// 
+// Returns the key and value if found
 func matchMap(slice []string, terms map[string]string) (*string, *string) {
 	for _, line := range slice {
 		for k, v := range terms {

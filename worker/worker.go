@@ -53,7 +53,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("")
 	res := runModules(jobLog, *mediaFile)
 	switch res {
-	case comparator.KEEP:
+	case comparator.DISC:
 		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog)
 		return
@@ -77,7 +77,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		jobLog.Add("")
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
 		switch res {
-		case comparator.KEEP, comparator.NOCH:
+		case comparator.DISC, comparator.NOCH:
 			appendJobTemplate(*job, jobLog, true)
 			writeSkippedLog(mediaFile, jobLog)
 			if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
@@ -213,8 +213,8 @@ func runModules(jobLog *joblog.Data, fileNew media.File) string {
 		switch result {
 		case comparator.NOCH:
 			continue
-		case comparator.KEEP:
-			return comparator.KEEP
+		case comparator.DISC:
+			return comparator.DISC
 		case comparator.REPL:
 			return comparator.REPL
 		}
@@ -234,8 +234,8 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 		switch result {
 		case comparator.NOCH:
 			continue
-		case comparator.KEEP:
-			return comparator.KEEP, name
+		case comparator.DISC:
+			return comparator.DISC, name
 		case comparator.REPL:
 			state.Encoder.ReplacementReason = fmt.Sprintf("%s: %s - %s", name, result, message)
 			return comparator.REPL, name
