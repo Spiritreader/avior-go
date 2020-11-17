@@ -44,6 +44,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		_ = glg.Errorf("no encoder config found for %s", file.Path)
 		return Stats{false, -1, -1337, "", ""}, errors.New("no tag found")
 	}
+	_ = glg.Infof("tag/resolution %s:%s", file.Resolution.Tag, file.Resolution.Value)
 
 	// use custom parameters instead of encoder config if provided
 	if len(file.CustomParams) > 0 {
