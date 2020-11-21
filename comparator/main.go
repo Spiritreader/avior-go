@@ -26,6 +26,7 @@ type Module interface {
 // Initializes all modules for duplicate checking
 func InitDupeModules() []Module {
 	modules := []Module{
+		&ErrorReplaceModule{},
 		&LegacyModule{},
 		&AgeModule{},
 		&AudioModule{},

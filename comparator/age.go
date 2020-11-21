@@ -44,9 +44,9 @@ func (s *AgeModule) Run(files ...media.File) (string, string, string) {
 	_ = glg.Debugf("age module threshold time: %s", thresholdTime)
 	_ = glg.Debugf("age module duplicate modtime: %s", duplicateFileInfo.ModTime())
 	if duplicateFileInfo.ModTime().After(thresholdTime) {
-		//difference := duplicateFileInfo.ModTime().Sub(thresholdTime).Hours() / 24
-		difference := thresholdTime.Sub(duplicateFileInfo.ModTime()).Hours() / 24
-		return s.Name(), DISC, fmt.Sprintf("%.1f days old, /%d days minimum", difference, settings.MaxAge)
+		difference := duplicateFileInfo.ModTime().Sub(thresholdTime).Hours() / 24
+		//difference := thresholdTime.Sub(duplicateFileInfo.ModTime()).Hours() / 24
+		return s.Name(), DISC, fmt.Sprintf("%.1f days old, %d days minimum", difference, settings.MaxAge)
 	}
 	return s.Name(), NOCH, "ok"
 }
