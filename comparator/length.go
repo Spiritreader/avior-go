@@ -32,9 +32,6 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), NOCH, "err"
 	}
 	file := files[0]
-	if file.IgnoreLength {
-		return s.Name(), NOCH, "module has been overridden"
-	}
 	diff := file.LengthDifference()
 	if diff > settings.Threshold {
 		return s.Name(), DISC, fmt.Sprintf("recording too short: r:%dm / l:%dm (d:%d%% / t:%d%%",

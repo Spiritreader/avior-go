@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 )
@@ -114,14 +115,14 @@ type File struct {
 	// Probability Med: tuner + tags
 	//
 	// Probability Low: tuner + meta without tag
-	AudioFormat  AudioFormat
-	Errors       int
-	CustomParams []string
-	MetadataLog  []string
-	TunerLog     []string
-	LogPaths     []string
-	IgnoreLength bool
-	legacy       bool
+	AudioFormat     AudioFormat
+	Errors          int
+	CustomParams    []string
+	MetadataLog     []string
+	TunerLog        []string
+	LogPaths        []string
+	AllowReplacement bool
+	legacy          bool
 }
 
 // Updates the struct to fill out all remaining fields
@@ -134,9 +135,9 @@ func (f *File) Update() error {
 	f.getLength()
 	f.getErrors()
 	f.trimName()
-	found, _, idx := find(f.CustomParams, []string{"lengthOverride"})
+	found, _, idx := find(f.CustomParams, []string{consts.MODULE_FLAG_SKIP})
 	if found {
-		f.IgnoreLength = true
+		f.AllowReplacement = true
 		f.CustomParams = append(f.CustomParams[:idx], f.CustomParams[idx+1:]...)
 	}
 	return nil
@@ -245,12 +246,12 @@ func (f *File) getErrors() {
 	}
 	errors := findAllLines(f.TunerLog, []string{"Errors:"})
 	errorCount := 0
-	for _, line := range(errors) {
+	for _, line := range errors {
 		countString := strings.Split(line[strings.Index(line, "Errors:"):], ":")[1]
 		count, err := strconv.ParseInt(strings.Trim(countString, " \n"), 10, 32)
 		if err == nil {
 			errorCount += int(count)
-		}		
+		}
 	}
 	f.Errors = errorCount
 }
@@ -361,7 +362,7 @@ func findAllLines(slice []string, terms []string) []string {
 }
 
 // Checks if the value of a map is present within any line within the slice.
-// 
+//
 // Returns the key and value if found
 func matchMap(slice []string, terms map[string]string) (*string, *string) {
 	for _, line := range slice {

@@ -97,12 +97,13 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		durationTime := new(time.Time).Add(time.Duration(duration)*time.Second).AddDate(-1, 0, 0)
 		state.Encoder.Duration = durationTime
 		customDuration = true
+		_ = glg.Infof("output file path: %s", outPath)
 	} else if dstDir != nil {
 		outPath = filepath.Join(*dstDir, file.OutName()+cfg.Local.Ext)
-		_ = glg.Infof("OutPath: %s", outPath)
+		_ = glg.Infof("output file path: %s", outPath)
 	} else {
 		outPath = filepath.Join(encoderConfig.OutDirectory, file.OutName()+cfg.Local.Ext)
-		_ = glg.Infof("OutPath: %s", outPath)
+		_ = glg.Infof("output file path: %s", outPath)
 	}
 	state.Encoder.OutPath = outPath
 

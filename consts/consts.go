@@ -11,6 +11,7 @@ const (
 	MODULE_NAME_LEGACY       string = "LegacyModule"
 	MODULE_NAME_ERRORSKIP    string = "ErrorSkipModule"
 	MODULE_NAME_ERRORREPLACE string = "ErrorReplaceModule"
+	MODULE_FLAG_SKIP         string = "AllowReplacement"
 	AUDIO_ACC_LOW            string = "low"
 	AUDIO_ACC_MED            string = "med"
 	AUDIO_ACC_HIGH           string = "high"

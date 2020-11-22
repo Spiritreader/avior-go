@@ -125,9 +125,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
-	if len(state.Encoder.OutPath) > 0 {
-		_ = glg.Infof("output file was: %s", state.Encoder.OutPath)
-	}
 
 	if err != nil {
 		if err.Error() == "no resolution tag found" {
@@ -189,7 +186,7 @@ func Resume(resumeChan chan string) {
 }
 
 func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
-	job.CustomParameters = append(job.CustomParameters, "lengthOverride")
+	job.CustomParameters = append(job.CustomParameters, consts.MODULE_FLAG_SKIP)
 	if moved {
 		job.Path = filepath.Join(filepath.Dir(job.Path), consts.EXIST_DIR, filepath.Base(job.Path))
 	}
@@ -225,6 +222,10 @@ func runModules(jobLog *joblog.Data, fileNew media.File) string {
 func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File) (string, string) {
 	jobLog.Add("Dupe Module Results:")
 	jobLog.Add(fmt.Sprintf("DupPath: %s", fileDup.Path))
+	if fileNew.AllowReplacement {
+		jobLog.Add("AllowReplacement: manual user override")
+		return comparator.REPL, "AllowReplacement"
+	}
 	modules := comparator.InitDupeModules()
 	for idx := range modules {
 		name, result, message := modules[idx].Run(fileNew, fileDup)
