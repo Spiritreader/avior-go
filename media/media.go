@@ -135,7 +135,7 @@ func (f *File) Update() error {
 	f.getLength()
 	f.getErrors()
 	f.trimName()
-	found, _, idx := find(f.CustomParams, []string{consts.MODULE_FLAG_SKIP})
+	found, _, idx := find(f.CustomParams, []string{consts.MODULE_FLAG_SKIP, "lengthOverride"})
 	if found {
 		f.AllowReplacement = true
 		f.CustomParams = append(f.CustomParams[:idx], f.CustomParams[idx+1:]...)
@@ -320,6 +320,12 @@ func (f *File) Legacy() bool {
 	return f.legacy
 }
 
+// find checks whether any string in terms is found in a slice.
+//
+// find returns once the first match is found.
+// 
+// It returns three values. a boolean indicating whether a term occurred, 
+// the term it found and its index within the slice 
 func find(slice []string, terms []string) (bool, string, int) {
 	for idx, line := range slice {
 		for _, term := range terms {
