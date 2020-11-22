@@ -51,6 +51,7 @@ func Connect() (*DataStore, error) {
 
 func (ds *DataStore) LoadSharedConfig() error {
 	cfg := config.Instance()
+	cfg.Shared = config.Shared{}
 	// name excludes
 	nameExcludeFields, err := ds.GetFields("name_exclude")
 	if err != nil {
