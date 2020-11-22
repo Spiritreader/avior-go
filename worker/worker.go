@@ -201,6 +201,10 @@ func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
 
 func runModules(jobLog *joblog.Data, fileNew media.File) string {
 	jobLog.Add("Module Results:")
+	if fileNew.AllowReplacement {
+		jobLog.Add("AllowReplacement: manual user override")
+		return comparator.REPL
+	}
 	modules := comparator.InitStandaloneModules()
 	for idx := range modules {
 		name, result, message := modules[idx].Run(fileNew)
