@@ -203,6 +203,7 @@ func runModules(jobLog *joblog.Data, fileNew media.File) string {
 	jobLog.Add("Module Results:")
 	if fileNew.AllowReplacement {
 		jobLog.Add("AllowReplacement: manual user override")
+		_ = glg.Info("modules: manual user override, allow replacement")
 		return comparator.REPL
 	}
 	modules := comparator.InitStandaloneModules()
