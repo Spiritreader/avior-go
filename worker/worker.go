@@ -159,6 +159,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "processed.log"), false, true)
 	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
+	
 
 	// move files, cleanup
 	doneDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.DONE_DIR)

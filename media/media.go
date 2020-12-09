@@ -272,10 +272,15 @@ func (f *File) trimName() {
 	sort.Slice(terms, func(i, j int) bool {
 		return len(terms[i]) > len(terms[j])
 	})
+	trimPerformed := false
 	for _, term := range terms {
 		if idx := strings.Index(f.Subtitle, term); idx != -1 {
+			trimPerformed = true
 			f.Subtitle = strings.Trim(f.Subtitle[:idx], " ")
 		}
+	}
+	if trimPerformed && strings.HasSuffix(f.Subtitle, "-") {
+		f.Subtitle = f.Subtitle[:len(f.Subtitle) - 1]
 	}
 	f.Name = strings.Trim(tools.RemoveIllegalChars(f.Name), " ")
 	f.Subtitle = strings.Trim(tools.RemoveIllegalChars(f.Subtitle), " ")
