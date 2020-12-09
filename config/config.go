@@ -63,6 +63,10 @@ type LengthModuleSettings struct {
 	Threshold int
 }
 
+type DuplicateLengthCheckSettings struct {
+	Threshold int
+}
+
 type LogMatchModuleSettings struct {
 	Mode string
 }
@@ -215,7 +219,14 @@ func InitWithDefaults(cfg *Data) {
 		Priority: 0,
 		Settings: &ErrorModuleSettings{Threshold: 0},
 	}
+	// DuplicateLengthCheckModule Config Defaults
 	cfg.Local.Modules[consts.MODULE_NAME_ERRORREPLACE] = *moduleConfig
+	moduleConfig = &ModuleConfig{
+		Enabled: false,
+		Priority: 0,
+		Settings: &DuplicateLengthCheckSettings{Threshold: 0},
+	}
+	cfg.Local.Modules[consts.MODULE_NAME_DUPLICATELENGTHCHECK] = *moduleConfig
 }
 
 func LoadLocal() error {
