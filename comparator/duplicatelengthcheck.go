@@ -35,7 +35,7 @@ func (s *DuplicateLengthCheckModule) Run(files ...media.File) (string, string, s
 	duplicate := files[1]
 	// discard file if new file is shorter than the threshold compared to the duplicate
 	diff := float64(1) - float64(file.RecordedLength / duplicate.RecordedLength)
-	if float64(settings.Threshold) > (diff * 100) {
+	if (diff * 100) > float64(settings.Threshold) {
 		return s.Name(), DISC, fmt.Sprintf("new file too short for replacement, (n:%dm/d:%dm) with diff: %d%%", 
 			file.RecordedLength, duplicate.RecordedLength, int64(diff))
 	}
