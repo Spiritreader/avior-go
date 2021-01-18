@@ -33,6 +33,9 @@ func (s *DuplicateLengthCheckModule) Run(files ...media.File) (string, string, s
 	}
 	file := files[0]
 	duplicate := files[1]
+	if files[0].RecordedLength == -1 || files[1].RecordedLength == -1 {
+		return s.Name(), NOCH, "duplicate had insufficient length data, skipping module"
+	}
 	// discard file if new file is shorter than the threshold compared to the duplicate
 	diff := float64(1) - float64(file.RecordedLength / duplicate.RecordedLength)
 	if (diff * 100) > float64(settings.Threshold) {

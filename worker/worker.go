@@ -71,7 +71,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
-		_ = duplicates[0].Update()
+		err = duplicates[0].Update()
+		if err != nil {
+			_ = glg.Warnf("couldn't parse duplicate log file: %s", err)
+		}
 
 		// run dupe file modules and prevent replacement if necessary
 		jobLog.Add("")

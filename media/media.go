@@ -127,6 +127,8 @@ type File struct {
 
 // Updates the struct to fill out all remaining fields
 func (f *File) Update() error {
+	f.RecordedLength = -1
+	f.Length = -1
 	if err := f.readLogs(); err != nil {
 		return err
 	}
@@ -211,7 +213,6 @@ func (f *File) getResolution() {
 
 // retrieves the recorded length and the expected length from the metadata
 func (f *File) getLength() {
-	f.RecordedLength = -1
 	for _, line := range f.TunerLog {
 		if strings.Contains(line, ") Stop") {
 			startIndex := strings.Index(line, "/")
@@ -225,7 +226,6 @@ func (f *File) getLength() {
 			}
 		}
 	}
-	f.Length = -1
 	for _, line := range f.MetadataLog {
 		if strings.Contains(line, "Duration=") {
 			slice := strings.Split(line, "=")[1]

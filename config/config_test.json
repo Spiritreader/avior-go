@@ -1,0 +1,197 @@
+{
+  "DatabaseURL": "mongodb://10.10.10.96:27017",
+  "Ext": ".mkv",
+  "AudioFormats": {
+    "StereoTags": [
+      "AC3 Audio Stereo",
+      "[Dolby Digital 2.0]",
+      "[stereo]",
+      "MPEG Audio Stereo"
+    ],
+    "MultiTags": [
+      "AC3 Audio 5.1",
+      "[Dolby Digital 5.1]",
+      "[AC-3]"
+    ]
+  },
+  "Resolutions": {
+    "fhd": "1920x1080",
+    "hd": "1280x720",
+    "sd": "480x360",
+    "stv_fhd": "1920x1088"
+  },
+  "ObsoletePath": "\\\\UMS\\media\\transcoded",
+  "MediaPaths": [
+    "\\\\UMS\\media\\transcoded",
+    "\\\\UMS\\media\\tv"
+  ],
+  "EstimatedLibSize": 26521,
+  "Modules": {
+    "AgeModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "MaxAge": 600
+      }
+    },
+    "AudioModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Accuracy": "med"
+      }
+    },
+    "DuplicateLengthCheckModule": {
+      "Enabled": false,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 0
+      }
+    },
+    "ErrorReplaceModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 0
+      }
+    },
+    "ErrorSkipModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 4
+      }
+    },
+    "LegacyModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": null
+    },
+    "LengthModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 25
+      }
+    },
+    "LogMatchModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Mode": "neutral"
+      }
+    },
+    "MaxSizeModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "MaxSize": 30
+      }
+    },
+    "ResolutionModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "MinResolution": 20
+      }
+    },
+    "SizeApproxModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Difference": 20,
+        "Fraction": 10,
+        "SampleCount": 3
+      }
+    }
+  },
+  "EncoderConfig": {
+    "fhd": {
+      "OutDirectory": "\\\\UMS\\media\\transcoded\\HD1080",
+      "PreArguments": null,
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-vf yadif=0:-1:0",
+        "-level 4.1",
+        "-rc vbr_hq",
+        "-qmin 16",
+        "-qmax 23",
+        "-rc-lookahead 32",
+        "-tier main",
+        "-acodec copy"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-filter:v scale=1280:720",
+        "-r 25",
+        "-rc constqp",
+        "-qp 21"
+      ]
+    },
+    "hd": {
+      "OutDirectory": "\\\\UMS\\media\\transcoded\\HD720",
+      "PreArguments": null,
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-level 4.1",
+        "-r 25",
+        "-rc vbr_hq",
+        "-qmin 16",
+        "-qmax 23",
+        "-rc-lookahead 32",
+        "-tier main",
+        "-acodec copy"
+      ],
+      "Stash": [
+        "-filter:v scale=1280:720"
+      ]
+    },
+    "sd": {
+      "OutDirectory": "D:/Recording/testencode",
+      "PreArguments": [
+        ""
+      ],
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-level 4.1",
+        "-r 25",
+        "-rc vbr_hq",
+        "-qmin 16",
+        "-qmax 23",
+        "-rc-lookahead 32",
+        "-tier main",
+        "-acodec copy",
+        ""
+      ],
+      "Stash": [
+        ""
+      ]
+    },
+    "stv_fhd": {
+      "OutDirectory": "\\\\UMS\\media\\transcoded\\HD1080",
+      "PreArguments": null,
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-vf yadif=0:-1:0",
+        "-level 4.1",
+        "-rc vbr_hq",
+        "-qmin 16",
+        "-qmax 23",
+        "-rc-lookahead 32",
+        "-tier main",
+        "-acodec copy"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-r 25",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-rc constqp",
+        "-qp 21"
+      ]
+    }
+  },
+  "EncoderPriority": "IDLE"
+}
