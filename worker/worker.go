@@ -63,7 +63,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	var redirectDir *string = nil
 	duplicates, err := checkForDuplicates(mediaFile)
 	if err != nil {
-		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior")
+		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
 		state.Paused = true
 		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog)
@@ -162,7 +162,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "processed.log"), false, true)
 	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
-	
 
 	// move files, cleanup
 	doneDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.DONE_DIR)
@@ -190,7 +189,16 @@ func Resume(resumeChan chan string) {
 }
 
 func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
-	job.CustomParameters = append(job.CustomParameters, consts.MODULE_FLAG_SKIP)
+	skipFlagPresent := false
+	for _, line := range job.CustomParameters {
+		if line == consts.MODULE_FLAG_SKIP {
+			skipFlagPresent = true
+			break
+		}
+	}
+	if !skipFlagPresent {
+		job.CustomParameters = append(job.CustomParameters, consts.MODULE_FLAG_SKIP)
+	}
 	if moved {
 		job.Path = filepath.Join(filepath.Dir(job.Path), consts.EXIST_DIR, filepath.Base(job.Path))
 	}
