@@ -69,7 +69,7 @@ func (ds *DataStore) GetClients() ([]structs.Client, error) {
 		return nil, err
 	}
 	sort.Slice(aviorClients, func(i, j int) bool {
-		return aviorClients[i].Priority > aviorClients[j].Priority
+		return aviorClients[i].Priority < aviorClients[j].Priority
 	})
 	return aviorClients, nil
 }
