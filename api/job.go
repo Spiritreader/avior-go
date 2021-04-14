@@ -101,9 +101,19 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 		_ = encoder.Encode(err.Error())
 		return err
 	}
+
+	// check if unmarshalling actually works
+	idstring, _ := job.AssignedClient.ID.(string)
+	poid, err := primitive.ObjectIDFromHex(idstring)
+	if err != nil {
+		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, "failed deriving client poid");
+		w.WriteHeader(http.StatusInternalServerError)
+		encoder := json.NewEncoder(w)
+		_ = encoder.Encode(err.Error())
+		return err
+	}
+
 	if mode == consts.INSERT {
-		var poid primitive.ObjectID
-		poid, err = primitive.ObjectIDFromHex(job.AssignedClient.ID.(string))
 		if err != nil {
 			_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
 		} else {
@@ -111,8 +121,6 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 		}
 	} else {
 		// update and delete follow the same path, just the right mode has to be set.
-		var poid primitive.ObjectID
-		poid, err = primitive.ObjectIDFromHex(job.AssignedClient.ID.(string))
 		if err != nil {
 			_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
 		} else {
