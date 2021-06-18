@@ -4,8 +4,9 @@ on:
   release:
     branches: [ master ]
   workflow_dispatch:
-    tag:
-      descritpion: 'Target Custom Tag'
+    inputs:
+      tag:
+        description: 'Target Custom Tag'
 
 jobs:
   build:
