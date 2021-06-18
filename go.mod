@@ -1,6 +1,6 @@
 module github.com/Spiritreader/avior-go
 
-go 1.15
+go 1.16
 
 require (
 	github.com/go-delve/delve v1.6.0 // indirect
