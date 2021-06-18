@@ -15,4 +15,4 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: windows
         goarch: amd64
-        binary_name: avior-go.exe
+        binary_name: avior-go
