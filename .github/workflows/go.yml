@@ -2,11 +2,8 @@ name: Go
 
 on:
   release:
+    types: [published, created, edited]
     branches: [ master ]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Target Custom Tag'
 
 jobs:
   build:
