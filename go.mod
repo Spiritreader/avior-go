@@ -3,30 +3,24 @@ module github.com/Spiritreader/avior-go
 go 1.16
 
 require (
-	github.com/go-delve/delve v1.6.0 // indirect
-	github.com/gorilla/handlers v1.5.0
+	github.com/felixge/httpsnoop v1.0.2 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
+	github.com/goccy/go-json v0.7.9 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/karrick/godirwalk v1.16.1
-	github.com/kpango/glg v1.5.1
-	github.com/mattn/go-colorable v0.1.8 // indirect
-	github.com/mattn/go-runewidth v0.0.12 // indirect
-	github.com/mitchellh/mapstructure v1.3.3
+	github.com/kpango/glg v1.6.4
+	github.com/mitchellh/mapstructure v1.4.2
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/onsi/ginkgo v1.8.0 // indirect
-	github.com/onsi/gomega v1.5.0 // indirect
-	github.com/peterh/liner v1.2.1 // indirect
-	github.com/pkg/profile v0.0.0-20170413231811-06b906832ed0 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rs/xid v1.2.1
-	github.com/russross/blackfriday v1.6.0 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/cobra v1.1.3 // indirect
-	go.mongodb.org/mongo-driver v1.4.1
-	go.starlark.net v0.0.0-20210406145628-7a1108eaa012 // indirect
-	golang.org/x/arch v0.0.0-20210405154355-08b684f594a5 // indirect
-	golang.org/x/sys v0.0.0-20210414055047-fe65e336abe0
-	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
-	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
+	github.com/rs/xid v1.3.0
+	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
+	go.mongodb.org/mongo-driver v1.7.3
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sys v0.0.0-20211013075003-97ac67df715c
+	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

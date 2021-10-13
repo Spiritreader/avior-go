@@ -11,6 +11,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}\\test\\test.go",
             "cwd": "${workspaceFolder}",
+            "output": "debug",
             "env": {},
             "args": []
         },
@@ -20,6 +21,8 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}\\app.go",
+            "output": "debug",
+            "cwd": "${workspaceFolder}",
             "env": {},
             "args": ["pause"]
         }
