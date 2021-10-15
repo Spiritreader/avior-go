@@ -157,6 +157,8 @@ func startHttpServer() *http.Server {
 	router.HandleFunc("/logs/skipped", getSkippedLog).Methods("GET")
 	router.HandleFunc("/logs/processed", getProcessedLog).Methods("GET")
 
+	router.HandleFunc("/ws/status", serveWsStatus)
+
 	/*c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 	})*/

@@ -9,6 +9,7 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/websocket v1.4.2
 	github.com/karrick/godirwalk v1.16.1
 	github.com/kpango/glg v1.6.4
 	github.com/mitchellh/mapstructure v1.4.2
