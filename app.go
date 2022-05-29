@@ -133,9 +133,13 @@ func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFu
 	dataStore := db.Get()
 	sleepTime = 5
 
+	// initial client retrieval must succeed
 	client, err := dataStore.GetClientForMachine()
 	if err != nil {
+		_ = glg.Errorf("could not retrieve client data for machine, shutting down service")
 		wg.Done()
+		apiChan <- "stop"
+		cancel()
 		return
 	}
 
@@ -144,6 +148,7 @@ func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFu
 	if err != nil {
 		_ = glg.Info("signed in %s", client.Name)
 	}
+
 MainLoop:
 	for {
 		// check if client is allowed to run
@@ -170,7 +175,7 @@ MainLoop:
 				_, err = dataStore.DeleteJob(job.ID.Hex())
 				worker.ProcessJob(dataStore, client, job, resumeChan)
 				if err != nil {
-					_ = glg.Failf("couldn't delete job, program has to pause to prevent endless loop")
+					_ = glg.Failf("couldn't delete job, program has to pause to prevent it from retaking the job")
 					state.Paused = true
 				}
 			}
@@ -197,7 +202,7 @@ MainLoop:
 		}
 
 		// refresh client after sleeping time to ensure settings are updated properly
-		client, err := dataStore.GetClientForMachine()
+		client, err = dataStore.GetClientForMachine()
 		if err != nil {
 			_ = glg.Warnf("could not refresh client %s, using cached data", client.Name)
 		}
