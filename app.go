@@ -146,11 +146,6 @@ func runService(ctx context.Context, wg *sync.WaitGroup, cancel context.CancelFu
 	}
 MainLoop:
 	for {
-		client, err := dataStore.GetClientForMachine()
-		if err != nil {
-			_ = glg.Warnf("could not refresh client %s, using cached data", client.Name)
-		}
-
 		// check if client is allowed to run
 		canRun := tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now())
 		if !canRun && !sleep {
@@ -199,6 +194,12 @@ MainLoop:
 		select {
 		case <-globalstate.WakeChan():
 		case <-time.After(time.Duration(sleepTime) * time.Minute):
+		}
+
+		// refresh client after sleeping time to ensure settings are updated properly
+		client, err := dataStore.GetClientForMachine()
+		if err != nil {
+			_ = glg.Warnf("could not refresh client %s, using cached data", client.Name)
 		}
 	}
 	_ = dataStore.SignOutThisClient()
