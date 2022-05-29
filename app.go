@@ -192,11 +192,11 @@ MainLoop:
 		}
 
 		select {
-		case <- globalstate.WakeChan():
-		case <- time.After(time.Duration(sleepTime)*time.Minute):
+		case <-globalstate.WakeChan():
+		case <-time.After(time.Duration(sleepTime) * time.Minute):
 		}
 	}
-	_ = dataStore.SignOutClient(client)
+	_ = dataStore.SignOutThisClient()
 	apiChan <- "stop"
 	wg.Done()
 	cancel()

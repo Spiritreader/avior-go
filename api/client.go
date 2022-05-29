@@ -28,7 +28,6 @@ func insertClient(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
 }
 
 func updateClient(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +36,6 @@ func updateClient(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 

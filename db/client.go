@@ -133,9 +133,18 @@ func (ds *DataStore) SignOutClient(client *structs.Client) error {
 	client.Online = false
 	err := ds.ModifyClient(client, "update")
 	if err != nil {
-		_ = glg.Warnf("could not sign out %s, jobs will continue to be assigned as long as its online: %s", client.Name, err)
+		_ = glg.Warnf("could not sign out %s, jobs will continue to be assigned as long as it's online: %s", client.Name, err)
 		return err
 	}
 	_ = glg.Infof("signed out %s", client.Name)
 	return nil
+}
+
+func (ds *DataStore) SignOutThisClient() error {
+	client, err := ds.GetClientForMachine()
+	if err != nil {
+		_ = glg.Warnf("could not retrieve client for current machine to sign out, jobs will continue to be assigned as long as it's online")
+		return err
+	}
+	return ds.SignOutClient(client)
 }
