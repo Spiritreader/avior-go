@@ -151,12 +151,12 @@ MainLoop:
 		if !canRun && !sleep {
 			_ = glg.Infof("client %s moving to standby, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
-			sleep = false
+			sleep = true
 			sleepTime = 5
 		} else if canRun && sleep {
 			_ = glg.Infof("client %s resuming, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
-			sleep = true
+			sleep = false
 			sleepTime = 1
 		}
 
