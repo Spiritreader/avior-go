@@ -42,7 +42,7 @@ func (s *DuplicateLengthCheckModule) Run(files ...media.File) (string, string, s
 		return s.Name(), DISC, fmt.Sprintf("new file too short for replacement, (n:%dm/d:%dm) with diff: %d%%/%d%%",
 			file.RecordedLength, duplicate.RecordedLength, int64(diff), settings.Threshold)
 	}
-	return s.Name(), NOCH, "ok"
+	return s.Name(), NOCH, fmt.Sprintf("ok (n:%dm/d:%dm) with diff: %d%%/%d%%", file.RecordedLength, duplicate.RecordedLength, int64(diff), settings.Threshold)
 }
 
 func (s *DuplicateLengthCheckModule) Priority() int {
