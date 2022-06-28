@@ -34,7 +34,7 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 	file := files[0]
 	diff := file.LengthDifference()
 	if diff > settings.Threshold {
-		return s.Name(), DISC, fmt.Sprintf("recording too short: r:%dm / l:%dm (d:%d%% / t:%d%%",
+		return s.Name(), DISC, fmt.Sprintf("recording too short: r:%dm / l:%dm (d:%d%% / t:%d%%)",
 			file.RecordedLength, file.Length, diff, settings.Threshold)
 	}
 	return s.Name(), NOCH, fmt.Sprintf("ok: r:%dm / l:%dm (d:%d%% / t:%d%%)",
