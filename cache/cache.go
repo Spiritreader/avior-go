@@ -2,6 +2,7 @@ package cache
 
 import (
 	"sync"
+	"time"
 )
 
 var once sync.Once
@@ -14,6 +15,7 @@ type Data struct {
 // Library Cache struct to speed up lib scan operations
 type Library struct {
 	Data []string
+	LastUpdate time.Time
 	Valid bool
 }
 

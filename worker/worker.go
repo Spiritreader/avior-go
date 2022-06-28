@@ -359,6 +359,11 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	matches := make([]media.File, 0)
 
 	libCache := &cache.Instance().Library
+
+	if (time.Now().Add(-time.Minute * 5)).Before(libCache.LastUpdate) {
+		libCache.Valid = false
+	}
+
 	fillCache := false
 	if !libCache.Valid {
 		fillCache = true
@@ -373,6 +378,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 			matches = append(matches, dir_matches...)
 		}
 		libCache.Valid = true
+		libCache.LastUpdate = time.Now()
 		cfg.Local.EstimatedLibSize = state.FileWalker.Position
 	} else {
 		_ = glg.Infof("scanning via memcache")
