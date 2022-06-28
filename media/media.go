@@ -172,6 +172,51 @@ func (f *File) OutName() string {
 	return f.Name + " - " + f.Subtitle
 }
 
+func (f *File) SanitizeLog() error {
+	found, term, idx := find(f.TunerLog, []string{consts.LOG_DELIM, "VDRAvior:"})
+	save := false
+	if found {
+		if (idx - 1) < len(f.TunerLog) {
+			idx = 0
+		} else {
+			idx = idx - 1
+		}
+		f.TunerLog = f.TunerLog[:idx]
+		_ = glg.Logf("removing previous statistics from log (term: %s)", term)
+		save = true
+	} else {
+		found, _, idx := find(f.TunerLog, []string{"OriginalPath: "})
+		if found {
+			if (idx - 2) < len(f.TunerLog) {
+				idx = 0
+			} else {
+				idx = idx - 2
+			}
+			f.TunerLog = f.TunerLog[:idx]
+			_ = glg.Logf("removing previous statistics from log without header")
+			save = true
+		}
+	}
+
+	if save {
+		file, err := os.OpenFile(f.LogPaths[0], os.O_RDWR|os.O_TRUNC, 0666)
+		defer file.Close()
+		if (err != nil) {
+			_ = glg.Errorf("could not sanitize tuner log file for %s, error: %s", f.LogPaths[0], err)
+			return err
+		}
+		for _, line := range f.TunerLog {
+			_, err = file.WriteString(line)
+			if (err != nil) {
+				_ = glg.Errorf("failed while sanitizing tuner log file for %s, error: %s", f.LogPaths[0], err)
+				_ = glg.Errorf("dumping tuner log file contents: %+v", f.TunerLog)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // getAudio retrieves the audio file from the log files and updates the struct
 func (f *File) getAudio() {
 	cfg := config.Instance()
@@ -328,9 +373,9 @@ func (f *File) Legacy() bool {
 // find checks whether any string in terms is found in a slice.
 //
 // find returns once the first match is found.
-// 
-// It returns three values. a boolean indicating whether a term occurred, 
-// the term it found and its index within the slice 
+//
+// It returns three values. a boolean indicating whether a term occurred,
+// the term it found and its index within the slice
 func find(slice []string, terms []string) (bool, string, int) {
 	for idx, line := range slice {
 		for _, term := range terms {

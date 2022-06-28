@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Spiritreader/avior-go/cache"
 	"github.com/Spiritreader/avior-go/comparator"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
@@ -126,6 +127,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
 	_ = glg.Logf("media struct: %+v", *mediaFile)
 	jobLog.Add("Encoder Info:")
+
+	//invalidate cache as it won't be recent anymore after encoding a job
+	cache.Instance().Library.Valid = false
+
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 
@@ -136,6 +141,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			return
 		}
 		if stats.ExitCode == 1 {
+			//todo: improve file exists detection, this is a catch all errors at the moment
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			_ = glg.Infof("skipping file")
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
@@ -161,6 +167,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add(fmt.Sprintf("Duration: %s", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "processed.log"), false, true)
+
+	// sanitize log before appending encoding information to remove previous encoding data
+	mediaFile.SanitizeLog()
 	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
 
 	// move files, cleanup
@@ -344,27 +353,55 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	defer func() {
 		state.FileWalker.Active = false
 	}()
-	counter := 0
+
 	state.FileWalker.Position = 0
 	state.FileWalker.LibSize = cfg.Local.EstimatedLibSize
 	matches := make([]media.File, 0)
-	for idx, path := range cfg.Local.MediaPaths {
-		state.FileWalker.Directory = path
-		_ = glg.Infof("scanning directory (%d/%d): %s", idx+1, len(cfg.Local.MediaPaths), path)
-		dir_matches, count, err := traverseDir(file, path)
-		if err != nil {
-			return []media.File{}, err
+
+	libCache := &cache.Instance().Library
+	fillCache := false
+	if !libCache.Valid {
+		fillCache = true
+		libCache.Data = libCache.Data[:0]
+		for idx, path := range cfg.Local.MediaPaths {
+			state.FileWalker.Directory = path
+			_ = glg.Infof("scanning directory (%d/%d): %s", idx+1, len(cfg.Local.MediaPaths), path)
+			dir_matches, err := traverseDir(file, path, fillCache)
+			if err != nil {
+				return []media.File{}, err
+			}
+			matches = append(matches, dir_matches...)
 		}
-		counter += count
-		matches = append(matches, dir_matches...)
+		libCache.Valid = true
+		cfg.Local.EstimatedLibSize = state.FileWalker.Position
+	} else {
+		_ = glg.Infof("scanning via memcache")
+		state.FileWalker.Directory = "mem cache"
+		matches = append(matches, traverseMemCache(file, libCache)...)
 	}
-	cfg.Local.EstimatedLibSize = state.FileWalker.Position
 	state.FileWalker.Position = 0
 	_ = config.Save()
 	return matches, nil
 }
 
-func traverseDir(file *media.File, path string) ([]media.File, int, error) {
+func traverseMemCache(file *media.File, libCache *cache.Library) ([]media.File) {
+	matches := make([]media.File, 0)
+	for _, path := range libCache.Data {
+		if filepath.Base(path) == file.OutName()+config.Instance().Local.Ext {
+			_ = glg.Infof("found duplicate: %s", path)
+			file := &media.File{Path: path}
+			matches = append(matches, *file)
+		}
+		if state.FileWalker.Position%1000 == 0 {
+			_ = glg.Logf("current dir: %s, position: %d/%d",
+				filepath.Dir(path), state.FileWalker.Position, state.FileWalker.LibSize)
+		}
+		state.FileWalker.Position++
+	}
+	return matches
+}
+
+func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, error) {
 	matches := make([]media.File, 0)
 	err := godirwalk.Walk(path, &godirwalk.Options{
 		Unsorted: true,
@@ -383,6 +420,10 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 						filepath.Dir(path), state.FileWalker.Position, state.FileWalker.LibSize)
 				}
 				state.FileWalker.Position++
+				if (fillCache) {
+					libCache := &cache.Instance().Library
+					libCache.Data = append(libCache.Data, path)
+				}
 			}
 			return nil
 		},
@@ -395,7 +436,7 @@ func traverseDir(file *media.File, path string) ([]media.File, int, error) {
 	})
 	if err != nil {
 		_ = glg.Errorf("error traversing directory %s: %s", path, err)
-		return nil, 0, err
+		return nil, err
 	}
-	return matches, state.FileWalker.Position, nil
+	return matches, nil
 }

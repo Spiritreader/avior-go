@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/Spiritreader/avior-go/cache"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/kpango/glg"
 )
@@ -22,6 +23,8 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 
 func modifyConfig(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Log("endpoint hit: update config")
+	libCache := &cache.Instance().Library
+	libCache.Valid = false
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	configNew := new(config.Local)
 	err := json.Unmarshal(reqBody, configNew)

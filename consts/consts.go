@@ -16,6 +16,7 @@ const (
 	AUDIO_ACC_LOW                    string = "low"
 	AUDIO_ACC_MED                    string = "med"
 	AUDIO_ACC_HIGH                   string = "high"
+	LOG_DELIM                        string = "avior-go info"
 	LOGMATCH_MODE_INCLUDE            string = "include"
 	LOGMATCH_MODE_NEUTRAL            string = "neutral"
 	LOGMATCH_MODE_EXCLUDE            string = "exclude"

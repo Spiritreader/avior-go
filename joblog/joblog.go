@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/kpango/glg"
 	"github.com/natefinch/lumberjack"
@@ -64,6 +65,8 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 	}
 	if separators {
 		_, _ = writer.WriteString("----------------\n")
+	} else {
+		_, _ = writer.WriteString(consts.LOG_DELIM + "\n")
 	}
 	_, _ = writer.WriteString(fmt.Sprintf("%s - %s \n", hostname, time.Now().Format("Monday 2006-01-02 15:04:05 -0700 MST")))
 	_, _ = writer.WriteString("\n")
