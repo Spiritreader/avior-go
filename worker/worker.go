@@ -361,6 +361,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	libCache := &cache.Instance().Library
 
 	if (time.Now().Add(-time.Minute * 5)).Before(libCache.LastUpdate) {
+		_ = glg.Infof("auto invalidating lib cache after 5 minutes")
 		libCache.Valid = false
 	}
 
