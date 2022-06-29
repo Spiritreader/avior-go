@@ -202,10 +202,13 @@ MainLoop:
 		}
 
 		// refresh client after sleeping time to ensure settings are updated properly
-		client, err = dataStore.GetClientForMachine()
+		newClient, err := dataStore.GetClientForMachine()
 		if err != nil {
 			_ = glg.Warnf("could not refresh client %s, using cached data", client.Name)
+		} else {
+			client = newClient
 		}
+
 	}
 	_ = dataStore.SignOutThisClient()
 	apiChan <- "stop"
