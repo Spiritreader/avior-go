@@ -33,8 +33,8 @@ func (s *LogMatchModule) Run(files ...media.File) (string, string, string) {
 	}
 	cfg := config.Instance()
 	duplicate := files[1]
-	excludeMatches, excludeTerm := duplicate.LogsContain(cfg.Shared.LogExclude)
-	includeMatches, includeTerm := duplicate.LogsContain(cfg.Shared.LogInclude)
+	excludeMatches, excludeTerm := duplicate.LogsContain(cfg.Shared.LogExclude, []string{consts.MODULE_NAME_LOGMATCH})
+	includeMatches, includeTerm := duplicate.LogsContain(cfg.Shared.LogInclude, []string{consts.MODULE_NAME_LOGMATCH})
 
 	switch settings.Mode {
 	case consts.LOGMATCH_MODE_INCLUDE:

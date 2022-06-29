@@ -137,7 +137,7 @@ func (f *File) Update() error {
 	f.getLength()
 	f.getErrors()
 	f.trimName()
-	found, _, idx := find(f.CustomParams, []string{consts.MODULE_FLAG_SKIP, "lengthOverride"})
+	found, _, idx := find(f.CustomParams, []string{consts.MODULE_FLAG_SKIP, "lengthOverride"}, nil)
 	if found {
 		f.AllowReplacement = true
 		f.CustomParams = append(f.CustomParams[:idx], f.CustomParams[idx+1:]...)
@@ -148,12 +148,12 @@ func (f *File) Update() error {
 // LogsContain returns true once the first term matches.
 //
 // It also includes the term that was matched against
-func (f *File) LogsContain(terms []string) (bool, string) {
-	tunerContains, tMatch, _ := find(f.TunerLog, terms)
+func (f *File) LogsContain(terms []string, ignoredLines []string) (bool, string) {
+	tunerContains, tMatch, _ := find(f.TunerLog, terms, ignoredLines)
 	if tunerContains {
 		return true, tMatch
 	}
-	metadataContains, mMatch, _ := find(f.MetadataLog, terms)
+	metadataContains, mMatch, _ := find(f.MetadataLog, terms, ignoredLines)
 	if metadataContains {
 		return true, mMatch
 	}
@@ -173,7 +173,7 @@ func (f *File) OutName() string {
 }
 
 func (f *File) SanitizeLog() error {
-	found, term, idx := find(f.TunerLog, []string{consts.LOG_DELIM, "VDRAvior:"})
+	found, term, idx := find(f.TunerLog, []string{consts.LOG_DELIM, "VDRAvior:"}, nil)
 	save := false
 	if found {
 		if (idx - 1) < len(f.TunerLog) {
@@ -185,7 +185,7 @@ func (f *File) SanitizeLog() error {
 		_ = glg.Logf("removing previous statistics from log (term: %s)", term)
 		save = true
 	} else {
-		found, _, idx := find(f.TunerLog, []string{"OriginalPath: "})
+		found, _, idx := find(f.TunerLog, []string{"OriginalPath: "}, nil)
 		if found {
 			if (idx - 2) < len(f.TunerLog) {
 				idx = 0
@@ -221,8 +221,8 @@ func (f *File) SanitizeLog() error {
 func (f *File) getAudio() {
 	cfg := config.Instance()
 
-	tunerStereo, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags)
-	tunerMulti, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.MultiTags)
+	tunerStereo, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags, nil)
+	tunerMulti, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.MultiTags, nil)
 
 	if tunerStereo && !tunerMulti {
 		// guaranteed to be stereo if tuner only picks up one audio codec
@@ -232,8 +232,8 @@ func (f *File) getAudio() {
 		f.AudioFormat = MULTI
 	} else if tunerStereo && tunerMulti {
 		// complement info with tags if available
-		metaStereo, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags)
-		metaMulti, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags)
+		metaStereo, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags, nil)
+		metaMulti, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags, nil)
 
 		if metaMulti {
 			// if tags include multichannel audio, it's still likely to be multichannel
@@ -376,8 +376,19 @@ func (f *File) Legacy() bool {
 //
 // It returns three values. a boolean indicating whether a term occurred,
 // the term it found and its index within the slice
-func find(slice []string, terms []string) (bool, string, int) {
+func find(slice []string, terms []string, ignoredLines []string) (bool, string, int) {
 	for idx, line := range slice {
+		if (ignoredLines != nil) {
+			skip := false
+			for _, ignored := range ignoredLines {
+				if strings.HasPrefix(line, ignored) {
+					skip = true
+				}
+			}
+			if skip {
+				continue
+			}
+		}
 		for _, term := range terms {
 			if len(term) > 0 && strings.Contains(line, term) {
 				return true, term, idx
