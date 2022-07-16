@@ -176,24 +176,24 @@ func (f *File) SanitizeLog() error {
 	found, term, idx := find(f.TunerLog, []string{consts.LOG_DELIM, "VDRAvior:"}, nil)
 	save := false
 	if found {
-		if (idx - 1) < len(f.TunerLog) {
+		if (idx - 1) < 0 {
 			idx = 0
 		} else {
 			idx = idx - 1
 		}
 		f.TunerLog = f.TunerLog[:idx]
-		_ = glg.Logf("removing previous statistics from log (term: %s)", term)
+		_ = glg.Infof("removing previous statistics from log (term: %s)", term)
 		save = true
 	} else {
 		found, _, idx := find(f.TunerLog, []string{"OriginalPath: "}, nil)
 		if found {
-			if (idx - 2) < len(f.TunerLog) {
+			if (idx - 2) < 0 {
 				idx = 0
 			} else {
 				idx = idx - 2
 			}
 			f.TunerLog = f.TunerLog[:idx]
-			_ = glg.Logf("removing previous statistics from log without header")
+			_ = glg.Infof("removing previous statistics from log without header")
 			save = true
 		}
 	}
@@ -203,6 +203,7 @@ func (f *File) SanitizeLog() error {
 		defer file.Close()
 		if (err != nil) {
 			_ = glg.Errorf("could not sanitize tuner log file for %s, error: %s", f.LogPaths[0], err)
+			_ = glg.Errorf("dumping tuner log file contents: %+v", f.TunerLog)
 			return err
 		}
 		for _, line := range f.TunerLog {
@@ -352,6 +353,11 @@ func (f *File) readLogs() error {
 			}
 		}
 		return err
+	}
+	// mitigate empty files
+	if len(f.TunerLog) <= 2 {
+		_ = glg.Warnf("tuner log seems to be empty, marking file as legacy")
+		f.legacy = true
 	}
 	f.LogPaths = append(f.LogPaths, tunerLogPath)
 
