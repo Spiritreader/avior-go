@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/structs"
@@ -20,9 +21,13 @@ import (
 // GetClientForMachine returns the current db client that matches this machine's hostname.
 // A new client will be created if none is found in the database
 func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
+	cfg := config.Instance()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	hostname, _ := os.Hostname()
+	if cfg.Local.Instance > 0 {
+		hostname = fmt.Sprintf("%s-%d", hostname, cfg.Local.Instance)
+	}
 	state := globalstate.Instance()
 	state.HostName = hostname
 	var thisMachine *structs.Client

@@ -21,6 +21,7 @@ type Data struct {
 
 // Local is the main application configuration
 type Local struct {
+	Instance	     int
 	DatabaseURL      string
 	Ext              string
 	AudioFormats     AudioFormats
@@ -150,6 +151,7 @@ func Instance() *Data {
 }
 
 func InitWithDefaults(cfg *Data) {
+	cfg.Local.Instance = 0
 	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
 	cfg.Local.Ext = ".mkv"
 	cfg.Local.Modules = make(map[string]ModuleConfig)

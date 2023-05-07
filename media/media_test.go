@@ -10,7 +10,7 @@ import (
 func TestSanitize (t *testing.T) {
 	//testFile := &File{Path: "D:\\Recording\\Monaco 110 - Madonna di Napoli.mkv"}
 	//testFile := &File{Path: "D:\\Recording\\Neva Give üp - Der einzig wahre Japaner.mkv"}
-	testFile := &File{Path: "\\\\ums.local\\recording_pool\\recording\\done\\Again\\exists\\testlog.log"}
+	testFile := &File{Path: "D:\\Temp\\test.log.log"}
 	testFile.Update()
 	testFile.SanitizeLog()
 	contains, _ := testFile.LogsContain([]string{"-rc vbr_hq -qmin 16 -qmax 23"}, []string{consts.MODULE_NAME_LOGMATCH})

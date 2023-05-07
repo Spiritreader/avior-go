@@ -1,2 +1,3 @@
-linters-settings:
-  errcheck: false
+linters:
+  disable:
+    - errcheck

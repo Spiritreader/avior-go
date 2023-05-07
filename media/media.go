@@ -200,12 +200,12 @@ func (f *File) SanitizeLog() error {
 
 	if save {
 		file, err := os.OpenFile(f.LogPaths[0], os.O_RDWR|os.O_TRUNC, 0666)
-		defer file.Close()
 		if (err != nil) {
 			_ = glg.Errorf("could not sanitize tuner log file for %s, error: %s", f.LogPaths[0], err)
 			_ = glg.Errorf("dumping tuner log file contents: %+v", f.TunerLog)
 			return err
 		}
+		defer file.Close()
 		for _, line := range f.TunerLog {
 			_, err = file.WriteString(line)
 			if (err != nil) {

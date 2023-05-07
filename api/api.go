@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -110,7 +111,9 @@ func Run(serviceChan chan string, wg *sync.WaitGroup, apiChan chan string, db *d
 	_ = config.LoadLocalFrom("../config.json")
 	_ = config.Save()
 	_ = aviorDb.LoadSharedConfig()
-	srv := startHttpServer()
+	cfg := config.Instance()
+	port := 10000 + cfg.Local.Instance
+	srv := startHttpServer(port)
 	<-apiChan
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -121,8 +124,8 @@ func Run(serviceChan chan string, wg *sync.WaitGroup, apiChan chan string, db *d
 	wg.Done()
 }
 
-func startHttpServer() *http.Server {
-	srv := &http.Server{Addr: ":10000"}
+func startHttpServer(port int) *http.Server {
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", port)}
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", getStatus).Methods("GET")
