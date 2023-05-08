@@ -140,26 +140,23 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			writeSkippedLog(mediaFile, jobLog)
 			return
 		}
-		if stats.ExitCode == 1 {
-			//todo: improve file exists detection, this is a catch all errors at the moment
+		if stats.ExitCode == 108 {
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			_ = glg.Infof("skipping file")
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
-			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			return
 		}
 		_ = glg.Warnf("encode failed, retrying")
 		// allow overwrite for retry to avoid it failing imdmediately
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
 		if err != nil {
-			_ = glg.Errorf("re-encoding of %s failed, err: %s", job.Path, err)
+			_ = glg.Errorf("retrying encode of %s failed, err: %s", job.Path, err)
 			_ = glg.Infof("skipping file")
 			jobLog.Add("\nencode retry error: " + err.Error())
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
-			_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
 			return
 		}
 	}
@@ -391,7 +388,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	return matches, nil
 }
 
-func traverseMemCache(file *media.File, libCache *cache.Library) ([]media.File) {
+func traverseMemCache(file *media.File, libCache *cache.Library) []media.File {
 	matches := make([]media.File, 0)
 	for _, path := range libCache.Data {
 		if filepath.Base(path) == file.OutName()+config.Instance().Local.Ext {
@@ -427,7 +424,7 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 						filepath.Dir(path), state.FileWalker.Position, state.FileWalker.LibSize)
 				}
 				state.FileWalker.Position++
-				if (fillCache) {
+				if fillCache {
 					libCache := &cache.Instance().Library
 					libCache.Data = append(libCache.Data, path)
 				}

@@ -136,15 +136,20 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	// scan stdout
 	scanner := bufio.NewScanner(multiReader)
 	scanner.Split(ScanLinesSTDOUT)
+	fileExistsReturnCode := false
 	for scanner.Scan() {
-		parseOut(scanner.Text(), customDuration)
+		if parseOut(scanner.Text(), customDuration) {
+			fileExistsReturnCode = true
+		}
 	}
 	if err := cmd.Wait(); err != nil {
 		_ = glg.Errorf("ffmpeg error: %s", err)
 	}
 	exitCode := cmd.ProcessState.ExitCode()
 	encTime := time.Since(startTime)
-	if exitCode != 0 {
+	if exitCode != 0 && fileExistsReturnCode {
+		return Stats{false, encTime, 108, outPath, strings.Join(params, " ")}, errors.New("exit code file exists overwrite forbidden")
+	} else if exitCode != 0 {
 		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, errors.New("exit code not ok")
 	}
 	return Stats{true, encTime, exitCode, outPath, strings.Join(params, " ")}, nil
@@ -169,7 +174,7 @@ func ScanLinesSTDOUT(data []byte, atEOF bool) (advance int, token []byte, err er
 	return 0, nil, nil
 }
 
-func parseOut(line string, customDuration bool) {
+func parseOut(line string, customDuration bool) (fileExists bool) {
 	durationToken := "Duration:"
 	frameToken := "frame"
 	fpsToken := "fps"
@@ -180,6 +185,7 @@ func parseOut(line string, customDuration bool) {
 	dupToken := "dup"
 	dropToken := "drop"
 	speedToken := "speed"
+	fileExistsToken := "already exists. Exiting."
 
 	state.Encoder.LineOut = append(state.Encoder.LineOut, line)
 	if !customDuration && strings.Contains(line, durationToken) {
@@ -268,5 +274,8 @@ func parseOut(line string, customDuration bool) {
 		termOut += fmt.Sprintf("Remaining: %s", state.Encoder.Remaining)
 		_ = glg.Log(termOut)
 		//fmt.Printf("\r" + termOut)
+	} else if strings.Contains(line, fileExistsToken) {
+		return true
 	}
+	return false
 }
