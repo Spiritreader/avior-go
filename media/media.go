@@ -236,6 +236,8 @@ func (f *File) getAudio() {
 			f.AudioFormat = MULTI
 		}
 	}
+
+	glg.Infof("detected audio format: %s", f.AudioFormat.String())
 }
 
 func (f *File) getAudioFromLogs() {
