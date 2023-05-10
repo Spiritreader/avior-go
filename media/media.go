@@ -115,14 +115,14 @@ type File struct {
 	// Probability Med: tuner + tags
 	//
 	// Probability Low: tuner + meta without tag
-	AudioFormat     AudioFormat
-	Errors          int
-	CustomParams    []string
-	MetadataLog     []string
-	TunerLog        []string
-	LogPaths        []string
+	AudioFormat      AudioFormat
+	Errors           int
+	CustomParams     []string
+	MetadataLog      []string
+	TunerLog         []string
+	LogPaths         []string
 	AllowReplacement bool
-	legacy          bool
+	legacy           bool
 }
 
 // Updates the struct to fill out all remaining fields
@@ -200,7 +200,7 @@ func (f *File) SanitizeLog() error {
 
 	if save {
 		file, err := os.OpenFile(f.LogPaths[0], os.O_RDWR|os.O_TRUNC, 0666)
-		if (err != nil) {
+		if err != nil {
 			_ = glg.Errorf("could not sanitize tuner log file for %s, error: %s", f.LogPaths[0], err)
 			_ = glg.Errorf("dumping tuner log file contents: %+v", f.TunerLog)
 			return err
@@ -208,7 +208,7 @@ func (f *File) SanitizeLog() error {
 		defer file.Close()
 		for _, line := range f.TunerLog {
 			_, err = file.WriteString(line)
-			if (err != nil) {
+			if err != nil {
 				_ = glg.Errorf("failed while sanitizing tuner log file for %s, error: %s", f.LogPaths[0], err)
 				_ = glg.Errorf("dumping tuner log file contents: %+v", f.TunerLog)
 				return err
@@ -220,18 +220,21 @@ func (f *File) SanitizeLog() error {
 
 // getAudio retrieves the audio file from the log files and updates the struct
 func (f *File) getAudio() {
-	channels, channel_layout, err := tools.FfProbeChannels(f.Path)
-	if (err != nil) {
-		glg.Warnf("parsing audio format via logfiles, could not retrieve audio channels via ffprobe for %s, error: %s", f.Path, err)
-		f.getAudioFromLogs()
-		return
-	}
-	glg.Logf("ffprobe reports %d channels with layout %s for %s", channels, channel_layout, f.Path)
-	if channels == 2 || channel_layout == "stereo" {
-		f.AudioFormat = STEREO
-	}
-	if channels > 2 || channel_layout == "5.1(side)" || channel_layout == "5.1" {
-		f.AudioFormat = MULTI
+
+	f.getAudioFromLogs()
+
+	if f.AudioFormat == AUDIO_UNKNOWN {
+		channels, channel_layout, err := tools.FfProbeChannels(f.Path)
+		if err != nil {
+			return
+		}
+		glg.Logf("ffprobe reports %d channels with layout %s for %s", channels, channel_layout, f.Path)
+		if channels == 2 || channel_layout == "stereo" {
+			f.AudioFormat = STEREO
+		}
+		if channels > 2 || channel_layout == "5.1(side)" || channel_layout == "5.1" {
+			f.AudioFormat = MULTI
+		}
 	}
 }
 
@@ -342,7 +345,7 @@ func (f *File) trimName() {
 		}
 	}
 	if trimPerformed && strings.HasSuffix(f.Subtitle, "-") {
-		f.Subtitle = f.Subtitle[:len(f.Subtitle) - 1]
+		f.Subtitle = f.Subtitle[:len(f.Subtitle)-1]
 	}
 	f.Name = strings.Trim(tools.RemoveIllegalChars(f.Name), " ")
 	f.Subtitle = strings.Trim(tools.RemoveIllegalChars(f.Subtitle), " ")
@@ -400,7 +403,7 @@ func (f *File) Legacy() bool {
 // the term it found and its index within the slice
 func find(slice []string, terms []string, ignoredLines []string) (bool, string, int) {
 	for idx, line := range slice {
-		if (ignoredLines != nil) {
+		if ignoredLines != nil {
 			skip := false
 			for _, ignored := range ignoredLines {
 				if strings.HasPrefix(line, ignored) {
