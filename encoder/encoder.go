@@ -121,7 +121,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		if len(encoderConfig.MultiChArguments) > 0 {
 			glg.Infof("using multi channel audio encoding profile")
 		}
-		for _, channelArgument := range encoderConfig.StereoArguments {
+		for _, channelArgument := range encoderConfig.MultiChArguments {
 			if len(channelArgument) == 0 {
 				continue
 			}
