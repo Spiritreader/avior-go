@@ -75,10 +75,13 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	}
 
 	// pre arguments for ffmpeg
-	for _, preArgument := range encoderConfig.PreArguments {
-		split := strings.Split(preArgument, " ")
-		params = append(params, split...)
+	if (len(encoderConfig.PreArguments) > 0) {
+		for _, preArgument := range encoderConfig.PreArguments {
+			split := strings.Split(preArgument, " ")
+			params = append(params, split...)
+		}
 	}
+
 	if start > 0 {
 		params = append(params, "-ss", strconv.Itoa(start))
 	}
