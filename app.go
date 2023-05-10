@@ -51,7 +51,7 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (1.1.5)")
+	_ = glg.Info("version ==>", "hey (1.2.0) codename gemaeldevonrene")
 	defer log.Close()
 
 	// read cli args
@@ -65,6 +65,10 @@ func main() {
 	// Instantiate and load config file
 	_ = config.Instance()
 	if err := config.LoadLocal(); err != nil {
+		copyErr := config.TryMakeCopy()
+		if copyErr != nil {
+			_ = glg.Errorf("error making copy of exisiting invalid config file, it may be lost, %s", copyErr)
+		}
 		_ = config.Save()
 		_ = glg.Error("config file could not be loaded\nif this is the first startup, a new one has been created for you.\nPlease set the database url and restart the application")
 		glg.Fatalf("Shutting down: %s", err)
@@ -219,11 +223,11 @@ MainLoop:
 func refreshConfig() {
 	err := config.LoadLocal()
 	if err != nil {
-		_ = glg.Warnf("could not load config: %s", err)
+		_ = glg.Warnf("could not refresh config: %s", err)
 		return
 	}
 	err = db.Get().LoadSharedConfig()
 	if err != nil {
-		_ = glg.Infof("could not load shared config from db: %s", err)
+		_ = glg.Infof("could not refresh shared config from db: %s", err)
 	}
 }

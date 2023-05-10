@@ -18,3 +18,8 @@ func TestSanitize (t *testing.T) {
 	contains, _ = testFile.LogsContain([]string{"-c:v hevc_nvenc -preset p7 -tune hq"}, []string{consts.MODULE_NAME_LOGMATCH})
 	fmt.Printf("contains line: %t\n", contains)
 }
+
+func TestAudioParsing (t *testing.T) {
+	testFile := &File{Path: `\\UMS\recording_pool\Manual\Thomas Hengelbrock dirigiert Ravel und Franck.mkv`}
+	testFile.Update()
+}

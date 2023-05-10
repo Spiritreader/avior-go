@@ -2,7 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -21,7 +21,7 @@ type Data struct {
 
 // Local is the main application configuration
 type Local struct {
-	Instance	     int
+	Instance         int
 	DatabaseURL      string
 	Ext              string
 	AudioFormats     AudioFormats
@@ -91,10 +91,12 @@ type ErrorModuleSettings struct {
 }
 
 type EncoderConfig struct {
-	OutDirectory  string
-	PreArguments  []string
-	PostArguments []string
-	Stash         []string
+	OutDirectory     string
+	PreArguments     []string
+	PostArguments    []string
+	Stash            []string
+	StereoArguments  []string
+	MultiChArguments []string
 }
 
 const (
@@ -210,21 +212,21 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.Modules[consts.MODULE_NAME_RESOLUTION] = *moduleConfig
 	// ErrorSkipModule Config Defaults
 	moduleConfig = &ModuleConfig{
-		Enabled: false,
+		Enabled:  false,
 		Priority: 0,
 		Settings: &ErrorModuleSettings{Threshold: 3},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_ERRORSKIP] = *moduleConfig
 	// ErrorReplaceModule Config Defaults
 	moduleConfig = &ModuleConfig{
-		Enabled: false,
+		Enabled:  false,
 		Priority: 0,
 		Settings: &ErrorModuleSettings{Threshold: 0},
 	}
 	// DuplicateLengthCheckModule Config Defaults
 	cfg.Local.Modules[consts.MODULE_NAME_ERRORREPLACE] = *moduleConfig
 	moduleConfig = &ModuleConfig{
-		Enabled: false,
+		Enabled:  false,
 		Priority: 0,
 		Settings: &DuplicateLengthCheckSettings{Threshold: 0},
 	}
@@ -245,7 +247,7 @@ func LoadLocalFrom(path string) error {
 		return err
 	}
 	defer jsonFileHandle.Close()
-	serialized, err := ioutil.ReadAll(jsonFileHandle)
+	serialized, err := io.ReadAll(jsonFileHandle)
 	if err != nil {
 		return err
 	}
@@ -262,12 +264,21 @@ func (cfg *Data) Update(inCfg Local) {
 	cfg.Local.DatabaseURL = databaseURL
 }
 
+func TryMakeCopy() error {
+	if _, err := os.Stat(filepath.Join(globalstate.ReflectionPath(), "config.json")); err == nil {
+		if err := os.Rename(filepath.Join(globalstate.ReflectionPath(), "config.json"), filepath.Join(globalstate.ReflectionPath(), "config.json.bak")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func Save() error {
 	encoded, err := json.MarshalIndent(instance.Local, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filepath.Join(globalstate.ReflectionPath(), "config.json"), encoded, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(globalstate.ReflectionPath(), "config.json"), encoded, 0644); err != nil {
 		return err
 	}
 	return nil

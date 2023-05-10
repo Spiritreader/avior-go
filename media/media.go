@@ -220,6 +220,22 @@ func (f *File) SanitizeLog() error {
 
 // getAudio retrieves the audio file from the log files and updates the struct
 func (f *File) getAudio() {
+	channels, channel_layout, err := tools.FfProbeChannels(f.Path)
+	if (err != nil) {
+		glg.Warnf("parsing audio format via logfiles, could not retrieve audio channels via ffprobe for %s, error: %s", f.Path, err)
+		f.getAudioFromLogs()
+		return
+	}
+	glg.Logf("ffprobe reports %d channels with layout %s for %s", channels, channel_layout, f.Path)
+	if channels == 2 || channel_layout == "stereo" {
+		f.AudioFormat = STEREO
+	}
+	if channels > 2 || channel_layout == "5.1(side)" || channel_layout == "5.1" {
+		f.AudioFormat = MULTI
+	}
+}
+
+func (f *File) getAudioFromLogs() {
 	cfg := config.Instance()
 
 	tunerStereo, _, _ := find(f.TunerLog, cfg.Local.AudioFormats.StereoTags, nil)

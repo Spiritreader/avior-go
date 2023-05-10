@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/Spiritreader/avior-go/consts"
@@ -25,7 +25,7 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 		return
 	}
 	var err error
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var fields []structs.Field = make([]structs.Field, 0)
 	if mode != consts.DELETE {
 		err = json.Unmarshal(reqBody, &fields)

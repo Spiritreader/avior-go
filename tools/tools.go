@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -101,6 +103,30 @@ type PassThru struct {
 	totalBytes  int64
 	data        *globalstate.Data
 	name        string
+}
+
+// Gets the channel layout and number of channels from a file using ffprobe
+// Returns the number of channels, the channel layout and an error if one occurs
+func FfProbeChannels(path string) (int, string, error) {
+	// open ffprobe at the specified path via cmd.exec, get the number of audio channels from the output and save into an integer
+	channels := -1
+	channel_layout := "unknown"
+	ffprobe := exec.Command("ffprobe", "-v", "quiet", "-select_streams", "a:0", "-show_entries", "stream=channels, channel_layout", "-of", "default=noprint_wrappers=1", path)
+	output, err := ffprobe.Output()
+	if err != nil {
+		return channels, channel_layout, err
+	}
+	data := strings.Split(string(output), "\n")
+
+	if len(data) > 1 {
+		channels_string := strings.Trim(strings.Split(data[0], "=")[1], "\r ")
+		channel_layout = strings.Trim(strings.Split(data[1], "=")[1], "\r ")
+		channels, err = strconv.Atoi(channels_string)
+		if err != nil {
+			return channels, channel_layout, err
+		}
+	}
+	return channels, channel_layout, nil
 }
 
 func MoppyFile(src string, dst string, move bool) error {

@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/Spiritreader/avior-go/consts"
@@ -60,7 +60,7 @@ func deleteClient(w http.ResponseWriter, r *http.Request) {
 }
 
 func modifyClient(w http.ResponseWriter, r *http.Request, mode string) error {
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var client *structs.Client = &structs.Client{}
 	err := json.Unmarshal(reqBody, client)
 	_ = glg.Logf("%s", string(reqBody))

@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/Spiritreader/avior-go/cache"
@@ -25,7 +25,7 @@ func modifyConfig(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Log("endpoint hit: update config")
 	libCache := &cache.Instance().Library
 	libCache.Valid = false
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	configNew := new(config.Local)
 	err := json.Unmarshal(reqBody, configNew)
 	if err != nil {

@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/Spiritreader/avior-go/consts"
@@ -30,7 +30,7 @@ func getAllJobs(w http.ResponseWriter, r *http.Request) {
 
 func getJobsForClient(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Log("endpoint hit: get jobs for client")
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var client structs.Client
 	err := json.Unmarshal(reqBody, &client)
 	if err != nil {
@@ -91,7 +91,7 @@ func deleteJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var job structs.Job
 	err := json.Unmarshal(reqBody, &job)
 	if err != nil {

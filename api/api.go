@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -64,7 +64,7 @@ func getEncLineOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func getLog(w http.ResponseWriter, r *http.Request, logName string) {
-	content, err := ioutil.ReadFile(filepath.Join(globalstate.ReflectionPath(), "log", logName))
+	content, err := os.ReadFile(filepath.Join(globalstate.ReflectionPath(), "log", logName))
 	if err != nil {
 		_ = glg.Errorf("could not read logfile, err: %s", err)
 		_ = json.NewEncoder(w).Encode(err.Error())

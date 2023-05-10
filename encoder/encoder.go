@@ -60,6 +60,10 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		}
 		encoderConfig.PreArguments = customPreArgs
 		encoderConfig.PostArguments = customPostArgs
+
+		// channel configuration will always have to be manually set if using custom parameters for now
+		encoderConfig.MultiChArguments = make([] string, 0)
+		encoderConfig.StereoArguments = make([] string, 0)
 	}
 
 	// allow overwrite setting
@@ -87,6 +91,30 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	for _, postArgument := range encoderConfig.PostArguments {
 		split := strings.Split(postArgument, " ")
 		params = append(params, split...)
+	}
+
+	// channel arguments for ffmpeg
+	// if the audio format can be assumed or is assuredly stereo,
+	// we will allow for the stereo profile to be applied
+	// otherwise apply multi channel arguments.
+	// If the arguments are empty encoding will happen,
+	// but without user-defined audio cfg
+	if (file.AudioFormat <= media.STEREO_MAYBE) {
+		if len(encoderConfig.StereoArguments) > 0 {
+			glg.Infof("using stereo audio encoding profile")
+		}
+		for _, channelArgument := range encoderConfig.StereoArguments {
+			split := strings.Split(channelArgument, " ")
+			params = append(params, split...)
+		}
+	} else {
+		if len(encoderConfig.MultiChArguments) > 0 {
+			glg.Infof("using multi channel audio encoding profile")
+		}
+		for _, channelArgument := range encoderConfig.StereoArguments {
+			split := strings.Split(channelArgument, " ")
+			params = append(params, split...)
+		}
 	}
 
 	// determine which output path to use
