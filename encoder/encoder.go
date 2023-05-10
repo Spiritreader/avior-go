@@ -62,8 +62,8 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		encoderConfig.PostArguments = customPostArgs
 
 		// channel configuration will always have to be manually set if using custom parameters for now
-		encoderConfig.MultiChArguments = make([] string, 0)
-		encoderConfig.StereoArguments = make([] string, 0)
+		encoderConfig.MultiChArguments = make([]string, 0)
+		encoderConfig.StereoArguments = make([]string, 0)
 	}
 
 	// allow overwrite setting
@@ -75,11 +75,12 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	}
 
 	// pre arguments for ffmpeg
-	if (len(encoderConfig.PreArguments) > 0) {
-		for _, preArgument := range encoderConfig.PreArguments {
-			split := strings.Split(preArgument, " ")
-			params = append(params, split...)
+	for _, preArgument := range encoderConfig.PreArguments {
+		if len(preArgument) == 0 {
+			continue
 		}
+		split := strings.Split(preArgument, " ")
+		params = append(params, split...)
 	}
 
 	if start > 0 {
@@ -92,6 +93,9 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 
 	// post arguments for ffmpeg
 	for _, postArgument := range encoderConfig.PostArguments {
+		if len(postArgument) == 0 {
+			continue
+		}
 		split := strings.Split(postArgument, " ")
 		params = append(params, split...)
 	}
@@ -102,11 +106,14 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	// otherwise apply multi channel arguments.
 	// If the arguments are empty encoding will happen,
 	// but without user-defined audio cfg
-	if (file.AudioFormat <= media.STEREO_MAYBE) {
+	if file.AudioFormat <= media.STEREO_MAYBE {
 		if len(encoderConfig.StereoArguments) > 0 {
 			glg.Infof("using stereo audio encoding profile")
 		}
 		for _, channelArgument := range encoderConfig.StereoArguments {
+			if len(channelArgument) == 0 {
+				continue
+			}
 			split := strings.Split(channelArgument, " ")
 			params = append(params, split...)
 		}
@@ -115,6 +122,9 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 			glg.Infof("using multi channel audio encoding profile")
 		}
 		for _, channelArgument := range encoderConfig.StereoArguments {
+			if len(channelArgument) == 0 {
+				continue
+			}
 			split := strings.Split(channelArgument, " ")
 			params = append(params, split...)
 		}
