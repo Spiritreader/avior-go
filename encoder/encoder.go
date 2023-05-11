@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -30,6 +31,8 @@ type Stats struct {
 	Call       string
 }
 
+var ErrNoTag = errors.New("no tag found")
+
 var state *globalstate.Data = globalstate.Instance()
 
 func Encode(file media.File, start, duration int, overwrite bool, dstDir *string) (Stats, error) {
@@ -41,8 +44,8 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	cfg := config.Instance()
 	encoderConfig, ok := cfg.Local.EncoderConfig[file.Resolution.Tag]
 	if !ok {
-		_ = glg.Errorf("no encoder config found for %s", file.Path)
-		return Stats{false, -1, -1337, "", ""}, errors.New("no tag found")
+		_ = glg.Errorf("no encoder config found for tag %s, file %s", file.Resolution.Tag, file.Path)
+		return Stats{false, -1, -1337, "", ""}, ErrNoTag
 	}
 	_ = glg.Infof("tag/resolution %s:%s", file.Resolution.Tag, file.Resolution.Value)
 
@@ -148,6 +151,15 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	}
 	state.Encoder.OutPath = outPath
 
+	exists := false
+	if _, err := os.Stat(outPath); !os.IsNotExist(err) {
+		exists = true
+	}
+	if (exists && !overwrite) {
+		_ = glg.Infof("file already exists, skipping encoding")
+		return Stats{false, -1, 107, outPath, strings.Join(params, " ")}, errors.New("os reports that file exists, overwrite forbidden")
+	}
+
 	// call ffmpeg
 	params = append(params, outPath)
 	startTime := time.Now()
@@ -191,6 +203,15 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	if exitCode != 0 && fileExistsReturnCode {
 		return Stats{false, encTime, 108, outPath, strings.Join(params, " ")}, errors.New("exit code file exists overwrite forbidden")
 	} else if exitCode != 0 {
+		if _, err := os.Stat(outPath); !os.IsNotExist(err) {
+			// remove failed files
+			glg.Warnf("remnant file detected, removing: %s", outPath)
+			timestampString := time.Now().Format("2006-01-02 150405")
+			newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-failed-%s.mkv", file.OutName(), timestampString))
+			if err := os.Rename(outPath, newPath); err != nil {
+				glg.Errorf("could not rename remnant file: %s", err)
+			}
+		}
 		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, errors.New("exit code not ok")
 	}
 	return Stats{true, encTime, exitCode, outPath, strings.Join(params, " ")}, nil

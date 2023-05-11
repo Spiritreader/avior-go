@@ -97,6 +97,7 @@ func ByteCountSI(b int64) string {
 		float64(b)/float64(div), "kMGTPE"[exp])
 }
 
+// interface wrapper for io.Reader
 type PassThru struct {
 	io.Reader
 	transferred int64

@@ -50,7 +50,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Logf("trimmed name: %s", mediaFile.OutName())
 	jobLog.AddFileProperties(*mediaFile)
 
-	// run single file moduels
+	// run single file modules
 	jobLog.Add("")
 	res := runModules(jobLog, *mediaFile)
 	switch res {
@@ -62,6 +62,8 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 
 	// check for duplicates and run modules
 	var redirectDir *string = nil
+	var obsoleteMovedLogPaths map[string]string = nil
+	var obsoleteMovedFilePath map[string]string = nil
 	duplicates, err := checkForDuplicates(mediaFile)
 	if err != nil {
 		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
@@ -88,11 +90,11 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 				return
 			}
 			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
-			err = moveMediaFile(*mediaFile, existDir, nil)
+			err, _ = moveMediaFile(*mediaFile, existDir, nil)
 			if err != nil {
 				_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", err)
 			}
-			err = moveLogs(*mediaFile, existDir, nil)
+			err, _ = moveLogs(*mediaFile, existDir, nil)
 			if err != nil {
 				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
 			}
@@ -101,23 +103,53 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 
 		// if dupe file is eligible for replacement, move it to the .obsolete dir
 		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
-		errM := moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
-		errL := moveLogs(duplicates[0], obsoleteDir, &moduleName)
+		var errL error = nil
+		var errM error
+		errM, obsoleteMovedFilePath = moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
+		if errM != nil {
+			// roll back media file move if log move fails to ensure nothing was moved erroneously
+			// map is structured in "original path": "moved path" pairs, so swap directions to move back
+			src := obsoleteMovedFilePath[duplicates[0].Path]
+			errRollback := tools.MoppyFile(src, duplicates[0].Path, true)
+			if errRollback != nil {
+				msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
+				glg.Errorf(msg)
+				jobLog.Add(fmt.Sprintf("error: %s", msg))
+			}
+		} else {
+			errL, obsoleteMovedLogPaths = moveLogs(duplicates[0], obsoleteDir, &moduleName)
+			if errL != nil {
+				// roll back log move if media file move fails to ensure nothing was moved erroneously
+				// map is structured in "original path": "moved path" pairs, so swap directions to move back
+				for dst, src := range obsoleteMovedLogPaths {
+					errRollback := tools.MoppyFile(src, dst, true)
+					if errRollback != nil {
+						msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
+						glg.Errorf(msg)
+						jobLog.Add(fmt.Sprintf("error: %s", msg))
+					}
+				}
+			}
+		}
+
+		// cancel operation if any move failed
 		if errM != nil || errL != nil {
 			msg := "can't continue without moving duplicate files, skipping job"
 			_ = glg.Errorf(msg)
 			jobLog.Add("error:")
 			if errM != nil {
-				jobLog.Add(errM.Error())
+				jobLog.Add(fmt.Sprintf("error: %s", errM.Error()))
 			}
 			if errL != nil {
-				jobLog.Add(errL.Error())
+				jobLog.Add(fmt.Sprintf("error: %s", errL.Error()))
 			}
 			jobLog.Add(msg)
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
 			return
 		}
+		// when everything is successful, set the redirect dir to the dupe dir so the media file encode
+		// destination is the same as the dupe file
 		duplicateDir := filepath.Dir(duplicates[0].Path)
 		redirectDir = &duplicateDir
 	}
@@ -135,31 +167,43 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 
 	if err != nil {
-		if err.Error() == "no resolution tag found" {
-			appendJobTemplate(*job, jobLog, false)
-			writeSkippedLog(mediaFile, jobLog)
-			return
-		}
-		if stats.ExitCode == 108 {
+		isBricked := false
+		if errors.Is(err, encoder.ErrNoTag) {
+			jobLog.Add(fmt.Sprintf("no encoder config found for tag %s, file %s", mediaFile.Resolution.Tag, mediaFile.Path))
+		} else if stats.ExitCode == 108 {
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
-			_ = glg.Infof("skipping file")
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
+		} else if stats.ExitCode == 107 {
+			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
+			jobLog.Add("encode error: os.IsNotExist returned false and overwrite has been disabled")
+		}
+		if (isBricked) {
+			_ = glg.Infof("skipping file")
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
+			if redirectDir != nil {
+				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
+			}
 			return
 		}
+
+		// if the error is non bricking, attempt a re-encode
 		_ = glg.Warnf("encode failed, retrying")
-		// allow overwrite for retry to avoid it failing imdmediately
+		// allow overwrite for retry to avoid it failing immediately
 		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
-		if err != nil {
+		if (err != nil) {
 			_ = glg.Errorf("retrying encode of %s failed, err: %s", job.Path, err)
 			_ = glg.Infof("skipping file")
 			jobLog.Add("\nencode retry error: " + err.Error())
 			appendJobTemplate(*job, jobLog, false)
 			writeSkippedLog(mediaFile, jobLog)
+			if redirectDir != nil {
+				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
+			}
 			return
 		}
 	}
+
 	_ = glg.Infof("encode to %s done in %s", stats.OutputPath, stats.Duration)
 	jobLog.Add(fmt.Sprintf("Duration: %s", stats.Duration))
 	jobLog.Add(fmt.Sprintf("Parameters: %s", stats.Call))
@@ -169,9 +213,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	mediaFile.SanitizeLog()
 	_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
 
-	// move files, cleanup
+	// move source files, cleanup
 	doneDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.DONE_DIR)
-	err = moveMediaFile(*mediaFile, doneDir, nil)
+	err, _ = moveMediaFile(*mediaFile, doneDir, nil)
 	if err != nil {
 		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
 	}
@@ -179,7 +223,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		_ = glg.Errorf("couldn't copy source log files to encoded file directory, err: %s", err)
 	}
-	err = moveLogs(*mediaFile, doneDir, nil)
+	err, _ = moveLogs(*mediaFile, doneDir, nil)
 	if err != nil {
 		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
 	}
@@ -191,6 +235,34 @@ func Resume(resumeChan chan string) {
 		_ = glg.Log("sending resume event")
 	default:
 		_ = glg.Log("resume event already waiting for consumption")
+	}
+}
+
+// rolls back existing files to the original location
+func rollbackAllDupMoves(jobLog *joblog.Data, fileRollbackPath map[string]string, logsRollbackPaths map[string]string) {
+	// rollback file move
+	// originally moves the file from the source to the destination, since we want to reverse the process we need to
+	// switch the destination and source while iterating over the map
+	for destination, source := range fileRollbackPath {
+		err := tools.MoppyFile(source, destination, true)
+		if err != nil {
+			msg := fmt.Sprintf("couldn't rollback media file %s, err %s", source, err)
+			glg.Errorf(msg)
+			glg.Warnf("log files have not been rolled back due to previous failure")
+			jobLog.Add(fmt.Sprintf("error: %s", msg))
+			return
+		}
+	}
+	// destination and source are switched because the logsRollbackPaths are outputted from moveLogs, which
+	// originally moves them from the source to the destination, since we want to reverse the process we need to
+	// switch the destination and source while iterating over the map
+	for destination, source := range logsRollbackPaths {
+		err := tools.MoppyFile(source, destination, true)
+		if err != nil {
+			msg := fmt.Sprintf("couldn't rollback log %s, err %s", source, err)
+			glg.Errorf(msg)
+			jobLog.Add(fmt.Sprintf("error: %s", msg))
+		}
 	}
 }
 
@@ -274,7 +346,14 @@ func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data) {
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "skipped.log"), false, true)
 }
 
-func moveMediaFile(file media.File, dstDir string, moduleName *string) error {
+// Moves the mediafile to the dstDir location.
+//
+// If moduleName is specified, it will be appended to the filename.
+//
+// # Returns the new path of the file it was moved to
+//
+// In case of an error, the path will still be returned for rollback purposes, but the error will be non-nil
+func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
 	_, err := os.Stat(dstDir)
 	if os.IsNotExist(err) {
 		_ = os.Mkdir(dstDir, 0777)
@@ -289,12 +368,19 @@ func moveMediaFile(file media.File, dstDir string, moduleName *string) error {
 	fileOut = filepath.Join(dstDir, fileOut)
 	err = tools.MoppyFile(file.Path, fileOut, true)
 	if err != nil {
-		return err
+		return err, map[string]string{file.Path: fileOut}
 	}
-	return nil
+	return nil, map[string]string{file.Path: fileOut}
 }
 
-func moveLogs(file media.File, dstDir string, moduleName *string) error {
+// Moves the logs of the mediafile to the dstDir location.
+//
+// If moduleName is specified, it will be appended to the filename.
+//
+// # Returns the new paths of the file it was moved to as a map of old path to new path
+//
+// In case of an error, the path of the failed move will still be returned for rollback purposes
+func moveLogs(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
 	_, err := os.Stat(dstDir)
 	if os.IsNotExist(err) {
 		_ = os.Mkdir(dstDir, 0777)
@@ -314,10 +400,10 @@ func moveLogs(file media.File, dstDir string, moduleName *string) error {
 	for src, dst := range toMovePaths {
 		err := tools.MoppyFile(src, dst, true)
 		if err != nil {
-			return err
+			return err, map[string]string{src: dst}
 		}
 	}
-	return nil
+	return nil, toMovePaths
 }
 
 func copyLogsToEncOut(file media.File, dstDir string) error {
