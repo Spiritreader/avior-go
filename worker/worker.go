@@ -24,7 +24,10 @@ import (
 	"github.com/kpango/glg"
 )
 
-var state *globalstate.Data = globalstate.Instance()
+var (
+	state *globalstate.Data = globalstate.Instance()
+	previousEncoderLineOut []string
+)
 
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
 	state.InFile = job.Path
@@ -56,7 +59,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	switch res {
 	case comparator.DISC:
 		appendJobTemplate(*job, jobLog, false)
-		writeSkippedLog(mediaFile, jobLog)
+		writeSkippedLog(mediaFile, jobLog, false)
 		return
 	}
 
@@ -69,7 +72,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
 		state.Paused = true
 		appendJobTemplate(*job, jobLog, false)
-		writeSkippedLog(mediaFile, jobLog)
+		writeSkippedLog(mediaFile, jobLog, false)
 		return
 	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
@@ -85,7 +88,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		switch res {
 		case comparator.DISC, comparator.NOCH:
 			appendJobTemplate(*job, jobLog, true)
-			writeSkippedLog(mediaFile, jobLog)
+			writeSkippedLog(mediaFile, jobLog, false)
 			if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
 				return
 			}
@@ -145,7 +148,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			}
 			jobLog.Add(msg)
 			appendJobTemplate(*job, jobLog, false)
-			writeSkippedLog(mediaFile, jobLog)
+			writeSkippedLog(mediaFile, jobLog, false)
 			return
 		}
 		// when everything is successful, set the redirect dir to the dupe dir so the media file encode
@@ -163,6 +166,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	//invalidate cache as it won't be recent anymore after encoding a job
 	cache.Instance().Library.Valid = false
 
+	previousEncoderLineOut = make([]string, 0)
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
 	jobLog.Add(fmt.Sprintf("OutputPath: %s", state.Encoder.OutPath))
 
@@ -177,10 +181,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			jobLog.Add("encode error: os.IsNotExist returned false and overwrite has been disabled")
 		}
-		if (isBricked) {
+		if isBricked {
 			_ = glg.Infof("skipping file")
 			appendJobTemplate(*job, jobLog, false)
-			writeSkippedLog(mediaFile, jobLog)
+			writeSkippedLog(mediaFile, jobLog, false)
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
@@ -190,13 +194,15 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// if the error is non bricking, attempt a re-encode
 		_ = glg.Warnf("encode failed, retrying")
 		// allow overwrite for retry to avoid it failing immediately
-		stats, err = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
-		if (err != nil) {
-			_ = glg.Errorf("retrying encode of %s failed, err: %s", job.Path, err)
+		var errRetry error
+		previousEncoderLineOut = state.Encoder.LineOut
+		stats, errRetry = encoder.Encode(*mediaFile, 0, 0, true, redirectDir)
+		if errRetry != nil {
+			_ = glg.Errorf("retrying encode failed. ffmpeg output has been appended to info log, file path: %s, err: %s", job.Path, errRetry)
 			_ = glg.Infof("skipping file")
-			jobLog.Add("\nencode retry error: " + err.Error())
+			jobLog.Add("Encode retry error: " + errRetry.Error())
 			appendJobTemplate(*job, jobLog, false)
-			writeSkippedLog(mediaFile, jobLog)
+			writeSkippedLog(mediaFile, jobLog, true)
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
@@ -289,6 +295,24 @@ func appendJobTemplate(job structs.Job, jobLog *joblog.Data, moved bool) {
 	}
 }
 
+func appendFfmpegOutput(jobLog *joblog.Data, encoderState globalstate.Encoder) {
+	jobLog.Add("FFmpeg Output:")
+	hasData := false
+	if len(previousEncoderLineOut) > 0 {
+		jobLog.Add("Initial Attempt:")
+		jobLog.Add(fmt.Sprintf("%v", previousEncoderLineOut))
+		hasData = true
+	}
+	if len(encoderState.LineOut) > 0 {
+		jobLog.Add("\nRetry attempt:")
+		jobLog.Add(fmt.Sprintf("%v", encoderState.LineOut))
+		hasData = true
+	}
+	if !hasData {
+		jobLog.Add("No output")
+	}
+}
+
 func runModules(jobLog *joblog.Data, fileNew media.File) string {
 	jobLog.Add("Module Results:")
 	if fileNew.AllowReplacement {
@@ -340,9 +364,18 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 	return comparator.NOCH, "none"
 }
 
-func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data) {
+// Writes the skipped logs to the skipped log file and the media file info log.
+//
+// If the withFfmpegOut flag is set, the ffmpeg output will be appended to the info log, but not to the skipped log.
+func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data, withFfmpegOut bool) {
 	mediaFile.LogPaths = append(mediaFile.LogPaths, mediaFile.Path+".INFO.log")
-	_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+	if withFfmpegOut {
+		jobLogWithFfmpeg := *jobLog
+		appendFfmpegOutput(&jobLogWithFfmpeg, state.Encoder)
+		_ = jobLogWithFfmpeg.AppendTo(mediaFile.Path+".INFO.log", false, false)
+	} else {
+		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+	}
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "skipped.log"), false, true)
 }
 
@@ -350,7 +383,9 @@ func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data) {
 //
 // If moduleName is specified, it will be appended to the filename.
 //
-// # Returns the new path of the file it was moved to
+// # Returns
+//
+// the new path of the file it was moved to
 //
 // In case of an error, the path will still be returned for rollback purposes, but the error will be non-nil
 func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
