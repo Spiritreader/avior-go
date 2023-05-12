@@ -22,7 +22,7 @@ func InTimeSpan(startString string, endString string, checkTime time.Time) bool 
 	layout := "15:04"
 	start, _ := time.Parse(layout, startString)
 	end, _ := time.Parse(layout, endString)
-	check, _ := time.Parse(layout, fmt.Sprintf("%d:%d", checkTime.Hour(), checkTime.Minute()))
+	check, _ := time.Parse(layout, fmt.Sprintf("%d:%02d", checkTime.Hour(), checkTime.Minute()))
 	if start.Before(end) {
 		return !check.Before(start) && !check.After(end)
 	}

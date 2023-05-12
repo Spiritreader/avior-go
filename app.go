@@ -20,7 +20,6 @@ import (
 
 var (
 	resumeChan chan string
-	sleep      bool
 )
 
 func main() {
@@ -51,7 +50,7 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (1.3.0) codename 'hey'")
+	_ = glg.Info("version ==>", "hey (1.3.0) codename yesterday")
 	defer log.Close()
 
 	// read cli args
@@ -157,19 +156,19 @@ MainLoop:
 	for {
 		// check if client is allowed to run
 		canRun := tools.InTimeSpan(client.AvailabilityStart, client.AvailabilityEnd, time.Now())
-		if !canRun && !sleep {
+		if !canRun && !state.Sleeping {
 			_ = glg.Infof("client %s moving to standby, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
-			sleep = true
+			state.Sleeping = true
 			sleepTime = 5
-		} else if canRun && sleep {
+		} else if canRun && state.Sleeping {
 			_ = glg.Infof("client %s resuming, active hours: %s - %s",
 				client.Name, client.AvailabilityStart, client.AvailabilityEnd)
-			sleep = false
+			state.Sleeping = false
 			sleepTime = 1
 		}
 
-		if !sleep && !state.Paused && !state.ShutdownPending {
+		if !state.Sleeping && !state.Paused && !state.ShutdownPending {
 
 			refreshConfig()
 			job, err := dataStore.GetNextJobForClient(client)

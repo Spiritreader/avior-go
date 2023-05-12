@@ -61,6 +61,7 @@ type Data struct {
 	Paused          bool
 	ShutdownPending bool
 	HostName        string
+	Sleeping        bool
 }
 
 type Encoder struct {

@@ -1,0 +1,205 @@
+{
+  "Instance": 0,
+  "DatabaseURL": "mongodb://10.10.10.96:27017",
+  "Ext": ".mkv",
+  "AudioFormats": {
+    "StereoTags": [
+      "AC3 Audio Stereo",
+      "[Dolby Digital 2.0]",
+      "[stereo]",
+      "MPEG Audio Stereo",
+      "AC3 2/0"
+    ],
+    "MultiTags": [
+      "AC3 Audio 5.1",
+      "[Dolby Digital 5.1]",
+      "[AC-3]"
+    ]
+  },
+  "Resolutions": {
+    "fhd": "1920x1080",
+    "hd": "1280x720",
+    "sd": "720x576",
+    "stv_fhd": "1920x1088"
+  },
+  "ObsoletePath": "D:\\Recording",
+  "MediaPaths": [
+    "D:\\Recording\\"
+  ],
+  "EstimatedLibSize": 127,
+  "Modules": {
+    "AgeModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "MaxAge": 5
+      }
+    },
+    "AudioModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Accuracy": "med"
+      }
+    },
+    "DuplicateLengthCheckModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 2
+      }
+    },
+    "ErrorReplaceModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 0
+      }
+    },
+    "ErrorSkipModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 5
+      }
+    },
+    "LegacyModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": null
+    },
+    "LengthModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Threshold": 20
+      }
+    },
+    "LogMatchModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Mode": "neutral"
+      }
+    },
+    "MaxSizeModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "MaxSize": 30
+      }
+    },
+    "ResolutionModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "MinResolution": 20
+      }
+    },
+    "SizeApproxModule": {
+      "Enabled": true,
+      "Priority": 0,
+      "Settings": {
+        "Difference": 20,
+        "Fraction": 10,
+        "SampleCount": 3
+      }
+    }
+  },
+  "EncoderConfig": {
+    "fhd": {
+      "OutDirectory": "\\\\UMS\\media\\transcoded\\HD1080",
+      "PreArguments": [],
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-vf yadif=0:-1:0",
+        "-preset p7",
+        "-tune hq",
+        "-rc vbr",
+        "-rc-lookahead 32",
+        "-cq 28",
+        "-multipass fullres",
+        "-r 25",
+        "-acodec copy"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-filter:v scale=1280:720",
+        "-r 25",
+        "-rc constqp",
+        "-qp 21"
+      ],
+      "StereoArguments": [],
+      "MultiChArguments": []
+    },
+    "hd": {
+      "OutDirectory": "D:\\Recording\\testencode",
+      "PreArguments": [],
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-preset p7",
+        "-tune hq",
+        "-rc vbr",
+        "-rc-lookahead 32",
+        "-cq 28",
+        "-multipass fullres",
+        "-r 25",
+        "-acodec copy"
+      ],
+      "Stash": [
+        "-filter:v scale=1280:720"
+      ],
+      "StereoArguments": [],
+      "MultiChArguments": []
+    },
+    "sd": {
+      "OutDirectory": "\\\\UMS\\media\\transcoded\\SD",
+      "PreArguments": [],
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-preset p7",
+        "-tune hq",
+        "-rc vbr",
+        "-rc-lookahead 32",
+        "-cq 30",
+        "-multipass fullres",
+        "-r 25",
+        "-acodec copy"
+      ],
+      "Stash": [
+        ""
+      ],
+      "StereoArguments": null,
+      "MultiChArguments": null
+    },
+    "stv_fhd": {
+      "OutDirectory": "\\\\UMS\\media\\transcoded\\HD1080",
+      "PreArguments": [],
+      "PostArguments": [
+        "-c:v hevc_nvenc",
+        "-vf yadif=0:-1:0",
+        "-preset p7",
+        "-tune hq",
+        "-rc vbr",
+        "-rc-lookahead 32",
+        "-cq 28",
+        "-multipass fullres",
+        "-r 25",
+        "-acodec copy"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-r 25",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-rc constqp",
+        "-qp 21"
+      ],
+      "StereoArguments": null,
+      "MultiChArguments": null
+    }
+  },
+  "EncoderPriority": "IDLE"
+}
