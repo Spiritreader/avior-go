@@ -50,7 +50,7 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (1.3.0) codename emanedoc")
+	_ = glg.Info("version ==>", "hey (1.3.1) codename padding")
 	defer log.Close()
 
 	// read cli args
