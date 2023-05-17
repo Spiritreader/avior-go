@@ -211,6 +211,8 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 			newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-failed-%s.mkv", file.OutName(), timestampString))
 			if err := os.Rename(outPath, newPath); err != nil {
 				glg.Errorf("could not rename remnant file: %s", err)
+			} else {
+				outPath = newPath
 			}
 		}
 		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, errors.New("exit code not ok")
@@ -226,6 +228,8 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-zero-duration-stream-%s.mkv", file.OutName(), timestampString))
 		if err := os.Rename(outPath, newPath); err != nil {
 			glg.Errorf("could not rename file: %s", err)
+		} else {
+			outPath = newPath
 		}
 		return Stats{false, encTime, 106, outPath, strings.Join(params, " ")}, errors.New("video stream with duration zero")
 	}
