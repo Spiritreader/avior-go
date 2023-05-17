@@ -17,6 +17,7 @@ import (
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/media"
+	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 	"github.com/rs/xid"
 	"golang.org/x/sys/windows"
@@ -155,7 +156,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	if _, err := os.Stat(outPath); !os.IsNotExist(err) {
 		exists = true
 	}
-	if (exists && !overwrite) {
+	if exists && !overwrite {
 		_ = glg.Infof("file already exists, skipping encoding")
 		return Stats{false, -1, 107, outPath, strings.Join(params, " ")}, errors.New("os reports that file exists, overwrite forbidden")
 	}
@@ -205,7 +206,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	} else if exitCode != 0 {
 		if _, err := os.Stat(outPath); !os.IsNotExist(err) {
 			// remove failed files
-			glg.Warnf("remnant file detected, removing: %s", outPath)
+			glg.Warnf("remnant file detected, renaming: %s", outPath)
 			timestampString := time.Now().Format("2006-01-02 150405")
 			newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-failed-%s.mkv", file.OutName(), timestampString))
 			if err := os.Rename(outPath, newPath); err != nil {
@@ -214,6 +215,21 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		}
 		return Stats{false, encTime, exitCode, outPath, strings.Join(params, " ")}, errors.New("exit code not ok")
 	}
+
+	// verify file size
+	ok, vErrify := tools.FfProbeDurationVerify(outPath)
+	if vErrify != nil {
+		glg.Warnf("could not verify file size, will be assumed good: %s", err)
+	} else if !ok {
+		glg.Warnf("file size verification failed, renaming: %s", outPath)
+		timestampString := time.Now().Format("2006-01-02 150405")
+		newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-zero-duration-stream-%s.mkv", file.OutName(), timestampString))
+		if err := os.Rename(outPath, newPath); err != nil {
+			glg.Errorf("could not rename file: %s", err)
+		}
+		return Stats{false, encTime, 106, outPath, strings.Join(params, " ")}, errors.New("video stream with duration zero")
+	}
+
 	return Stats{true, encTime, exitCode, outPath, strings.Join(params, " ")}, nil
 }
 

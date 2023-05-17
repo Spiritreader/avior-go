@@ -130,6 +130,70 @@ func FfProbeChannels(path string) (int, string, error) {
 	return channels, channel_layout, nil
 }
 
+func FfProbeDurationVerify(path string) (bool, error) {
+	ffprobe := exec.Command("ffprobe", "-v", "quiet", "-select_streams", "v", "-show_entries", "stream_tags=duration", "-of", "default=noprint_wrappers=1", path)
+	output, err := ffprobe.Output()
+	if err != nil {
+		return true, err
+	}
+	if (len(output) == 0) {
+		return true, nil
+	}
+	data := strings.Split(string(output), "\n")
+	if len(data) > 1 {
+		durationString := strings.Trim(strings.Split(data[0], "=")[1], "\r ")
+		duration, err := ParseDuration(durationString)
+		if err != nil {
+			return true, err
+		}
+
+		if duration == 0 {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func ParseDuration(durationStr string) (time.Duration, error) {
+	parts := strings.SplitN(durationStr, ".", 2)
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("invalid duration format, no fraction")
+	}
+
+	hms := strings.Split(parts[0], ":")
+	if len(hms) != 3 {
+		return 0, fmt.Errorf("invalid duration format, no hours, minutes or seconds")
+	}
+
+	hours, err := strconv.Atoi(hms[0])
+	if err != nil {
+		return 0, err
+	}
+
+	minutes, err := strconv.Atoi(hms[1])
+	if err != nil {
+		return 0, err
+	}
+
+	seconds, err := strconv.Atoi(hms[2])
+	if err != nil {
+		return 0, err
+	}
+
+	fractionStr := parts[1]
+	fraction, err := strconv.ParseInt(fractionStr, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	duration := time.Duration(hours)*time.Hour +
+		time.Duration(minutes)*time.Minute +
+		time.Duration(seconds)*time.Second +
+		time.Duration(fraction)
+
+	return duration, nil
+}
+
 func MoppyFile(src string, dst string, move bool) error {
 
 	if move {
