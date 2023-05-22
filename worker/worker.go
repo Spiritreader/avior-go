@@ -177,7 +177,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 
 	// invalidate cache in non-redis mode as it won't be recent anymore after encoding a job
-	if !cfg.Local.Redis.Enabled {
+	if !redis.Handle.Running(){
 		cache.Instance().Library.Valid = false
 	}
 
