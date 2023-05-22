@@ -514,7 +514,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
 		_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
 		libCache.Valid = false
-	} else if (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
+	} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
 		_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
 		libCache.Valid = false
 	}

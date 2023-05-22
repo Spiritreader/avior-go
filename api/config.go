@@ -7,6 +7,7 @@ import (
 
 	"github.com/Spiritreader/avior-go/cache"
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/redis"
 	"github.com/kpango/glg"
 )
 
@@ -36,9 +37,11 @@ func modifyConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg := config.Instance()
+	prevRedisCfg := cfg.Local.Redis
 	configNew.DatabaseURL = cfg.Local.DatabaseURL
 	cfg.Update(*configNew)
 	_ = config.Save()
+	redis.AutoManage(prevRedisCfg)
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode(config.Instance())

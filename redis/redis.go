@@ -107,7 +107,7 @@ func (r *Handle) Running() bool {
 func (r *Handle) subscribe() {
 	if !r.running.Load() {
 		r.pubSub = r.client.Subscribe(r.context, r.cfg.Local.Redis.ChannelPrefix+"-jobs")
-		glg.Infof("redis: starting job broadcast subscription")
+		glg.Infof("redis: starting broadcast subscription to %s", r.cfg.Local.Redis.ChannelPrefix+"-jobs")
 		go r.receiveLoop()
 	}
 }
@@ -134,11 +134,19 @@ func (r *Handle) receiveLoop() {
 
 // AutoManage manages the redis connection based on the config
 // Initializes and deinitializes pubsub
-func AutoManage() error {
+func AutoManage(prevCfg config.Redis) error {
 	cfg := config.Instance()
 	redis := Get()
 
 	if cfg.Local.Redis.Enabled {
+		if prevCfg.Enabled && (prevCfg.Host != cfg.Local.Redis.Host ||
+			prevCfg.Password != cfg.Local.Redis.Password ||
+			prevCfg.DB != cfg.Local.Redis.DB ||
+			prevCfg.ChannelPrefix != cfg.Local.Redis.ChannelPrefix) {
+			// config changed, close connection and reinitialize
+			glg.Infof("redis: config changed, reconfiguring client")
+			redis.Handle.Close()
+		}
 		redis.configure()
 		redis.Handle.subscribe()
 	} else {

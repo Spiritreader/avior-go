@@ -223,6 +223,8 @@ MainLoop:
 }
 
 func refreshConfig() {
+	cfg := config.Instance()
+	prevRedisCfg := cfg.Local.Redis
 	err := config.LoadLocal()
 	if err != nil {
 		_ = glg.Warnf("could not refresh config: %s", err)
@@ -238,5 +240,5 @@ func refreshConfig() {
 	if err != nil {
 		_ = glg.Infof("could not refresh shared config from db: %s", err)
 	}
-	redis.AutoManage()
+	redis.AutoManage(prevRedisCfg)
 }
