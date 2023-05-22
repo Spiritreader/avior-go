@@ -42,6 +42,7 @@ func main() {
 
 	glg.Get().
 		SetMode(glg.BOTH).
+		SetTimeLocation(time.Local).
 		//AddLevelWriter(glg.LOG, log).
 		AddLevelWriter(glg.INFO, log).
 		AddLevelWriter(glg.WARN, log).
@@ -51,7 +52,7 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (1.5.3) codename all-g")
+	_ = glg.Info("version ==>", "hey (1.5.4) codename all-g")
 	defer log.Close()
 
 	// read cli args
