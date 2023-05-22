@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/karrick/godirwalk v1.17.0
+	github.com/karrick/godirwalk v1.16.1
 	github.com/kpango/glg v1.6.15
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
