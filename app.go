@@ -12,6 +12,7 @@ import (
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/globalstate"
+	"github.com/Spiritreader/avior-go/redis"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
@@ -50,7 +51,7 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (1.3.2) codename vstream")
+	_ = glg.Info("version ==>", "hey (1.5.0) codename all-g")
 	defer log.Close()
 
 	// read cli args
@@ -215,6 +216,8 @@ MainLoop:
 	}
 	_ = dataStore.SignOutThisClient()
 	apiChan <- "stop"
+	redis := redis.Get()
+	redis.Handle.Close()
 	wg.Done()
 	cancel()
 }
@@ -223,10 +226,17 @@ func refreshConfig() {
 	err := config.LoadLocal()
 	if err != nil {
 		_ = glg.Warnf("could not refresh config: %s", err)
-		return
+		time.Sleep(1 * time.Second)
+		_ = glg.Warnf("retry config load")
+		err = config.LoadLocal()
+		if err != nil {
+			_ = glg.Errorf("could not refresh config: %s", err)
+			return
+		}
 	}
 	err = db.Get().LoadSharedConfig()
 	if err != nil {
 		_ = glg.Infof("could not refresh shared config from db: %s", err)
 	}
+	redis.AutoManage()
 }

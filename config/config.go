@@ -5,7 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/globalstate"
@@ -21,17 +23,28 @@ type Data struct {
 
 // Local is the main application configuration
 type Local struct {
-	Instance         int
-	DatabaseURL      string
-	Ext              string
-	AudioFormats     AudioFormats
-	Resolutions      map[string]string
-	ObsoletePath     string
-	MediaPaths       []string
-	EstimatedLibSize int
-	Modules          map[string]ModuleConfig
-	EncoderConfig    map[string]EncoderConfig
-	EncoderPriority  string
+	Instance           int
+	DatabaseURL        string
+	Redis              Redis
+	Ext                string
+	PauseOnEncodeError bool
+	AudioFormats       AudioFormats
+	Resolutions        map[string]string
+	ObsoletePath       string
+	MediaPaths         []string
+	EstimatedLibSize   int
+	Modules            map[string]ModuleConfig
+	EncoderConfig      map[string]EncoderConfig
+	EncoderPriority    string
+}
+
+type Redis struct {
+	Enabled       bool
+	Host          string
+	Password      string
+	DB            int
+	CacheTtl      time.Duration
+	ChannelPrefix string
 }
 
 type Shared struct {
@@ -156,10 +169,19 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.Instance = 0
 	cfg.Local.DatabaseURL = "mongodb://localhost:27017"
 	cfg.Local.Ext = ".mkv"
+	cfg.Local.PauseOnEncodeError = true
 	cfg.Local.Modules = make(map[string]ModuleConfig)
 	cfg.Local.Resolutions = map[string]string{"hd": "1280x720", "fhd": "1920x1080"}
 	cfg.Local.EncoderConfig = map[string]EncoderConfig{"hd": *new(EncoderConfig)}
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
+	cfg.Local.Redis = Redis{
+		Host:          "localhost:6379",
+		Password:      "",
+		DB:            0,
+		Enabled:       false,
+		ChannelPrefix: strings.ToLower(consts.DB_NAME),
+		CacheTtl:      24 * time.Hour,
+	}
 
 	// AgeModule Config Defaults
 	moduleConfig := &ModuleConfig{

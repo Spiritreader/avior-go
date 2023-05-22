@@ -8,11 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"testing"
 
 	"github.com/Spiritreader/avior-go/api"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/db"
+	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/Spiritreader/avior-go/tools"
@@ -21,7 +23,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func main() {
+func Test(t *testing.T) {
 	log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
 	errlog := glg.FileWriter(filepath.Join("log", "err.log"), os.ModeAppend)
 	glg.Get().
@@ -57,6 +59,9 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	go api.Run(serviceStopChan, wg, apiStopChan, aviorDb)
+	state := globalstate.Instance()
+	state.Paused = true
+	state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
 	<-serviceStopChan
 	apiStopChan <- "stop"
 }

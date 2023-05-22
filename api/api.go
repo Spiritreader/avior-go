@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Spiritreader/avior-go/cache"
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/db"
 	"github.com/Spiritreader/avior-go/globalstate"
@@ -25,6 +26,8 @@ func pause(w http.ResponseWriter, r *http.Request) {
 	_ = glg.Info("endpoint hit: pause service")
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
+	libCache := cache.Instance()
+	libCache.Library.Valid = false
 	state.Paused = true
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("paused")
@@ -35,6 +38,7 @@ func resume(w http.ResponseWriter, r *http.Request) {
 	state := globalstate.Instance()
 	encoder := json.NewEncoder(w)
 	state.Paused = false
+	state.PauseReason = ""
 	globalstate.SendWake()
 	encoder.SetIndent("", " ")
 	_ = encoder.Encode("resumed")

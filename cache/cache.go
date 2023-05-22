@@ -14,9 +14,9 @@ type Data struct {
 
 // Library Cache struct to speed up lib scan operations
 type Library struct {
-	Data []string
+	Data       []string
 	LastUpdate time.Time
-	Valid bool
+	Valid      bool `json:"-"`
 }
 
 // Instance retrieves the current configuration file instance

@@ -18,6 +18,7 @@ import (
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/joblog"
 	"github.com/Spiritreader/avior-go/media"
+	"github.com/Spiritreader/avior-go/redis"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/karrick/godirwalk"
@@ -25,13 +26,15 @@ import (
 )
 
 var (
-	state *globalstate.Data = globalstate.Instance()
+	state                  *globalstate.Data = globalstate.Instance()
 	previousEncoderLineOut []string
 )
 
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
+	cfg := config.Instance()
 	state.InFile = job.Path
 	jobLog := new(joblog.Data)
+	redis := redis.Get()
 	_ = glg.Infof("processing job %s", job.Path)
 
 	//reset global state after job, allow resume without pause
@@ -71,12 +74,22 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
 		state.Paused = true
+		state.PauseReason = consts.PAUSE_REASON_DUPLICATE_SCAN
 		appendJobTemplate(*job, jobLog, false)
 		writeSkippedLog(mediaFile, jobLog, false)
 		return
 	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
+
+		// check if duplicate file actually exists
+		if _, err := os.Stat(duplicates[0].Path); os.IsNotExist(err) {
+			_ = glg.Warnf("duplicate file %s doesn't exist on disk, skipping", duplicates[0].Path)
+			appendJobTemplate(*job, jobLog, false)
+			writeSkippedLog(mediaFile, jobLog, false)
+			return
+		}
+
 		err = duplicates[0].Update()
 		if err != nil {
 			_ = glg.Warnf("couldn't parse duplicate log file: %s", err)
@@ -105,7 +118,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		}
 
 		// if dupe file is eligible for replacement, move it to the .obsolete dir
-		obsoleteDir := filepath.Join(config.Instance().Local.ObsoletePath, consts.OBSOLETE_DIR)
+		obsoleteDir := filepath.Join(cfg.Local.ObsoletePath, consts.OBSOLETE_DIR)
 		var errL error = nil
 		var errM error
 		errM, obsoleteMovedFilePath = moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
@@ -163,8 +176,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Logf("media struct: %+v", *mediaFile)
 	jobLog.Add("Encoder Info:")
 
-	//invalidate cache as it won't be recent anymore after encoding a job
-	cache.Instance().Library.Valid = false
+	// invalidate cache in non-redis mode as it won't be recent anymore after encoding a job
+	if !cfg.Local.Redis.Enabled {
+		cache.Instance().Library.Valid = false
+	}
 
 	previousEncoderLineOut = make([]string, 0)
 	stats, err := encoder.Encode(*mediaFile, 0, 0, false, redirectDir)
@@ -188,6 +203,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
+			if (cfg.Local.PauseOnEncodeError) {
+				state.Paused = true
+				state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
+			}
 			return
 		}
 
@@ -205,6 +224,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			writeSkippedLog(mediaFile, jobLog, true)
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
+			}
+			if (cfg.Local.PauseOnEncodeError) {
+				state.Paused = true
+				state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
 			}
 			return
 		}
@@ -232,6 +255,15 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	err, _ = moveLogs(*mediaFile, doneDir, nil)
 	if err != nil {
 		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
+	}
+
+	// broadcast job if redis is enabled
+	if (redis.Handle.Running()) {
+		_ = glg.Infof("redis: broadcasting job %s", stats.OutputPath)
+		err := redis.Handle.PushMessage(stats.OutputPath)
+		if err != nil {
+			_ = glg.Warnf("redis: couldn't broadcast job, err: %s", err)
+		}
 	}
 }
 
@@ -478,15 +510,20 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 
 	libCache := &cache.Instance().Library
 
-	if (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
-		_ = glg.Infof("auto invalidating lib cache after 5 minutes")
+	// if redis is enabled the cache lifetime is determined by ttl
+	if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
+		_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
+		libCache.Valid = false
+	} else if (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
+		_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
 		libCache.Valid = false
 	}
 
 	fillCache := false
 	if !libCache.Valid {
 		fillCache = true
-		libCache.Data = libCache.Data[:0]
+		previousLength := len(libCache.Data)
+		libCache.Data = make([]string, 0, previousLength)
 		for idx, path := range cfg.Local.MediaPaths {
 			state.FileWalker.Directory = path
 			_ = glg.Infof("scanning directory (%d/%d): %s", idx+1, len(cfg.Local.MediaPaths), path)
@@ -505,7 +542,8 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 		matches = append(matches, traverseMemCache(file, libCache)...)
 	}
 	state.FileWalker.Position = 0
-	_ = config.Save()
+	// this didn't make sense to I removed it
+	//_ = config.Save()
 	return matches, nil
 }
 

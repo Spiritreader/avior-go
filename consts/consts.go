@@ -16,6 +16,8 @@ const (
 	AUDIO_ACC_LOW                    string = "low"
 	AUDIO_ACC_MED                    string = "med"
 	AUDIO_ACC_HIGH                   string = "high"
+	PAUSE_REASON_DUPLICATE_SCAN      string = "DuplicateScanFail"
+	PAUSE_REASON_ENCODE_ERROR        string = "EncodeError"
 	LOG_DELIM                        string = "avior-go info"
 	LOGMATCH_MODE_INCLUDE            string = "include"
 	LOGMATCH_MODE_NEUTRAL            string = "neutral"
@@ -29,4 +31,5 @@ const (
 	UPDATE                           string = "update"
 	DELETE                           string = "delete"
 	GET                              string = "GE"
+	DB_NAME                          string = "Avior"
 )

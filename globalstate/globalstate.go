@@ -59,6 +59,7 @@ type Data struct {
 	FileWalker      FileWalker
 	Mover           Mover
 	Paused          bool
+	PauseReason     string
 	ShutdownPending bool
 	HostName        string
 	Sleeping        bool

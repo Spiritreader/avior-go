@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/kpango/glg"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -41,7 +42,7 @@ func Connect() (*DataStore, error) {
 			return
 		}
 		instance.client = client
-		instance.db = client.Database("Avior")
+		instance.db = client.Database(consts.DB_NAME)
 	})
 	if connectErr != nil {
 		return nil, connectErr
