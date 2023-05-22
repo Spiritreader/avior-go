@@ -189,12 +189,15 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		isBricked := false
 		if errors.Is(err, encoder.ErrNoTag) {
 			jobLog.Add(fmt.Sprintf("no encoder config found for tag %s, file %s", mediaFile.Resolution.Tag, mediaFile.Path))
+			isBricked = true
 		} else if stats.ExitCode == 108 {
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
+			isBricked = true
 		} else if stats.ExitCode == 107 {
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			jobLog.Add("encode error: os.IsNotExist returned false and overwrite has been disabled")
+			isBricked = true
 		}
 		if isBricked {
 			_ = glg.Infof("skipping file")
