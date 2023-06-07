@@ -545,8 +545,8 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 		matches = append(matches, traverseMemCache(file, libCache)...)
 	}
 	state.FileWalker.Position = 0
-	// this didn't make sense to I removed it
-	//_ = config.Save()
+	// save the config file to update the library size
+	_ = config.Save()
 	return matches, nil
 }
 
