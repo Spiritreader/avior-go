@@ -219,19 +219,19 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	}
 
 	// verify file size
-	ok, vErrify := tools.FfProbeDurationVerify(outPath)
-	if vErrify != nil {
-		glg.Warnf("could not verify file size, will be assumed good: %s", err)
+	ok, vErrify := tools.FfProbeVerfiy(outPath)
+	if vErrify != nil && !(errors.Is(vErrify, tools.NoStreamsError) || errors.Is(vErrify, tools.ZeroDurationError)) {
+		glg.Warnf("could not verify file, will be assumed good: %s", err)
 	} else if !ok {
-		glg.Warnf("file size verification failed, renaming: %s", outPath)
+		glg.Warnf("file verification failed, renaming: %s", outPath)
 		timestampString := time.Now().Format("2006-01-02 150405")
-		newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-zero-duration-stream-%s.mkv", file.OutName(), timestampString))
+		newPath := filepath.Join(filepath.Dir(outPath), fmt.Sprintf("%s-invalid-stream-duration-%s.mkv", file.OutName(), timestampString))
 		if err := os.Rename(outPath, newPath); err != nil {
 			glg.Errorf("could not rename file: %s", err)
 		} else {
 			outPath = newPath
 		}
-		return Stats{false, encTime, 106, outPath, strings.Join(params, " ")}, errors.New("video stream with duration zero")
+		return Stats{false, encTime, 106, outPath, strings.Join(params, " ")}, vErrify
 	}
 
 	return Stats{true, encTime, exitCode, outPath, strings.Join(params, " ")}, nil

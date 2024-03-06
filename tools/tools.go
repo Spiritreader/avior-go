@@ -14,6 +14,9 @@ import (
 	"github.com/kpango/glg"
 )
 
+var ZeroDurationError error = fmt.Errorf("duration is 0")
+var NoStreamsError error = fmt.Errorf("no streams found")
+
 //InTimeSpan(start, end, check) determines if check lies between start and end
 func InTimeSpan(startString string, endString string, checkTime time.Time) bool {
 	if startString == endString {
@@ -130,14 +133,14 @@ func FfProbeChannels(path string) (int, string, error) {
 	return channels, channel_layout, nil
 }
 
-func FfProbeDurationVerify(path string) (bool, error) {
+func FfProbeVerfiy(path string) (bool, error) {
 	ffprobe := exec.Command("ffprobe", "-v", "quiet", "-select_streams", "v", "-show_entries", "stream_tags=duration", "-of", "default=noprint_wrappers=1", path)
 	output, err := ffprobe.Output()
 	if err != nil {
 		return true, err
 	}
 	if (len(output) == 0) {
-		return true, nil
+		return false, NoStreamsError
 	}
 	data := strings.Split(string(output), "\n")
 	if len(data) > 1 {
@@ -148,7 +151,7 @@ func FfProbeDurationVerify(path string) (bool, error) {
 		}
 
 		if duration == 0 {
-			return false, nil
+			return false, ZeroDurationError
 		}
 	}
 	return true, nil

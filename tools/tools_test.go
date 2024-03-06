@@ -1,6 +1,8 @@
 package tools
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestDurationVerify(t *testing.T) {
 	tests := []struct {
@@ -10,31 +12,30 @@ func TestDurationVerify(t *testing.T) {
 	}{
 		{
 			name: "fail test",
-			path: "D:\\Recording\\2075 - Verbrannte Erde.mkv",
+			path: "\\\\UMS\\media\\transcoded\\failed\\Abenteuer Wildnis - Wilde Dynastien - Königin der Löwen.mkv",
 			want: false,
 		},
 		{
-			name: "success test",
-			path: "D:\\Recording\\Kofelgschroa_2018-05-02-22-43-01-BR Süd HD (AC3,deu).ts",
-			want: true,
-		},
-		{
-			name: "success test",
-			path: "D:\\Recording\\testencode\\Ein Fall Für Zwei - Verhängnisvolle Freundschaft.mkv",
+			name: "fail test",
+			path: "\\\\UMS\\media\\transcoded\\HD720\\Der Kommissar und die Alpen - Gute Gesellschaft.mkv",
 			want: true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {
-			if got, err := FfProbeDurationVerify(test.path); got != test.want {
+			if got, err := FfProbeVerfiy(test.path); got != test.want {
 				if err != nil {
 					t.Errorf("DurationVerify() = %v, want %v, error: %v", got, test.want, err)
 				} else {
 					t.Errorf("DurationVerify() = %v, want %v", got, test.want)
 				}
 			} else {
-				t.Logf("DurationVerify() = %v, want %v", got, test.want)
+				if err != nil {
+					t.Logf("DurationVerify() = %v, want %v, error: %v", got, test.want, err)
+				} else {
+					t.Logf("DurationVerify() = %v, want %v", got, test.want)
+				}
 			}
 		})
 	}

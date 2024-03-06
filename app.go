@@ -52,7 +52,7 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (1.5.5) codename all-g")
+	_ = glg.Info("version ==>", "hey (1.5.6) codename majordomus der 27te")
 	defer log.Close()
 
 	// read cli args
