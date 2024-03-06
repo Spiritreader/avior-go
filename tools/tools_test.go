@@ -16,7 +16,7 @@ func TestDurationVerify(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "fail test",
+			name: "success test",
 			path: "\\\\UMS\\media\\transcoded\\HD720\\Der Kommissar und die Alpen - Gute Gesellschaft.mkv",
 			want: true,
 		},
