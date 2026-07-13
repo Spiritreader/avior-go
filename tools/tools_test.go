@@ -41,7 +41,7 @@ func TestDurationVerify(t *testing.T) {
 	}
 }
 
-func TestByteCountUpIEC(t *testing.T) {
+func TestByteCountUpSI(t *testing.T) {
 	type args struct {
 		b      int64
 		outExp int
@@ -53,23 +53,41 @@ func TestByteCountUpIEC(t *testing.T) {
 		want1 string
 	}{
 		{
-			name: "test",
+			name: "terabytes",
 			args: args{
 				b:      100000000000,
 				outExp: 4,
 			},
-			want:  0.09094947017729282,
-			want1: "0.1 TiB",
+			want:  0.1,
+			want1: "0.1 TB",
+		},
+		{
+			name: "gigabytes",
+			args: args{
+				b:      5000000000,
+				outExp: 3,
+			},
+			want:  5,
+			want1: "5.0 GB",
+		},
+		{
+			name: "megabytes",
+			args: args{
+				b:      2500000,
+				outExp: 2,
+			},
+			want:  2.5,
+			want1: "2.5 MB",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := ByteCountUpSI(tt.args.b, tt.args.outExp)
 			if got != tt.want {
-				t.Errorf("ByteCountUpIEC() got = %v, want %v", got, tt.want)
+				t.Errorf("ByteCountUpSI() got = %v, want %v", got, tt.want)
 			}
 			if got1 != tt.want1 {
-				t.Errorf("ByteCountUpIEC() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("ByteCountUpSI() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}

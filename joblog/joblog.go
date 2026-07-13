@@ -9,7 +9,7 @@ import (
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/media"
 	"github.com/kpango/glg"
-	"github.com/natefinch/lumberjack"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type Data struct {

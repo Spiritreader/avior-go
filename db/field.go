@@ -7,9 +7,8 @@ import (
 
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // GetFields gets all fields for a given collection
@@ -34,14 +33,14 @@ func (ds *DataStore) GetFields(collectionName string) ([]structs.Field, error) {
 func (ds *DataStore) InsertFields(collection *mongo.Collection, fields *[]structs.Field) error {
 	fieldSlice := make([]interface{}, len(*fields))
 	for idx, field := range *fields {
-		field.ID = primitive.NewObjectID()
+		field.ID = bson.NewObjectID()
 		fieldSlice[idx] = field
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	insAmt, err := collection.InsertMany(ctx, fieldSlice)
 	for idx, id := range insAmt.InsertedIDs {
-		(*fields)[idx].ID = id.(primitive.ObjectID)
+		(*fields)[idx].ID = id.(bson.ObjectID)
 	}
 	if err != nil {
 		_ = glg.Errorf("could not insert documents into %s: %s", collection.Name(), err)
@@ -73,7 +72,7 @@ func (ds *DataStore) UpdateFields(collectionName string, fields *[]structs.Field
 func (ds *DataStore) DeleteField(collectionName string, id string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	poid, _ := primitive.ObjectIDFromHex(id)
+	poid, _ := bson.ObjectIDFromHex(id)
 	res, err := ds.Db().Collection(collectionName).DeleteOne(ctx, bson.M{"_id": poid})
 	if err != nil {
 		_ = glg.Errorf("could not delete field with id %s from %s", id, collectionName)

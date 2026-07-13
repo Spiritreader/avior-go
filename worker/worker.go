@@ -129,7 +129,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			errRollback := tools.MoppyFile(src, duplicates[0].Path, true)
 			if errRollback != nil {
 				msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
-				glg.Errorf(msg)
+				glg.Error(msg)
 				jobLog.Add(fmt.Sprintf("error: %s", msg))
 			}
 		} else {
@@ -141,7 +141,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 					errRollback := tools.MoppyFile(src, dst, true)
 					if errRollback != nil {
 						msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
-						glg.Errorf(msg)
+						glg.Error(msg)
 						jobLog.Add(fmt.Sprintf("error: %s", msg))
 					}
 				}
@@ -151,7 +151,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// cancel operation if any move failed
 		if errM != nil || errL != nil {
 			msg := "can't continue without moving duplicate files, skipping job"
-			_ = glg.Errorf(msg)
+			_ = glg.Error(msg)
 			jobLog.Add("error:")
 			if errM != nil {
 				jobLog.Add(fmt.Sprintf("error: %s", errM.Error()))
@@ -288,7 +288,7 @@ func rollbackAllDupMoves(jobLog *joblog.Data, fileRollbackPath map[string]string
 		err := tools.MoppyFile(source, destination, true)
 		if err != nil {
 			msg := fmt.Sprintf("couldn't rollback media file %s, err %s", source, err)
-			glg.Errorf(msg)
+			glg.Error(msg)
 			glg.Warnf("log files have not been rolled back due to previous failure")
 			jobLog.Add(fmt.Sprintf("error: %s", msg))
 			return
@@ -301,7 +301,7 @@ func rollbackAllDupMoves(jobLog *joblog.Data, fileRollbackPath map[string]string
 		err := tools.MoppyFile(source, destination, true)
 		if err != nil {
 			msg := fmt.Sprintf("couldn't rollback log %s, err %s", source, err)
-			glg.Errorf(msg)
+			glg.Error(msg)
 			jobLog.Add(fmt.Sprintf("error: %s", msg))
 		}
 	}

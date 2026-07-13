@@ -8,9 +8,8 @@ import (
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // GetJAllJobs gets all jobs
@@ -83,14 +82,14 @@ func (ds *DataStore) GetNextJobForClient(client *structs.Client) (*structs.Job, 
 	return result, nil
 }
 
-func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mode string) error {
+func (ds *DataStore) ModifyJob(job *structs.Job, clientID bson.ObjectID, mode string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	jobColl := ds.Db().Collection("jobs")
 	var err error
 	switch mode {
 	case consts.INSERT:
-		job.ID = primitive.NewObjectID()
+		job.ID = bson.NewObjectID()
 		job.AssignedClient = structs.DBRef{
 			Ref: "clients",
 			ID:  clientID,
@@ -105,6 +104,8 @@ func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mo
 			DB:  "undefined",
 		}
 		_, err = jobColl.ReplaceOne(ctx, bson.M{"_id": job.ID}, job)
+	case consts.DELETE:
+		_, err = jobColl.DeleteOne(ctx, bson.M{"_id": job.ID})
 	}
 	if err != nil {
 		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, err)
@@ -117,7 +118,7 @@ func (ds *DataStore) ModifyJob(job *structs.Job, clientID primitive.ObjectID, mo
 func (ds *DataStore) DeleteJob(jobId string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	jobPOID, _ := primitive.ObjectIDFromHex(jobId)
+	jobPOID, _ := bson.ObjectIDFromHex(jobId)
 	res, err := ds.Db().Collection("jobs").DeleteOne(ctx, bson.M{"_id": jobPOID})
 	if err != nil {
 		_ = glg.Errorf("could not delete job %s: %s", jobId, err)

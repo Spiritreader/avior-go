@@ -1,7 +1,7 @@
 package structs
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // DATABASE
@@ -9,7 +9,7 @@ import (
 
 // Job is the Avior encode job database binding
 type Job struct {
-	ID                   primitive.ObjectID `bson:"_id,omitempty"`
+	ID                   bson.ObjectID `bson:"_id,omitempty"`
 	Path                 string             `bson:"Path"`
 	Name                 string             `bson:"Name"`
 	Subtitle             string             `bson:"Subtitle"`
@@ -20,7 +20,7 @@ type Job struct {
 
 // Client is a target machine for Avior
 type Client struct {
-	ID                primitive.ObjectID `bson:"_id,omitempty"`
+	ID                bson.ObjectID `bson:"_id,omitempty"`
 	Name              string             `bson:"Name"`
 	AvailabilityStart string             `bson:"AvailabilityStart"`
 	AvailabilityEnd   string             `bson:"AvailabilityEnd"`
@@ -31,7 +31,7 @@ type Client struct {
 }
 
 type Field struct {
-	ID    primitive.ObjectID `bson:"_id,omitempty"`
+	ID    bson.ObjectID `bson:"_id,omitempty"`
 	Value string             `bson:"Name"`
 }
 

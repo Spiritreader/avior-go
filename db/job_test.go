@@ -9,7 +9,7 @@ import (
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/structs"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // Tests job methods
@@ -43,10 +43,10 @@ func TestDataStore_Job(t *testing.T) {
 	client1 := &clients[0]
 	client2 := &clients[1]
 
-	testJobID1, _ := primitive.ObjectIDFromHex("5f49a61f1844fc03f4865692")
-	testJobID2, _ := primitive.ObjectIDFromHex("5f49ace81844fc1a4027b9c5")
-	testJobID3, _ := primitive.ObjectIDFromHex("5f49ba031844fc19c0ed54cb")
-	testJobID4, _ := primitive.ObjectIDFromHex("5f4ab0161844fc0ed8ee9cd9")
+	testJobID1, _ := bson.ObjectIDFromHex("5f49a61f1844fc03f4865692")
+	testJobID2, _ := bson.ObjectIDFromHex("5f49ace81844fc1a4027b9c5")
+	testJobID3, _ := bson.ObjectIDFromHex("5f49ba031844fc19c0ed54cb")
+	testJobID4, _ := bson.ObjectIDFromHex("5f4ab0161844fc0ed8ee9cd9")
 
 	testJob1 := &structs.Job{
 		ID:               testJobID1,
@@ -169,7 +169,9 @@ func TestDataStore_Job(t *testing.T) {
 	}
 	for _, tt := range UpdateJobTests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ds.ModifyJob(tt.job, primitive.NilObjectID, consts.UPDATE); (err != nil) != tt.wantErr {
+			// ModifyJob rewrites AssignedClient from the clientID passed here, so the
+			// update has to name client1 to keep the job assigned to it.
+			if err := ds.ModifyJob(tt.job, client1.ID, consts.UPDATE); (err != nil) != tt.wantErr {
 				t.Errorf("DataStore.UpdateJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -299,7 +301,7 @@ func TestDataStore_Job(t *testing.T) {
 	}
 	for _, tt := range deleteJobTests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ds.ModifyJob(tt.job, primitive.NilObjectID, consts.DELETE); (err != nil) != tt.wantErr {
+			if err := ds.ModifyJob(tt.job, bson.NilObjectID, consts.DELETE); (err != nil) != tt.wantErr {
 				t.Errorf("DataStore.DeleteJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

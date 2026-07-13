@@ -63,8 +63,8 @@ func ByteCountUpSI(b int64, upBy int) (float64, string) {
 		exp++
 	}
 	outVal := float64(b) / float64(div)
-	return outVal, fmt.Sprintf("%.1f %ciB",
-		float64(b)/float64(div), "KMGTPE"[exp])
+	return outVal, fmt.Sprintf("%.1f %cB",
+		float64(b)/float64(div), "kMGTPE"[exp])
 }
 
 func ByteCountDownSI(b float64, exp int, downBy int) (float64, string) {
