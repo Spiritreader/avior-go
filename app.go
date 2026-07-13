@@ -16,7 +16,7 @@ import (
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
-	"github.com/natefinch/lumberjack"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (

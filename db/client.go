@@ -13,9 +13,8 @@ import (
 	"github.com/Spiritreader/avior-go/globalstate"
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // GetClientForMachine returns the current db client that matches this machine's hostname.
@@ -35,7 +34,7 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	if err == mongo.ErrNoDocuments {
 		// Create client if it doesn't exist yet
 		thisMachine = &structs.Client{
-			ID:                primitive.NewObjectID(),
+			ID:                bson.NewObjectID(),
 			Name:              hostname,
 			AvailabilityStart: "0:00",
 			AvailabilityEnd:   "0:00",
@@ -86,10 +85,10 @@ func (ds *DataStore) ModifyClient(client *structs.Client, mode string) error {
 	var err error
 	switch mode {
 	case consts.INSERT:
-		client.ID = primitive.NewObjectID()
+		client.ID = bson.NewObjectID()
 		var res *mongo.InsertOneResult
 		res, err = clientColl.InsertOne(ctx, client)
-		client.ID = res.InsertedID.(primitive.ObjectID)
+		client.ID = res.InsertedID.(bson.ObjectID)
 	case consts.UPDATE:
 		_, err = clientColl.ReplaceOne(ctx, bson.M{"_id": client.ID}, client)
 	case consts.DELETE:
@@ -106,7 +105,7 @@ func (ds *DataStore) ModifyClient(client *structs.Client, mode string) error {
 func (ds *DataStore) DeleteClient(clientId string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	clientPOID, _ := primitive.ObjectIDFromHex(clientId)
+	clientPOID, _ := bson.ObjectIDFromHex(clientId)
 	res, err := ds.Db().Collection("clients").DeleteOne(ctx, bson.M{"_id": clientPOID})
 	if err != nil {
 		_ = glg.Errorf("could not delete client %s: %s", clientId, err)

@@ -20,7 +20,7 @@ import (
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/Spiritreader/avior-go/worker"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func Test(t *testing.T) {
@@ -86,13 +86,13 @@ func encodeTests(aviorDb *db.DataStore) {
 	dataStore := db.Get()
 	_ = dataStore.LoadSharedConfig()
 	_ = &structs.Job{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Path:     "D:/Recording/Drogen Amerikas längster Krieg - Dokumentarfilm, USA, 2012, ZDF, ZDF, 104 Mi_2015-06-25-00-25-arte (AC3,deu).mkv",
 		Name:     "NEUES FRANZÖSISCHES KINO Drogen",
 		Subtitle: "Amerika's längster Krieg Dokumentarfilm im Ersten",
 	}
 	_ = &structs.Job{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Path:     "D:/Recording/Neva Give üp - Der einzig wahre Japaner.mkv",
 		Name:     "NEUES FRANZÖSISCHES KINO Neva Give üp",
 		Subtitle: "Der einzig wahre Japaner Dokumentarfilm im Ersten",
@@ -117,7 +117,7 @@ func insertTests(aviorDb *db.DataStore) {
 	/*tempMany := make([]structs.Field, 0)
 	tempOne := make([]structs.Field, 0)
 
-	newField := structs.Field{ID: primitive.NilObjectID, Value: "Exclude this, you filthy casual"}
+	newField := structs.Field{ID: bson.NilObjectID, Value: "Exclude this, you filthy casual"}
 	tempOne = append(tempOne, newField)
 
 	newField2 := &structs.Field{Value: "Exclude this, you filthy casual2"}
@@ -127,7 +127,7 @@ func insertTests(aviorDb *db.DataStore) {
 	tempMany = append(tempMany, *newField3)
 	*/
 	newJob := &structs.Job{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Path:     "/ibims/einspath",
 		Name:     "Die unglaublichen Abenteuer des Ying-Kai Dang",
 		Subtitle: "DonnerstagsKrimi im Ersten",

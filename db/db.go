@@ -1,15 +1,14 @@
 package db
 
 import (
-	"context"
 	"sync"
 	"time"
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var instance *DataStore
@@ -33,10 +32,12 @@ func Connect() (*DataStore, error) {
 	var connectErr error
 	once.Do(func() {
 		instance = new(DataStore)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
 		cfg := config.Instance()
-		client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.Local.DatabaseURL))
+		// driver v2 dropped the ctx arg from Connect, so the 10s bound that used to
+		// come from the caller's context now lives on the client options
+		client, err := mongo.Connect(options.Client().
+			ApplyURI(cfg.Local.DatabaseURL).
+			SetConnectTimeout(10 * time.Second))
 		if err != nil {
 			connectErr = err
 			return

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Spiritreader/avior-go/structs"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestDataStore_DeleteFields(t *testing.T) {

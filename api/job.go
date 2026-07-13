@@ -9,7 +9,7 @@ import (
 	"github.com/Spiritreader/avior-go/structs"
 	"github.com/gorilla/mux"
 	"github.com/kpango/glg"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func getAllJobs(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +104,7 @@ func modifyJob(w http.ResponseWriter, r *http.Request, mode string) error {
 
 	// check if unmarshalling actually works
 	idstring, _ := job.AssignedClient.ID.(string)
-	poid, err := primitive.ObjectIDFromHex(idstring)
+	poid, err := bson.ObjectIDFromHex(idstring)
 	if err != nil {
 		_ = glg.Errorf("could not %s job %s: %s", mode, job.Name, "failed deriving client poid");
 		w.WriteHeader(http.StatusInternalServerError)
