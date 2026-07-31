@@ -26,11 +26,8 @@ Facts from the code (verified in this session):
 End state: `GOOS=windows go build` and `GOOS=linux go build` both work; ffmpeg priority
 is set per OS via build-tag files (Windows: PriorityClass, Linux: nice level); CI builds
 both artifacts.
-
 ## Tasks (one MD file each)
 
-0. `dual-os-task-00-branch-plan-files.md` — Create branch `feat/dual-os`; copy plan +
-   all task MDs to `.cortex/plans/` in the repo and commit.
 1. `dual-os-task-01-priority-build-tags.md` — Extract OS-specific priority setting
    from `encoder/encoder.go` into build-tag files.
 2. `dual-os-task-02-build-switches.md` — Build switches (Makefile + scripts) for
@@ -42,6 +39,8 @@ both artifacts.
 5. `dual-os-task-05-docker-compose.md` — Dockerfile + compose.yaml for Komodo deployment
    (mount `/mnt/user/media` → `/media`).
 
-Dependencies: Task 00 first (branch + plan placement), then Task 01 (otherwise Linux
-won't compile). Tasks 02 and 03 are independent of each other, but both require Task 01.
-Task 05 requires Task 01 (uses the same Linux build). Task 04 last.
+Dependencies: Task 01 first (otherwise Linux won't compile). Tasks 02 and 03 are
+independent of each other, but both require Task 01. Task 05 requires Task 01 (uses the
+same Linux build). Task 04 last.
+
+
