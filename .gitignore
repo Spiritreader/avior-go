@@ -29,4 +29,4 @@ log/
 .history/
 
 # debug bin file
-__debug_bin
+__debug_bindist/
