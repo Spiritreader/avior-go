@@ -9,9 +9,7 @@ services:
     volumes:
       - /mnt/user/media:/media
       - /mnt/user/appdata/avior-go:/data
-    # Uncomment for Intel QSV hardware acceleration (requires /dev/dri on host):
-    # devices:
-    #   - /dev/dri:/dev/dri
+    devices:
+      - /dev/dri:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
     cap_add:
-      - SYS_NICE   # allows negative nice values (EncoderPriority HIGH/ABOVE_NORMAL);
-                   # without this capability encoding still works, just with a log warning
+      - SYS_NICE   # allows negative nice values for encoder priority

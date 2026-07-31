@@ -12,17 +12,15 @@
 3. Deploy via Komodo from this repo's compose stack, or manually:
    ```
    docker compose up -d
-   ```
 
 ## Hardware acceleration
 
-The example config uses Intel QSV (`av1_qsv` encoder, `-hwaccel qsv`). On Linux this
-requires:
+The container uses the `linuxserver/ffmpeg:latest` base image which ships ffmpeg with
+Intel QSV (oneVPL) support. On an Unraid host with an Intel ARC GPU:
 
-- Intel GPU with `/dev/dri` available
-- ffmpeg built with `--enable-libvpl` or `--enable-libmfx` (not in stock Debian ffmpeg)
-
-To enable GPU passthrough, uncomment the `devices` section in `compose.yaml`.
+- The device is passed through via `devices: ["/dev/dri:/dev/dri"]` in `compose.yaml`
+- `av1_qsv`, `-hwaccel qsv`, `-hwaccel_output_format qsv` work out of the box
+- The example config (`docker/config.example.json`) is pre-configured for QSV
 
 ### Software fallback
 
@@ -36,10 +34,13 @@ If no GPU is available, replace the encoder in `config.json`:
 | `-init_hw_device qsv=qsv` | (remove)              |
 | `-filter_hw_device qsv`  | (remove)               |
 
-And install the codec in the Dockerfile:
+And switch the runtime base in `Dockerfile` back to `debian:bookworm-slim` with
+additional packages:
 ```dockerfile
 RUN apt-get install -y libsvtav1enc1
 ```
+
+
 
 ## Volume layout
 
