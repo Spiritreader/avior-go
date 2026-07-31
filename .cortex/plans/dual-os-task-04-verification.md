@@ -1,61 +1,62 @@
-# Task 04: Verifikation des Dual-OS-Builds
+# Task 04: Verification of the Dual-OS Build
 
-## Ziel
+## Goal
 
-Beweisen, dass beide Targets aus demselben Code kompilieren und das Verhalten der
-geänderten Code-Pfade (Task 01) unverändert bzw. korrekt ist.
+Prove that both targets compile from the same code and that the behavior of the
+changed code paths (Task 01) is unchanged or correct.
 
-Arbeitsverzeichnis für alle Kommandos: Repo-Root `C:/repos/avior-go`. Keine Env-Vars
-oder Fixtures nötig; ffmpeg/ffprobe werden für die reinen Build-Checks nicht gebraucht.
+Working directory for all commands: repo root `C:/repos/avior-go`. No env vars or
+fixtures needed; ffmpeg/ffprobe are not required for the pure build checks.
 
-## Checks (in dieser Reihenfolge)
+## Checks (in this order)
 
-1. **Beide Targets kompilieren** (übt Task 01 + 02):
+1. **Both targets compile** (exercises Tasks 01 + 02):
    ```
    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o dist/avior-go-windows-amd64.exe app.go
    CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -o dist/avior-go-linux-amd64 app.go
    ```
-   Erwartung: beide Befehle exit 0, beide Dateien existieren. Vor Task 01 schlug der
-   Linux-Befehl mit `build constraints exclude all Go files ... x/sys/windows` fehl —
-   genau dieser Fehler muss weg sein.
+   Expected: both commands exit 0, both files exist. Before Task 01, the Linux command
+   failed with `build constraints exclude all Go files ... x/sys/windows` — exactly
+   this error must be gone.
 
-2. **Linux-Binary ist statisch** (Docker-Tauglichkeit):
+2. **Linux binary is static** (Docker suitability):
    ```
    file dist/avior-go-linux-amd64
    ```
-   Erwartung: `ELF 64-bit LSB executable, x86-64, ... statically linked`.
-   (`file` via Git-Bash/WSL; falls nicht vorhanden: `go tool nm` nicht nötig, Schritt
-   entfällt ersatzlos — der Build mit `CGO_ENABLED=0` garantiert statisch.)
+   Expected: `ELF 64-bit LSB executable, x86-64, ... statically linked`.
+   (`file` via Git Bash/WSL; if unavailable: skip — building with `CGO_ENABLED=0`
+   guarantees static linking.)
 
-3. **Vet + bestehende Tests** (Regression):
+3. **Vet + existing tests** (regression):
    ```
    go vet ./...
    go test ./...
    ```
-   Erwartung: kein neuer Befund; vorhandene Tests (u. a. `config`-Package) grün.
-   Windows-spezifische Pfade werden auf dem Dev-Windows getestet; der Linux-Pfad
-   (`priority_linux.go`) hat keine Unit-Tests — bewusst, er wrappt nur einen Syscall
-   mit Logging.
+   Expected: no new findings; existing tests (including the `config` package) pass.
+   Windows-specific paths are tested on the dev Windows machine; the Linux path
+   (`priority_linux.go`) has no unit tests — intentional, it only wraps a syscall
+   with logging.
 
-4. **Smoke-Test Windows (Verhalten unverändert)**: `avior-go-windows-amd64.exe` mit der
-   bestehenden `config_dev.json` starten, einen Encode-Job laufen lassen und im Log
-   (`log/main.log`) prüfen, dass KEINE neue Warnung
-   `could not set priority ... for ffmpeg handle` erscheint — Prioritäts-Setzung
-   funktioniert also wie vorher.
+4. **Windows smoke test (behavior unchanged)**:
+   Start `avior-go-windows-amd64.exe` with the existing `config_dev.json`, run an
+   encode job, and verify in the log (`log/main.log`) that NO new warning
+   `could not set priority ... for ffmpeg handle` appears — priority setting works
+   as before.
 
-5. **Smoke-Test Linux (neues Verhalten)**: das Linux-Binary in einem Container oder per
-   WSL starten (`./avior-go-linux-amd64` neben einer `config.json` mit Linux-Pfaden in
-   `MediaPaths`/`OutDirectory` und erreichbarem MongoDB/Redis). Sobald ein Encode-Job
-   läuft: im Log darf keine `could not set priority`-Warnung auftauchen (außer der
-   Container läuft ohne Rechte für negative nice-Werte bei `HIGH`/`ABOVE_NORMAL` —
-   dann ist genau eine Warnung akzeptabel und dokumentiert, Encoding läuft weiter).
-   Zusätzlich während eines Encodes: `ps -o pid,ni,cmd -C ffmpeg` — das `NI`-Feld muss
-   dem konfigurierten Mapping entsprechen (IDLE → 19, NORMAL → 0, BELOW_NORMAL → 10).
+5. **Linux smoke test (new behavior)**:
+   Start the Linux binary in a container or via WSL (`./avior-go-linux-amd64` alongside
+   a `config.json` with Linux paths in `MediaPaths`/`OutDirectory` and reachable
+   MongoDB/Redis). Once an encode job runs: the log must not contain a
+   `could not set priority` warning (unless the container runs without permissions
+   for negative nice values at `HIGH`/`ABOVE_NORMAL` — then exactly one warning is
+   acceptable and documented; encoding continues).
+   Additionally during an encode: `ps -o pid,ni,cmd -C ffmpeg` — the `NI` field must
+   match the configured mapping (IDLE → 19, NORMAL → 0, BELOW_NORMAL → 10).
 
-## Abbruchkriterien / Fallbacks
+## Abort criteria / fallbacks
 
-- Schlägt Check 1 für Linux fehl mit Import-Fehler auf `x/sys/windows`: Task 01 nicht
-  vollständig (Import nicht entfernt oder Build-Tag fehlt/falsch geschrieben —
-  Tag muss exakt `//go:build windows` bzw. `//go:build linux` als erste Zeile sein).
-- Schlägt Check 3 in `encoder`-Package: Signatur `setProcessPriority(cmd *exec.Cmd, cfg *config.Data)`
-  muss in beiden Dateien identisch sein.
+- Check 1 fails for Linux with import error on `x/sys/windows`: Task 01 incomplete
+  (import not removed or build tag missing/misspelled — tag must be exactly
+  `//go:build windows` or `//go:build linux` as the first line).
+- Check 3 fails in `encoder` package: signature
+  `setProcessPriority(cmd *exec.Cmd, cfg *config.Data)` must be identical in both files.

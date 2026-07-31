@@ -1,46 +1,47 @@
-# Plan: Dual-OS-Build für avior-go (Windows + Linux)
+# Plan: Dual-OS Build for avior-go (Windows + Linux)
 
 ## Context
 
-avior-go kompiliert aktuell nur für Windows, weil `encoder/encoder.go` die Windows-API
-(`golang.org/x/sys/windows`: `OpenProcess`, `SetPriorityClass`, `CloseHandle`) direkt
-verwendet, um die Prozess-Priorität des gestarteten `ffmpeg`-Prozesses zu setzen.
-Ziel: Der gleiche Code soll per Schalter (Go-Build-Tags / `GOOS`) wahlweise ein
-Windows-Executable (`avior-go.exe`) oder ein Linux-Binary (`avior-go`) erzeugen, damit
-avior-go-Instanzen künftig unter Linux in Docker laufen können.
+avior-go currently only compiles for Windows because `encoder/encoder.go` directly uses
+the Windows API (`golang.org/x/sys/windows`: `OpenProcess`, `SetPriorityClass`,
+`CloseHandle`) to set the process priority of the spawned `ffmpeg` process.
+Goal: The same code should optionally produce a Windows executable (`avior-go.exe`) or a
+Linux binary (`avior-go`) via Go build tags / `GOOS`, so that avior-go instances can run
+under Linux in Docker in the future.
 
-Fakten aus dem Code (verifiziert in dieser Session):
-- Einzige Windows-Abhängigkeit im gesamten Repo: `encoder/encoder.go` Zeilen 176–188
-  (`windows.OpenProcess` / `windows.SetPriorityClass` / `windows.CloseHandle`), plus Import
-  `"golang.org/x/sys/windows"` in Zeile 23.
-- Alle Pfad-Operationen nutzen bereits `filepath.Join` (app.go, config/config.go,
-  api/api.go) — OS-agnostisch. UNC-Pfade existieren nur in config-JSONs (Benutzerdaten,
-  kein Code-Problem).
-- Alle Go-Dependencies in `go.mod` sind reines Go (gorilla, redis, mongo-driver, glg,
-  godirwalk, lumberjack …) → `CGO_ENABLED=0`-Cross-Compile ist möglich, kein C-Toolchain nötig.
-- CI: `.github/workflows/go.yml` baut via `wangyoucao577/go-release-action@v1.18` aktuell
-  nur `goos: windows`, `goarch: amd64`.
-- Go-Version laut go.mod: `go 1.25.0`.
+Facts from the code (verified in this session):
+- Only Windows dependency in the entire repo: `encoder/encoder.go` lines 176–188
+  (`windows.OpenProcess` / `windows.SetPriorityClass` / `windows.CloseHandle`), plus the
+  import `"golang.org/x/sys/windows"` on line 23.
+- All path operations already use `filepath.Join` (app.go, config/config.go,
+  api/api.go) — OS-agnostic. UNC paths exist only in config JSONs (user data, not a
+  code problem).
+- All Go dependencies in `go.mod` are pure Go (gorilla, redis, mongo-driver, glg,
+  godirwalk, lumberjack …) → `CGO_ENABLED=0` cross-compile is possible, no C toolchain
+  needed.
+- CI: `.github/workflows/go.yml` currently builds only `goos: windows`, `goarch: amd64`
+  via `wangyoucao577/go-release-action@v1.18`.
+- Go version per go.mod: `go 1.25.0`.
 
-Endzustand: `GOOS=windows go build` und `GOOS=linux go build` funktionieren beide;
-die ffmpeg-Priorität wird pro OS über Build-Tag-Dateien gesetzt (Windows: PriorityClass,
-Linux: nice-Level); CI baut beide Artefakte.
+End state: `GOOS=windows go build` and `GOOS=linux go build` both work; ffmpeg priority
+is set per OS via build-tag files (Windows: PriorityClass, Linux: nice level); CI builds
+both artifacts.
 
-## Tasks (je ein MD-File)
+## Tasks (one MD file each)
 
-0. `dual-os-task-00-branch-plan-files.md` — Branch `feat/dual-os` anlegen; Plan +
-   alle Task-MDs unter `.cortex/plans/` ins Repo kopieren und committen.
-1. `dual-os-task-01-priority-build-tags.md` — OS-spezifische Prioritäts-Setzung per
-   Build-Tags aus `encoder/encoder.go` extrahieren.
-2. `dual-os-task-02-build-switches.md` — Build-Schalter (Makefile + Skripte) für
-   Windows- bzw. Linux-Executable.
-3. `dual-os-task-03-ci-matrix.md` — GitHub-Actions-Workflow auf Windows+Linux-Matrix
-   erweitern.
-4. `dual-os-task-04-verification.md` — Verifikation: Cross-Compile beider Targets,
-   Tests, Smoke-Check.
-5. `dual-os-task-05-docker-compose.md` — Dockerfile + compose.yaml für Komodo-Deployment
-   (Mount `/mnt/user/media` → `/media`).
+0. `dual-os-task-00-branch-plan-files.md` — Create branch `feat/dual-os`; copy plan +
+   all task MDs to `.cortex/plans/` in the repo and commit.
+1. `dual-os-task-01-priority-build-tags.md` — Extract OS-specific priority setting
+   from `encoder/encoder.go` into build-tag files.
+2. `dual-os-task-02-build-switches.md` — Build switches (Makefile + scripts) for
+   Windows and Linux executables.
+3. `dual-os-task-03-ci-matrix.md` — Extend GitHub Actions workflow to a
+   Windows+Linux matrix.
+4. `dual-os-task-04-verification.md` — Verification: cross-compile both targets,
+   tests, smoke check.
+5. `dual-os-task-05-docker-compose.md` — Dockerfile + compose.yaml for Komodo deployment
+   (mount `/mnt/user/media` → `/media`).
 
-Abhängigkeiten: Task 00 zuerst (Branch + Plan-Ablage), dann Task 01 (sonst kompiliert
-Linux nicht). Tasks 02 und 03 sind unabhängig voneinander, setzen aber Task 01 voraus.
-Task 05 setzt Task 01 voraus (nutzt denselben Linux-Build). Task 04 zuletzt.
+Dependencies: Task 00 first (branch + plan placement), then Task 01 (otherwise Linux
+won't compile). Tasks 02 and 03 are independent of each other, but both require Task 01.
+Task 05 requires Task 01 (uses the same Linux build). Task 04 last.

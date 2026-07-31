@@ -1,14 +1,14 @@
-# Task 02: Build-Schalter für Windows- und Linux-Executable
+# Task 02: Build Switches for Windows and Linux Executables
 
-## Ziel
+## Goal
 
-Ein Befehl pro Zielplattform erzeugt das fertige Binary. Go kompiliert cross-plattform
-nativ (`GOOS`-Schalter); alle Dependencies sind reines Go, daher `CGO_ENABLED=0`
-(statisches Binary, ideal für schlanke Docker-Images).
+One command per target platform produces the final binary. Go compiles cross-platform
+natively via the `GOOS` switch; all dependencies are pure Go, therefore `CGO_ENABLED=0`
+(static binary, ideal for slim Docker images).
 
 ## Edits
 
-### 1. Neues `Makefile` im Repo-Root
+### 1. New `Makefile` in repo root
 
 ```make
 BINARY := avior-go
@@ -28,17 +28,17 @@ build: build-windows
 all: build-windows build-linux
 ```
 
-Hinweise:
-- Einstiegspunkt ist `app.go` (package main liegt im Repo-Root; verifiziert via
-  `.vscode/launch.json`, das `app.go` als Programm startet).
-- `-ldflags "-s -w"` strippt Symbole (kleineres Binary für Container).
-- `main.buildVersion` wird nur gesetzt, wenn es die Variable gibt — unverified, ob
-  `buildVersion` in app.go existiert. Falls `go build` mit "no such variable" scheitert:
-  ldflags auf `-s -w` reduzieren (Fallback, kein Code-Zwang).
+Notes:
+- Entry point is `app.go` (package main in the repo root; verified via
+  `.vscode/launch.json`, which launches `app.go` as the program).
+- `-ldflags "-s -w"` strips symbols (smaller binary for containers).
+- `main.buildVersion` is only set if the variable exists — unverified whether
+  `buildVersion` exists in app.go. If `go build` fails with "no such variable":
+  reduce ldflags to `-s -w` (fallback, no code requirement).
 
-### 2. Alternativ-Skripte für Systeme ohne make
+### 2. Alternative scripts for systems without make
 
-`tools/build.ps1` (Windows-Entwicklung, bestehende tools/-Konvention wiederverwenden):
+`tools/build.ps1` (Windows development, reusing existing `tools/` convention):
 
 ```powershell
 param([ValidateSet("windows","linux","all")][string]$Target = "windows")
@@ -65,18 +65,18 @@ case "$target" in
 esac
 ```
 
-### 3. `.gitignore` ergänzen
+### 3. Update `.gitignore`
 
-`dist/` hinzufügen (Zeile mit `*.exe` existiert bereits, deckt aber `dist/` unter Linux
-nicht ab, da dort die Binaries keine `.exe`-Endung haben).
+Add `dist/` (the `*.exe` line already exists, but doesn't cover `dist/` on Linux where
+binaries have no `.exe` extension).
 
-## Verwendung (die "Schalter")
+## Usage (the "switches")
 
-- Windows-Exe:  `make build-windows`  bzw.  `./tools/build.ps1 -Target windows`
-- Linux-Binary: `make build-linux`    bzw.  `./tools/build.sh linux`
+- Windows executable: `make build-windows`  or  `./tools/build.ps1 -Target windows`
+- Linux binary:      `make build-linux`    or  `./tools/build.sh linux`
 
 ## Check
 
-Aus dem Repo-Root:
-- `make all` erzeugt `dist/avior-go-windows-amd64.exe` UND `dist/avior-go-linux-amd64`.
-- `file dist/avior-go-linux-amd64` (unter WSL/Git-Bash) meldet `ELF 64-bit ... statically linked`.
+From repo root:
+- `make all` produces `dist/avior-go-windows-amd64.exe` AND `dist/avior-go-linux-amd64`.
+- `file dist/avior-go-linux-amd64` (under WSL/Git Bash) reports `ELF 64-bit ... statically linked`.

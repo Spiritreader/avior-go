@@ -1,40 +1,40 @@
-# Task 00: Branch `feat/dual-os` + Plan-Dateien ins Repo ablegen
+# Task 00: Branch `feat/dual-os` + Commit Plan Files to Repo
 
-## Ziel
+## Goal
 
-Alle Arbeiten des Dual-OS-Plans laufen auf einem eigenen Branch `feat/dual-os`.
-Der Plan selbst (Index + alle Task-MDs) wird als Teil des Repos unter
-`.cortex/plans/` versioniert, damit er nicht nur session-lokal existiert.
+All work of the Dual-OS plan happens on a dedicated branch `feat/dual-os`.
+The plan itself (index + all task MDs) is versioned as part of the repo under
+`.cortex/plans/` so it doesn't exist only session-locally.
 
 ## Edits
 
-1. Branch anlegen und auschecken (vom aktuellen `master`-Stand):
+1. Create and check out branch (from current `master` state):
    ```
    git checkout -b feat/dual-os
    ```
-2. Verzeichnis `.cortex/plans/` im Repo-Root anlegen und die Plan-Dateien aus dem
-   Session-Verzeichnis dorthin kopieren, mit exakt diesen Dateinamen:
-   - `.cortex/plans/dual-os-plan.md` (Index)
-   - `.cortex/plans/dual-os-task-00-branch-plan-files.md` (dieses File)
+2. Create directory `.cortex/plans/` in the repo root and copy the plan files from the
+   session directory there, with exactly these filenames:
+   - `.cortex/plans/dual-os-plan.md` (index)
+   - `.cortex/plans/dual-os-task-00-branch-plan-files.md` (this file)
    - `.cortex/plans/dual-os-task-01-priority-build-tags.md`
    - `.cortex/plans/dual-os-task-02-build-switches.md`
    - `.cortex/plans/dual-os-task-03-ci-matrix.md`
    - `.cortex/plans/dual-os-task-04-verification.md`
    - `.cortex/plans/dual-os-task-05-docker-compose.md`
 
-   Quelle der Inhalte: die session-lokalen `local://dual-os-*.md`-Artefakte
-   (auf Disk unter
-   `C:\Users\MM\.omp\agent\sessions\--C--repos-avior-go--\2026-07-31T07-42-50-771Z_019fb720-3b93-7000-b9d1-372cb7334f9e\local\`).
-   Inhalt 1:1 übernehmen, keine inhaltlichen Änderungen.
-3. `.cortex/plans/` committen:
+   Source of content: the session-local `local://dual-os-*.md` artifacts
+   (on disk at
+   `C:\Users\MM\.omp\agent\sessions\--C--repos-avior-go--\…\local\`).
+   Copy content 1:1, no content changes.
+3. Commit `.cortex/plans/`:
    ```
    git add .cortex/plans
    git commit -m "docs: add dual-os build plan"
    ```
-   Kein Push — das obliegt dem Benutzer.
+   No push — that's up to the user.
 
 ## Check
 
 - `git branch --show-current` → `feat/dual-os`.
-- `git status` → clean (alle 7 Dateien committet).
-- Alle folgenden Tasks (01–05) committen ihre Änderungen ebenfalls auf `feat/dual-os`.
+- `git status` → clean (all 7 files committed).
+- All subsequent tasks (01–05) also commit their changes on `feat/dual-os`.

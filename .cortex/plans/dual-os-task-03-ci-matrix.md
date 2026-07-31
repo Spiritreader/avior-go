@@ -1,12 +1,13 @@
-# Task 03: CI-Workflow auf Windows+Linux erweitern
+# Task 03: Extend CI Workflow to Windows+Linux
 
-## Ziel
+## Goal
 
-`.github/workflows/go.yml` baut bei einem Release beide Binaries und hängt sie ans Release.
-Der bestehende `wangyoucao577/go-release-action@v1.18`-Schritt wird pro OS parametrisiert
-(Matrix), statt einen zweiten Mechanismus einzuführen (bestehende Konvention beibehalten).
+`.github/workflows/go.yml` builds both binaries on release and attaches them to the
+release. The existing `wangyoucao577/go-release-action@v1.18` step is parameterized
+per OS (matrix) instead of introducing a second mechanism (preserving the existing
+convention).
 
-## Edit: `.github/workflows/go.yml` komplett ersetzen durch
+## Edit: Replace `.github/workflows/go.yml` entirely with
 
 ```yaml
 name: Go
@@ -40,18 +41,18 @@ jobs:
         ldflags: -s -w
 ```
 
-Begründung Matrix statt zwei harter Jobs: gleiche Konfiguration, Artefakte landen beide
-am selben Release (`go-release-action` hängt pro `goos` ein Asset an; Windows-Asset heißt
-`avior-go_windows_amd64.exe.zip` bzw. Linux `avior-go_linux_amd64.tar.gz` —
-Namenskonvention der Action, [INFERENCE] aus der Action-Doku, beim ersten Release prüfen).
+Reason: matrix instead of two hard jobs: same configuration, artifacts both land on the
+same release (`go-release-action` attaches one asset per `goos`; Windows asset is
+named `avior-go_windows_amd64.exe.zip`, Linux `avior-go_linux_amd64.tar.gz` —
+naming convention of the action, verify on first release).
 
 ## Check
 
-- Workflow-YAML lokal validieren: `python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/go.yml'))"`.
-- Echter Check erst beim nächsten Release-Tag möglich — Alternativ-Verifikation:
-  den Matrix-Lauf lokal mit den gleichen Befehlen simulieren
-  (`CGO_ENABLED=0 GOOS=linux go build ./...`, siehe Task 04).
+- Validate workflow YAML locally: `python -c "import yaml,sys; yaml.safe_load(open('.github/workflows/go.yml'))"`.
+- Real check only possible on next release tag — alternative verification:
+  simulate the matrix run locally with the same commands
+  (`CGO_ENABLED=0 GOOS=linux go build ./...`, see Task 04).
 
-## Abhängigkeit
+## Dependency
 
-Task 01 muss gemergt sein, sonst schlägt das Linux-Target in CI fehl.
+Task 01 must be merged, otherwise the Linux target will fail in CI.

@@ -1,14 +1,14 @@
-# Task 01: OS-spezifische ffmpeg-Priorität per Build-Tags
+# Task 01: OS-specific ffmpeg Priority via Build Tags
 
-## Ziel
+## Goal
 
-`encoder/encoder.go` kompiliert unter Linux nicht (direkter Import von
-`golang.org/x/sys/windows`). Die Prioritäts-Setzung wird in zwei Build-Tag-Dateien
-ausgelagert; `encoder.go` ruft nur noch eine OS-neutrale Hilfsfunktion auf.
+`encoder/encoder.go` won't compile under Linux (direct import of
+`golang.org/x/sys/windows`). The priority setting is extracted into two build-tag files;
+`encoder.go` only calls an OS-neutral helper function.
 
 ## Edits
 
-### 1. Neue Datei `encoder/priority_windows.go`
+### 1. New file `encoder/priority_windows.go`
 
 ```go
 //go:build windows
@@ -23,8 +23,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// setProcessPriority setzt die Windows-PriorityClass des gestarteten ffmpeg-Prozesses.
-// Fehler werden nur geloggt (wie bisher), da das Encoding selbst davon nicht abhängt.
+// setProcessPriority sets the Windows PriorityClass of the spawned ffmpeg process.
+// Errors are only logged (as before), since the encoding itself doesn't depend on it.
 func setProcessPriority(cmd *exec.Cmd, cfg *config.Data) {
 	hProcess, err := windows.OpenProcess(0x0400|0x0200, false, uint32(cmd.Process.Pid))
 	if err != nil {
@@ -43,14 +43,14 @@ func setProcessPriority(cmd *exec.Cmd, cfg *config.Data) {
 }
 ```
 
-Verhaltensänderung gegenüber dem Original: `return` nach dem `OpenProcess`-Fehler
-(vermeidet `SetPriorityClass` auf ungültigem Handle) und `CloseHandle` via `defer`.
-Das ist die korrekte Version des bisherigen Codes — keine funktionale Änderung im
-Erfolgsfall. Log-Strings bleiben identisch, außer dass im `SetPriorityClass`-Log
-`cfg.Local.EncoderPriority` statt `cfg.Local.EncoderConfig` ausgegeben wird
-(Fix eines Copy-Paste-Fehlers im Original, Zeile 183).
+Behavior change over the original: `return` after `OpenProcess` error (avoids
+`SetPriorityClass` on invalid handle) and `CloseHandle` via `defer`. This is the
+correct version of the existing code — no functional change in the success case. Log
+strings remain identical, except the `SetPriorityClass` log outputs
+`cfg.Local.EncoderPriority` instead of `cfg.Local.EncoderConfig` (fix for a copy-paste
+error in the original, line 183).
 
-### 2. Neue Datei `encoder/priority_linux.go`
+### 2. New file `encoder/priority_linux.go`
 
 ```go
 //go:build linux
@@ -65,11 +65,11 @@ import (
 	"github.com/kpango/glg"
 )
 
-// niceLevel bildet die konfigurierte Windows-Prioritätsstufe auf ein Linux-nice-Level ab.
-// Mapping: HIGH/ABOVE_NORMAL -> -5 (höhere Prio, erfordert root/CAP_SYS_NICE),
+// niceLevel maps the configured Windows priority level to a Linux nice value.
+// Mapping: HIGH/ABOVE_NORMAL -> -5 (higher priority, requires root/CAP_SYS_NICE),
 // NORMAL -> 0, BELOW_NORMAL -> 10, IDLE -> 19.
-// Unbekannte Werte fallen auf 19 (idle) zurück — analog zum Windows-Fallback in
-// config.PriorityUint32, das bei unbekannten Werten IDLE liefert.
+// Unknown values fall back to 19 (idle) — analogous to the Windows fallback in
+// config.PriorityUint32, which returns IDLE for unknown values.
 func niceLevel(priority string) int {
 	switch priority {
 	case config.PRIORITY_HIGH.String(), config.PRIORITY_ABOVE_NORMAL.String():
@@ -83,9 +83,9 @@ func niceLevel(priority string) int {
 	}
 }
 
-// setProcessPriority setzt das nice-Level des gestarteten ffmpeg-Prozesses.
-// Ein Fehler (z. B. fehlende Rechte für negative nice-Werte im Docker-Container)
-// wird nur gewarnt geloggt; das Encoding läuft normal weiter.
+// setProcessPriority sets the nice level of the spawned ffmpeg process.
+// An error (e.g. missing permissions for negative nice values in a Docker container)
+// is only logged as a warning; encoding proceeds normally.
 func setProcessPriority(cmd *exec.Cmd, cfg *config.Data) {
 	if err := syscall.Setpriority(syscall.PRIO_PROCESS, cmd.Process.Pid, niceLevel(cfg.Local.EncoderPriority)); err != nil {
 		_ = glg.Warnf("could not set priority %s for ffmpeg process with pid %d, err: %s",
@@ -94,31 +94,31 @@ func setProcessPriority(cmd *exec.Cmd, cfg *config.Data) {
 }
 ```
 
-Hinweis: In Docker ohne `CAP_SYS_NICE` schlagen negative nice-Werte fehl — das ist
-akzeptabel (Warnung im Log, Encoding läuft mit Default-Priorität). In der
-Container-Doku später ggf. `--cap-add SYS_NICE` empfehlen, ist aber nicht Teil dieses Plans.
+Note: In Docker without `CAP_SYS_NICE`, negative nice values will fail — this is
+acceptable (warning in log, encoding runs with default priority). The container docs
+may later recommend `--cap-add SYS_NICE`, but that is not part of this plan.
 
-### 3. `encoder/encoder.go` anpassen
+### 3. Adapt `encoder/encoder.go`
 
-- Import `"golang.org/x/sys/windows"` (Zeile 23) entfernen. `config` bleibt importiert
-  (wird weiterhin anderswo in der Datei genutzt — verifiziert: `cfg.Local.*` überall).
-- Den Block Zeilen 176–188 (die drei `windows.*`-Aufrufe samt Fehler-Logs) ersetzen durch:
+- Remove import `"golang.org/x/sys/windows"` (line 23). `config` stays imported
+  (still used elsewhere in the file — verified: `cfg.Local.*` throughout).
+- Replace the block on lines 176–188 (the three `windows.*` calls with error logs) with:
 
 ```go
 	setProcessPriority(cmd, cfg)
 ```
 
-Der Aufruf steht direkt nach dem erfolgreichen `cmd.Start()`, exakt an der Stelle des
-alten Blocks.
+The call goes directly after the successful `cmd.Start()`, exactly where the old block
+was.
 
-## Keine weiteren Callsites
+## No further callsites
 
-`grep` nach `x/sys` und `windows\.` im gesamten Repo: nur `encoder/encoder.go`.
-`config.PriorityUint32` bleibt unverändert (wird weiter von `priority_windows.go`
-genutzt). Clean Cutover: kein Compatibility-Code.
+`grep` for `x/sys` and `windows\.` in the entire repo: only `encoder/encoder.go`.
+`config.PriorityUint32` remains unchanged (still used by `priority_windows.go`).
+Clean cutover: no compatibility code.
 
 ## Check
 
-- `GOOS=windows go build ./...` und `GOOS=linux go build ./...` aus dem Repo-Root
-  kompilieren beide fehlerfrei.
-- `go vet ./encoder` ohne Befund.
+- `GOOS=windows go build ./...` and `GOOS=linux go build ./...` from the repo root
+  both compile without errors.
+- `go vet ./encoder` without findings.
