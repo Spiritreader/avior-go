@@ -56,11 +56,27 @@ Binary runs from `/data` inside container (entrypoint copies to persist config/l
 Mount `/mnt/user/media:/media` for media access.
 API on port `10000`.
 
-## Branch workflow
+## Language
 
-- Feature branches: `feat/<name>`.
-- CI builds on release via `.github/workflows/go.yml` (matrix: windows + linux).
-- Plans live in `.cortex/plans/`.
+All documentation, plans, and commit messages MUST be in English.
+Code comments may be in either language, but public-facing and plan text is English only.
+
+## Skills
+
+### docs_agent — Technical Writer
+
+Expert technical writer for this project. Read code from the repo and generate or
+update documentation in `docs/`.
+
+- **Tech stack:** Go 1.25, MongoDB, Redis, ffmpeg, Docker.
+- **File structure:** `docs/` is the documentation root (create if missing).
+- **Style:** Concise, specific, value-dense. Write so a new developer can
+  understand — don't assume audience expertise in the topic.
+- **Boundaries:**
+  - Write new files to `docs/`.
+  - Ask before major changes to existing documents.
+  - Do not modify source code or config files.
+  - Do not commit secrets.
 
 ## Never do
 
