@@ -20,7 +20,7 @@ import (
 	"github.com/Spiritreader/avior-go/tools"
 	"github.com/kpango/glg"
 	"github.com/rs/xid"
-	"golang.org/x/sys/windows"
+
 )
 
 type Stats struct {
@@ -173,19 +173,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 		return Stats{false, -1, -1337, "", ""}, err
 	}
 
-	hProcess, err := windows.OpenProcess(0x0400|0x0200, false, uint32(cmd.Process.Pid))
-	if err != nil {
-		_ = glg.Warnf("could not get ffmpeg handle using pid %d, err: %s", cmd.Process.Pid, err)
-	}
-	err = windows.SetPriorityClass(hProcess, config.PriorityUint32(cfg.Local.EncoderPriority))
-	if err != nil {
-		_ = glg.Warnf("could not set priority %s for ffmpeg handle using pid %d, err: %s",
-			cfg.Local.EncoderConfig, cmd.Process.Pid, err)
-	}
-	err = windows.CloseHandle(hProcess)
-	if err != nil {
-		_ = glg.Errorf("could not close handle for pid %d, err: %s", cmd.Process.Pid, err)
-	}
+	setProcessPriority(cmd, cfg)
 
 	// scan stdout
 	scanner := bufio.NewScanner(multiReader)
@@ -221,7 +209,7 @@ func Encode(file media.File, start, duration int, overwrite bool, dstDir *string
 	// verify file size
 	ok, vErrify := tools.FfProbeVerfiy(outPath)
 	if vErrify != nil && !(errors.Is(vErrify, tools.NoStreamsError) || errors.Is(vErrify, tools.ZeroDurationError)) {
-		glg.Warnf("could not verify file, will be assumed good: %s", err)
+		glg.Warnf("could not verify file, will be assumed good: %s", vErrify)
 	} else if !ok {
 		glg.Warnf("file verification failed, renaming: %s", outPath)
 		timestampString := time.Now().Format("2006-01-02 150405")
