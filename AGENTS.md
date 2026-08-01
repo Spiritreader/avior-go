@@ -61,16 +61,6 @@ API on port `10000`.
 All documentation, plans, and commit messages MUST be in English.
 Code comments may be in either language, but public-facing and plan text is English only.
 
-## Subagent routing
-
-When delegating work via subagents (`task`), route by complexity:
-
-- **Low complexity** (mechanical edits, config changes, file creation) →
-  `deepseek-v4-flash` with high effort
-- **Medium complexity** (refactoring, new features with existing patterns) →
-  `deepseek-v4-flash` with max effort
-- **High complexity** (novel design, architectural changes, debugging unknown issues) →
-  `kimi-k3` with low effort
 
 ## Skills
 
