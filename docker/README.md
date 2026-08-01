@@ -12,6 +12,26 @@
 3. Deploy via Komodo from this repo's compose stack, or manually:
    ```
    docker compose up -d
+   ```
+
+### Komodo stack config
+
+Create a Stack in Komodo pointing at the git repo and **force a rebuild on every
+redeploy** — otherwise `docker compose up` reuses a cached image with the same name
+and code changes stay invisible:
+
+```toml
+[[stack]]
+name = "avior-go"
+[stack.config]
+server = "<your-unraid-server>"
+run_directory = "/opt/stacks/avior-go"
+file_paths = ["compose.yaml"]
+repo = "Spiritreader/avior-go"
+branch = "feat/dual-os"   # compose/Dockerfile currently live here
+# rebuild the image on every deploy (no image: tag in compose.yaml):
+extra_args = "--build"
+```
 
 ## Hardware acceleration
 

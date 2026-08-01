@@ -1,7 +1,6 @@
 services:
   avior-go:
     build: .
-    image: avior-go:latest
     container_name: avior-go
     restart: unless-stopped
     ports:
