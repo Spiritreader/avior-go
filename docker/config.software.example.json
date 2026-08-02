@@ -56,68 +56,70 @@
       "Enabled": false,
       "Priority": 0,
       "Settings": {
-        "RequiredTags": ["AC3 Audio 5.1"]
+        "Accuracy": "med"
       }
     },
     "DuplicateLengthCheckModule": {
-      "Enabled": true,
-      "Priority": 5,
+      "Enabled": false,
+      "Priority": 0,
       "Settings": {
-        "Margin": 0
+        "Threshold": 3
       }
     },
     "ErrorReplaceModule": {
-      "Enabled": false,
-      "Priority": 1,
+      "Enabled": true,
+      "Priority": 4,
       "Settings": {
-        "ErrorTags": ["Corrupt", "Transport error"]
+        "Threshold": 0
       }
     },
     "ErrorSkipModule": {
-      "Enabled": false,
-      "Priority": 0,
+      "Enabled": true,
+      "Priority": 4,
       "Settings": {
-        "ErrorTags": ["Transport error"]
+        "Threshold": 30
       }
     },
     "LegacyModule": {
-      "Enabled": false,
+      "Enabled": true,
       "Priority": 4,
-      "Settings": {}
+      "Settings": null
     },
     "LengthModule": {
       "Enabled": false,
-      "Priority": 1,
+      "Priority": 2,
       "Settings": {
-        "MaxLengthDifference": 5
+        "Threshold": 20
       }
     },
     "LogMatchModule": {
-      "Enabled": false,
-      "Priority": 0,
+      "Enabled": true,
+      "Priority": 3,
       "Settings": {
-        "Field": "File.Name"
+        "Mode": "include"
       }
     },
     "MaxSizeModule": {
-      "Enabled": false,
-      "Priority": 3,
+      "Enabled": true,
+      "Priority": 4,
       "Settings": {
-        "MaxSize": 0
+        "MaxSize": 30
       }
     },
     "ResolutionModule": {
-      "Enabled": false,
-      "Priority": 2,
+      "Enabled": true,
+      "Priority": 3,
       "Settings": {
-        "TolerancePixels": 48
+        "MinResolution": 20
       }
     },
     "SizeApproxModule": {
       "Enabled": false,
-      "Priority": 3,
+      "Priority": 2,
       "Settings": {
-        "Fraction": 0
+        "Difference": 20,
+        "Fraction": 10,
+        "SampleCount": 3
       }
     }
   },
