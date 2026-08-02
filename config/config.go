@@ -32,7 +32,11 @@ type Local struct {
 	Resolutions        map[string]string
 	ObsoletePath       string
 	MediaPaths         []string
-	EstimatedLibSize   int
+	// PathMappings maps UNC prefixes found in DB job paths to local container paths,
+	// e.g. "\\\\192.168.178.75\\recording_pool" -> "/recording_pool".
+	// Empty/nil = no translation (Windows behavior unchanged).
+	PathMappings      map[string]string `json:"PathMappings,omitempty"`
+	EstimatedLibSize  int
 	Modules            map[string]ModuleConfig
 	EncoderConfig      map[string]EncoderConfig
 	EncoderPriority    string
