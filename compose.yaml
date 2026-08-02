@@ -2,6 +2,7 @@ services:
   avior-go-test:
     build: .
     container_name: avior-go-test
+    hostname: avior-go-test   # client registers as AVIOR-GO-TEST in Mongo instead of the container ID
     restart: unless-stopped
     ports:
       - "10100:10000"
