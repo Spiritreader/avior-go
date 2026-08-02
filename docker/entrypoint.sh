@@ -21,6 +21,14 @@ umask 002
 if [ -n "$PUID" ] && [ -n "$PGID" ]; then
   # Ensure the target directories are owned by the configured user.
   chown -R "$PUID:$PGID" /data 2>/dev/null || true
-  exec su-exec "$PUID:$PGID" /data/avior-go
+  # setpriv (util-linux) is preinstalled on the Ubuntu-based ffmpeg image; su-exec
+  # is an Alpine package and NOT available here, but keep it as a fallback.
+  if command -v setpriv >/dev/null 2>&1; then
+    exec setpriv --reuid="$PUID" --regid="$PGID" --clear-groups /data/avior-go
+  elif command -v su-exec >/dev/null 2>&1; then
+    exec su-exec "$PUID:$PGID" /data/avior-go
+  else
+    echo "warning: neither setpriv nor su-exec found, running as root" >&2
+  fi
 fi
 exec /data/avior-go

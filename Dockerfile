@@ -7,9 +7,6 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o /out/avior-go app.go
 
 FROM linuxserver/ffmpeg:latest
-RUN apt-get update \
- && apt-get install -y --no-install-recommends su-exec \
- && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/avior-go /opt/avior-go-bin
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
