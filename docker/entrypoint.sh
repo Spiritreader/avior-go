@@ -11,4 +11,16 @@ rm -f /data/avior-go
 cp /opt/avior-go-bin /data/avior-go
 chmod +x /data/avior-go
 cd /data
+# Drop the restrictive umask some base images inherit (linuxserver sets 077): files
+# the app creates (0600-umasked) must stay readable/writable for other users on the
+# host (SMB/NFS). 002 keeps owner+group rw and lets group/other read.
+umask 002
+# PUID/PGID (LinuxServer convention): run the app as the configured user/group so
+# every file it creates (logs in /data/log, .INFO.log next to media, config.json)
+# is owned by that UID/GID on the host. Default: root (no env set).
+if [ -n "$PUID" ] && [ -n "$PGID" ]; then
+  # Ensure the target directories are owned by the configured user.
+  chown -R "$PUID:$PGID" /data 2>/dev/null || true
+  exec su-exec "$PUID:$PGID" /data/avior-go
+fi
 exec /data/avior-go
