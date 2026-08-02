@@ -27,7 +27,13 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	cfg := config.Instance()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	hostname, _ := os.Hostname()
+	// A configured ClientName wins over the hostname: in Docker the container
+	// hostname may be a container ID or a stale inherited value, which would
+	// re-register a phantom client on every restart.
+	hostname := cfg.Local.ClientName
+	if hostname == "" {
+		hostname, _ = os.Hostname()
+	}
 	if cfg.Local.Instance > 0 {
 		hostname = fmt.Sprintf("%s-%d", hostname, cfg.Local.Instance)
 	}

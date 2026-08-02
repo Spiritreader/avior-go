@@ -24,6 +24,11 @@ type Data struct {
 // Local is the main application configuration
 type Local struct {
 	Instance           int
+	// ClientName overrides the machine hostname used to register this instance in
+	// the DB (collection clients). In Docker the container hostname may be a
+	// container ID or a stale inherited value; setting ClientName makes the
+	// registration deterministic. Empty = use os.Hostname() (previous behavior).
+	ClientName         string `json:"ClientName,omitempty"`
 	DatabaseURL        string
 	Redis              Redis
 	Ext                string
