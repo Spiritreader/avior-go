@@ -8,6 +8,8 @@ services:
       - "10000:10000"
     volumes:
       - /mnt/user/media:/media
+      - /mnt/user/recording_pool:/recording_pool
+      - /mnt/disks/recording_spare:/recording_spare
       - /mnt/user/appdata/avior-go:/data
     devices:
       - /dev/dri:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
