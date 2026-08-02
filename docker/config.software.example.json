@@ -1,0 +1,237 @@
+{
+  "Instance": 0,
+  "DatabaseURL": "mongodb://192.168.178.75:27017",
+  "Redis": {
+    "Enabled": true,
+    "Host": "192.168.178.75:6379",
+    "Password": "",
+    "DB": 0,
+    "CacheTtl": 86400000000000,
+    "ChannelPrefix": "avior"
+  },
+  "Ext": ".mkv",
+  "PauseOnEncodeError": false,
+  "AudioFormats": {
+    "StereoTags": [
+      "AC3 Audio Stereo",
+      "[Dolby Digital 2.0]",
+      "[stereo]",
+      "MPEG Audio Stereo",
+      "AC3 2/0"
+    ],
+    "MultiTags": [
+      "AC3 Audio 5.1",
+      "[Dolby Digital 5.1]",
+      "[AC-3]",
+      "AC3 Audio 5.0",
+      " [Dolby Digital 5.0]"
+    ]
+  },
+  "Resolutions": {
+    "fhd": "1920x1080",
+    "hd": "1280x720",
+    "sd": "720x576",
+    "stv_fhd": "1920x1088"
+  },
+  "ObsoletePath": "/media/transcoded",
+  "MediaPaths": [
+    "/media/re_encode",
+    "/media/transcoded",
+    "/media/tv"
+  ],
+  "EstimatedLibSize": 66335,
+  "Modules": {
+    "AgeModule": {
+      "Enabled": false,
+      "Priority": 2,
+      "Settings": {
+        "MaxAge": 5
+      }
+    },
+    "AudioModule": {
+      "Enabled": false,
+      "Priority": 0,
+      "Settings": {
+        "RequiredTags": ["AC3 Audio 5.1"]
+      }
+    },
+    "DuplicateLengthCheckModule": {
+      "Enabled": true,
+      "Priority": 5,
+      "Settings": {
+        "Margin": 0
+      }
+    },
+    "ErrorReplaceModule": {
+      "Enabled": false,
+      "Priority": 1,
+      "Settings": {
+        "ErrorTags": ["Corrupt", "Transport error"]
+      }
+    },
+    "ErrorSkipModule": {
+      "Enabled": false,
+      "Priority": 0,
+      "Settings": {
+        "ErrorTags": ["Transport error"]
+      }
+    },
+    "LegacyModule": {
+      "Enabled": false,
+      "Priority": 4,
+      "Settings": {}
+    },
+    "LengthModule": {
+      "Enabled": false,
+      "Priority": 1,
+      "Settings": {
+        "MaxLengthDifference": 5
+      }
+    },
+    "LogMatchModule": {
+      "Enabled": false,
+      "Priority": 0,
+      "Settings": {
+        "Field": "File.Name"
+      }
+    },
+    "MaxSizeModule": {
+      "Enabled": false,
+      "Priority": 3,
+      "Settings": {
+        "MaxSize": 0
+      }
+    },
+    "ResolutionModule": {
+      "Enabled": false,
+      "Priority": 2,
+      "Settings": {
+        "TolerancePixels": 48
+      }
+    },
+    "SizeApproxModule": {
+      "Enabled": false,
+      "Priority": 3,
+      "Settings": {
+        "Fraction": 0
+      }
+    }
+  },
+  "EncoderConfig": {
+    "fhd": {
+      "OutDirectory": "/media/transcoded/HD1080",
+      "PreArguments": [],
+      "PostArguments": [
+        "-map 0",
+        "-c:v libsvtav1",
+        "-preset 8",
+        "-crf 26",
+        "-vf yadif=0:-1:0",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-filter:v scale=1280:720",
+        "-r 25",
+        "-rc constqp",
+        "-qp 21",
+        "",
+        "-af aformat=channel_layouts=5.1",
+        "-b:a 320k"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    },
+    "hd": {
+      "OutDirectory": "/media/transcoded/HD720",
+      "PreArguments": [],
+      "PostArguments": [
+        "-map 0",
+        "-c:v libsvtav1",
+        "-preset 8",
+        "-crf 26",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-af aformat=channel_layouts=5.1",
+        "-b:a 320k"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    },
+    "sd": {
+      "OutDirectory": "/media/transcoded/SD",
+      "PreArguments": [],
+      "PostArguments": [
+        "-map 0",
+        "-c:v libsvtav1",
+        "-preset 8",
+        "-crf 26",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-af aformat=channel_layouts=5.1",
+        "-b:a 320k",
+        "",
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    },
+    "stv_fhd": {
+      "OutDirectory": "/media/transcoded/HD1080",
+      "PreArguments": [],
+      "PostArguments": [
+        "-map 0",
+        "-c:v libsvtav1",
+        "-preset 8",
+        "-crf 26",
+        "-vf yadif=0:-1:0",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-r 25",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-rc constqp",
+        "-qp 21"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    }
+  },
+  "EncoderPriority": "IDLE"
+}

@@ -8,7 +8,5 @@ services:
     volumes:
       - /mnt/user/media:/media
       - /mnt/user/appdata/avior-go:/data
-    devices:
-      - /dev/dri:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
     cap_add:
       - SYS_NICE   # allows negative nice values for encoder priority

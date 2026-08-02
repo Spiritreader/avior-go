@@ -2,8 +2,15 @@
 
 ## Setup
 
-1. Copy `docker/config.example.json` to `/mnt/user/appdata/avior-go/config.json` on your
-   host and adjust settings (MongoDB/Redis hosts, paths).
+Two config variants exist:
+
+- `docker/config.example.json` — **QSV hardware encoding** (Intel ARC GPU, needs
+  `/dev/dri` passthrough)
+- `docker/config.software.example.json` — **software encoding** (`libsvtav1`, runs
+  without any GPU)
+
+1. Copy the config matching your hardware to `/mnt/user/appdata/avior-go/config.json`
+   on your host and adjust settings (MongoDB/Redis hosts, paths).
 
 2. Path convention: the compose file mounts `/mnt/user/media` to `/media` inside the
    container. All `MediaPaths`, `ObsoletePath`, and `EncoderConfig.*.OutDirectory`
@@ -35,30 +42,27 @@ extra_args = "--build"
 
 ## Hardware acceleration
 
-The container uses the `linuxserver/ffmpeg:latest` base image which ships ffmpeg with
-Intel QSV (oneVPL) support. On an Unraid host with an Intel ARC GPU:
+### Without GPU (software encoding) — default for this branch
 
-- The device is passed through via `devices: ["/dev/dri:/dev/dri"]` in `compose.yaml`
-- `av1_qsv`, `-hwaccel qsv`, `-hwaccel_output_format qsv` work out of the box
-- The example config (`docker/config.example.json`) is pre-configured for QSV
+The container uses the `linuxserver/ffmpeg:latest` base image (a full ffmpeg build
+including `libsvtav1` and `libopus`). Without a GPU, use
+`docker/config.software.example.json` — all QSV args removed, `av1_qsv` replaced by
+`libsvtav1` (`-preset 8 -crf 26`). No `/dev/dri` passthrough needed.
 
-### Software fallback
+### With Intel ARC GPU (QSV)
 
-If no GPU is available, replace the encoder in `config.json`:
+`linuxserver/ffmpeg` ships Intel QSV (oneVPL) support. To enable:
 
-| QSV (hardware)          | Software equivalent     |
-|-------------------------|-------------------------|
-| `av1_qsv`               | `libsvtav1` or `libaom-av1` |
-| `-hwaccel qsv`          | (remove)                |
-| `-hwaccel_output_format qsv` | (remove)           |
-| `-init_hw_device qsv=qsv` | (remove)              |
-| `-filter_hw_device qsv`  | (remove)               |
+1. Uncomment/add `devices: ["/dev/dri:/dev/dri"]` in `compose.yaml`
+   (requires the i915 driver loaded on the host — see `ls /dev/dri`)
+2. Use `docker/config.example.json` (pre-configured for `av1_qsv`)
 
-And switch the runtime base in `Dockerfile` back to `debian:bookworm-slim` with
-additional packages:
-```dockerfile
-RUN apt-get install -y libsvtav1enc1
-```
+| QSV (hardware)          | Software equivalent (`config.software.example.json`) |
+|-------------------------|------------------------------------------------------|
+| `av1_qsv`               | `libsvtav1`                                          |
+| `-preset veryslow`      | `-preset 8`                                          |
+| `-global_quality:v 26`  | `-crf 26`                                            |
+| `-hwaccel qsv` / `-hwaccel_output_format qsv` / `-init_hw_device qsv=qsv` / `-filter_hw_device qsv` | (removed) |
 
 
 
