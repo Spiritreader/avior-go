@@ -18,7 +18,11 @@ import (
 )
 
 // GetClientForMachine returns the current db client that matches this machine's hostname.
-// A new client will be created if none is found in the database
+// A new client will be created if none is found in the database.
+//
+// The lookup and the insert BOTH use strings.ToUpper(hostname): the historical
+// registry is uppercase (VDR-U, PHOENIX, ...), so storing the raw hostname would
+// create a duplicate lower-case entry on every restart (lookup never matches).
 func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	cfg := config.Instance()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -27,10 +31,11 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	if cfg.Local.Instance > 0 {
 		hostname = fmt.Sprintf("%s-%d", hostname, cfg.Local.Instance)
 	}
+	hostname = strings.ToUpper(hostname)
 	state := globalstate.Instance()
 	state.HostName = hostname
 	var thisMachine *structs.Client
-	err := ds.Db().Collection("clients").FindOne(ctx, bson.M{"Name": strings.ToUpper(hostname)}).Decode(&thisMachine)
+	err := ds.Db().Collection("clients").FindOne(ctx, bson.M{"Name": hostname}).Decode(&thisMachine)
 	if err == mongo.ErrNoDocuments {
 		// Create client if it doesn't exist yet
 		thisMachine = &structs.Client{
