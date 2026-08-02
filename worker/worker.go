@@ -30,6 +30,40 @@ var (
 	previousEncoderLineOut []string
 )
 
+// translatePath maps UNC paths from DB jobs to local container paths using the
+// configured mappings (longest prefix match, case-insensitive). Returns input
+// unchanged when mappings is empty or no prefix matches.
+func translatePath(path string, mappings map[string]string) string {
+	if len(mappings) == 0 || path == "" {
+		return path
+	}
+	// Normalize the input to backslash form so both / and \ separators compare equal.
+	normalized := strings.ReplaceAll(path, "/", "\\")
+	// Build normalized-key -> original-key index once.
+	normToOrig := make(map[string]string, len(mappings))
+	for orig, _ := range mappings {
+		k := strings.TrimRight(strings.ReplaceAll(orig, "/", "\\"), "\\")
+		if k != "" {
+			normToOrig[k] = orig
+		}
+	}
+	bestKey := ""
+	bestLen := -1
+	for k := range normToOrig {
+		if len(k) > bestLen && len(normalized) >= len(k) &&
+			strings.EqualFold(normalized[:len(k)], k) {
+			bestKey = k
+			bestLen = len(k)
+		}
+	}
+	if bestKey == "" {
+		return path
+	}
+	value := strings.TrimRight(strings.ReplaceAll(mappings[normToOrig[bestKey]], "\\", "/"), "/")
+	remainder := strings.ReplaceAll(normalized[bestLen:], "\\", "/")
+	return value + remainder
+}
+
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
 	cfg := config.Instance()
 	state.InFile = job.Path
@@ -46,7 +80,11 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	}()
 
 	//populate media file
-	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
+	translatedPath := translatePath(job.Path, cfg.Local.PathMappings)
+	if translatedPath != job.Path {
+		_ = glg.Infof("translated job path %s -> %s", job.Path, translatedPath)
+	}
+	mediaFile := &media.File{Path: translatedPath, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := mediaFile.Update()
 	if err != nil {
 		_ = glg.Errorf("couldn't parse media file: %s", err)
