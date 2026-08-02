@@ -34,8 +34,14 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	hostname = strings.ToUpper(hostname)
 	state := globalstate.Instance()
 	state.HostName = hostname
+
 	var thisMachine *structs.Client
-	err := ds.Db().Collection("clients").FindOne(ctx, bson.M{"Name": hostname}).Decode(&thisMachine)
+	// Case-insensitive lookup: legacy entries may exist in any case (a pre-fix
+	// binary stored the raw container hostname in lower case). Find them,
+	// migrate their Name to UPPER case and re-save, so the registry converges
+	// on a single UPPERCASE entry per machine instead of accumulating phantoms.
+	collection := ds.Db().Collection("clients")
+	err := collection.FindOne(ctx, bson.M{"Name": bson.M{"$regex": "^" + bsonRegexEscape(hostname) + "$", "$options": "i"}}).Decode(&thisMachine)
 	if err == mongo.ErrNoDocuments {
 		// Create client if it doesn't exist yet
 		thisMachine = &structs.Client{
@@ -56,6 +62,16 @@ func (ds *DataStore) GetClientForMachine() (*structs.Client, error) {
 	} else if err != nil {
 		_ = glg.Errorf("could not retrieve client for current machine: %s", err)
 		return nil, err
+	} else if thisMachine.Name != hostname {
+		// Found a legacy entry in a different case: rename it to the canonical
+		// UPPERCASE name. A stale lower-case twin (created by a pre-fix binary)
+		// would otherwise linger forever as a phantom in the client list.
+		legacyName := thisMachine.Name
+		thisMachine.Name = hostname
+		if err := ds.ModifyClient(thisMachine, "update"); err != nil {
+			_ = glg.Warnf("could not migrate client name from %s to %s: %s", legacyName, hostname, err)
+		}
+		_ = glg.Infof("migrated client name %s -> %s", legacyName, hostname)
 	}
 	return thisMachine, nil
 }
@@ -156,4 +172,19 @@ func (ds *DataStore) SignOutThisClient() error {
 		return err
 	}
 	return ds.SignOutClient(client)
+}
+
+// bsonRegexEscape escapes regex metacharacters so a hostname can be safely
+// embedded into a MongoDB $regex query (hostnames may contain dots, dashes etc.).
+func bsonRegexEscape(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	for _, r := range s {
+		switch r {
+		case '.', '^', '$', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|', '\\':
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
