@@ -4,8 +4,8 @@ services:
     container_name: avior-go
     hostname: avior-go   # client registers as AVIOR-GO in Mongo instead of the container ID
     environment:
-      - PUID=${PUID:-0}   # run app as this user id (host uid, e.g. mm's uid) so created
-      - PGID=${PGID:-0}   # files/logs are owned by it; default root
+      - PUID=${PUID:-1002}   # run app as this user id (host uid of mm) so created
+      - PGID=${PGID:-100}    # files/logs are owned by mm:users; default root
     restart: unless-stopped
     ports:
       - "10000:10000"
