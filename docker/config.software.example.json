@@ -53,15 +53,15 @@
       }
     },
     "AudioModule": {
-      "Enabled": false,
-      "Priority": 0,
+      "Enabled": true,
+      "Priority": 3,
       "Settings": {
         "Accuracy": "med"
       }
     },
     "DuplicateLengthCheckModule": {
-      "Enabled": false,
-      "Priority": 0,
+      "Enabled": true,
+      "Priority": 4,
       "Settings": {
         "Threshold": 3
       }
@@ -77,7 +77,7 @@
       "Enabled": true,
       "Priority": 4,
       "Settings": {
-        "Threshold": 30
+        "Threshold": 8
       }
     },
     "LegacyModule": {
@@ -86,8 +86,8 @@
       "Settings": null
     },
     "LengthModule": {
-      "Enabled": false,
-      "Priority": 2,
+      "Enabled": true,
+      "Priority": 4,
       "Settings": {
         "Threshold": 20
       }
