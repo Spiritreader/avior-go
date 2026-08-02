@@ -1,5 +1,6 @@
 {
   "Instance": 0,
+  "ClientName": "AVIOR-GO-TEST",
   "DatabaseURL": "mongodb://192.168.178.75:27017",
   "Redis": {
     "Enabled": true,
