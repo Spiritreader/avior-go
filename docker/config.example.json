@@ -130,6 +130,8 @@
     "fhd": {
       "OutDirectory": "/media/transcoded/HD1080",
       "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
         "-init_hw_device qsv=qsv",
         "-filter_hw_device qsv"
       ],
@@ -167,6 +169,8 @@
     "hd": {
       "OutDirectory": "/media/transcoded/HD720",
       "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
         "-hwaccel qsv",
         "-hwaccel_output_format qsv"
       ],
@@ -195,6 +199,8 @@
     "sd": {
       "OutDirectory": "/media/transcoded/SD",
       "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
         "-hwaccel qsv",
         "-hwaccel_output_format qsv"
       ],
@@ -227,6 +233,8 @@
     "stv_fhd": {
       "OutDirectory": "/media/transcoded/HD1080",
       "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
         "-init_hw_device qsv=qsv",
         "-filter_hw_device qsv"
       ],
