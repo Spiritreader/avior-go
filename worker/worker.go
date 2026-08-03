@@ -551,6 +551,16 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 
 	libCache := &cache.Instance().Library
 
+	// If the configured MediaPaths changed since the cache was built, the cache is
+	// stale even if the TTL has not expired: files in newly added paths would never
+	// be seen as duplicates until a restart. Fingerprint the path list and
+	// invalidate on change.
+	pathsFingerprint := strings.Join(cfg.Local.MediaPaths, "\x00")
+	if libCache.ScannedPaths != "" && libCache.ScannedPaths != pathsFingerprint {
+		_ = glg.Infof("invalidating shared cache because MediaPaths changed")
+		libCache.Valid = false
+	}
+
 	// if redis is enabled the cache lifetime is determined by ttl
 	if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
 		_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
@@ -576,6 +586,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 		}
 		libCache.Valid = true
 		libCache.LastUpdate = time.Now()
+		libCache.ScannedPaths = pathsFingerprint
 		cfg.Local.EstimatedLibSize = state.FileWalker.Position
 	} else {
 		_ = glg.Infof("scanning via memcache")
