@@ -39,6 +39,7 @@
     "/media/re_encode"
   ],
   "PathMappings": {
+    "\\\\UMS\\recording_pool": "/recording_pool",
     "\\\\192.168.178.75\\recording_pool": "/recording_pool",
     "\\\\192.168.178.75\\recording_spare": "/recording_spare"
   },
