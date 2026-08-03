@@ -1,0 +1,35 @@
+2026-08-03 08:25:47 +0200
+avior dis, version 0.1.2 - (dat)^2(ei)
+scan directory: \\UMS\recording_pool\re_encode
+The system cannot find the file specified. (os error 2) for: \\UMS\recording_pool\re_encode\Wissen macht Ah! - Eine Sendung für Erwachsene_2025-03-17-08-18-00-WDR HD Köln (AC3,deu).txt
+pushing \\UMS\recording_pool\re_encode\Wissen macht Ah! - Eine Sendung für Erwachsene_2025-03-17-08-18-00-WDR HD Köln (AC3,deu).ts to AVIOR-GO-TEST with 0/1 job(s) and priority 12
+
+2026-08-03 08:27:02 +0200
+avior dis, version 0.1.2 - (dat)^2(ei)
+scan directory: \\UMS\recording_pool\coding_test
+database already up to date
+
+2026-08-03 08:28:26 +0200
+avior dis, version 0.1.2 - (dat)^2(ei)
+scan directory: \\UMS\recording_pool\coding_test
+pushing \\UMS\recording_pool\coding_test\Nord bei Nordwest - Haare  Hartmann!_2026-07-30-20-13-04-Das Erste HD (AC3,deu).ts to AVIOR-GO-TEST with 0/1 job(s) and priority 12
+no eligible found, pushing \\UMS\recording_pool\coding_test\Quarks  Mobilität ohne Frust - gelingt uns die Verkehrswende_2026-08-01-18-43-01-BR Fernsehen Süd HD (AC3,deu).ts to default client AVIOR-GO-TEST
+
+2026-08-03 08:51:46 +0200
+avior dis, version 0.1.2 - (dat)^2(ei)
+scan directory: \\UMS\recording_pool\coding_test
+pushing \\UMS\recording_pool\coding_test\Nord bei Nordwest - Haare  Hartmann!_2026-07-30-20-13-04-Das Erste HD (AC3,deu).ts to AVIOR-GO-TEST with 0/1 job(s) and priority 12
+no eligible found, pushing \\UMS\recording_pool\coding_test\Quarks  Mobilität ohne Frust - gelingt uns die Verkehrswende_2026-08-01-18-43-01-BR Fernsehen Süd HD (AC3,deu).ts to default client AVIOR-GO-TEST
+
+2026-08-03 11:08:42 +0200
+avior dis, version 0.1.2 - (dat)^2(ei)
+scan directory: \\UMS\recording_pool\coding_test
+pushing \\UMS\recording_pool\coding_test\Nord bei Nordwest - Haare  Hartmann!_2026-07-30-20-13-04-Das Erste HD (AC3,deu).ts to UNRAID with 0/10 job(s) and priority 0
+pushing \\UMS\recording_pool\coding_test\Quarks  Mobilität ohne Frust - gelingt uns die Verkehrswende_2026-08-01-18-43-01-BR Fernsehen Süd HD (AC3,deu).ts to UNRAID with 1/10 job(s) and priority 0
+
+2026-08-03 11:11:01 +0200
+avior dis, version 0.1.2 - (dat)^2(ei)
+scan directory: \\UMS\recording_pool\coding_test
+pushing \\UMS\recording_pool\coding_test\Nord bei Nordwest - Haare  Hartmann!_2026-07-30-20-13-04-Das Erste HD (AC3,deu).ts to UNRAID with 0/10 job(s) and priority 0
+pushing \\UMS\recording_pool\coding_test\Quarks  Mobilität ohne Frust - gelingt uns die Verkehrswende_2026-08-01-18-43-01-BR Fernsehen Süd HD (AC3,deu).ts to UNRAID with 1/10 job(s) and priority 0
+
