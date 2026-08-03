@@ -31,7 +31,11 @@ func main() {
 
 	// Set up logger
 	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
-	errlog := glg.FileWriter(filepath.Join(globalstate.ReflectionPath(), "log", "err.log"), os.ModeAppend)
+	// glg.FileWriter passes perm to os.MkdirAll for the log dir and to OpenFile for
+	// the file. os.ModeAppend is a flag bit, not a permission: as permissions it is
+	// 0, so on Linux the log/ dir was created with mode 000 (d---------), making it
+	// inaccessible. Use 0644 instead: dir becomes 0755 (rwxr-xr-x), file 0644.
+	errlog := glg.FileWriter(filepath.Join(globalstate.ReflectionPath(), "log", "err.log"), 0644)
 	log := &lumberjack.Logger{
 		Filename: filepath.Join(globalstate.ReflectionPath(), "log", "main.log"),
 		MaxSize:  10, // megabytes
