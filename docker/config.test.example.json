@@ -163,6 +163,7 @@
       "PreArguments": [],
       "PostArguments": [
         "-map 0",
+        "-t 120",
         "-c:v libsvtav1",
         "-preset 8",
         "-crf 26",
