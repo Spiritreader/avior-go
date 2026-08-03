@@ -1,11 +1,13 @@
 # Multi-instance compose: one file, parameterized per stack via environment.
 # Each Komodo stack sets INSTANCE_SUFFIX, HOST_PORT, CONTAINER_PORT and DATA_DIR
 # (plus optional GPU_DEVICE). CONTAINER_PORT must equal 10000 + Instance from the
-# instance's config.json (the app listens on 10000+Instance). Container name is
-# derived from the Compose project name, set per stack via project_name.
+# instance's config.json (the app listens on 10000+Instance).
 services:
   avior-go:
     build: .
+    # Explicit, readable container name per instance (avior-go, avior-go-1, ...);
+    # without it Compose derives <project>-<service>-<replica> (avior-go-avior-go-1).
+    container_name: avior-go${INSTANCE_SUFFIX:-}
     hostname: avior-go${INSTANCE_SUFFIX:-}   # client fallback name; ClientName in config.json wins
     environment:
       - TZ=${TZ:-Europe/Berlin}   # local time for logs (app uses time.Local)
