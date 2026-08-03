@@ -241,5 +241,6 @@
       ]
     }
   },
-  "EncoderPriority": "IDLE"
+  "EncoderPriority": "IDLE",
+  "CacheLibScan": false
 }

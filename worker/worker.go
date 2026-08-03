@@ -550,24 +550,30 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	matches := make([]media.File, 0)
 
 	libCache := &cache.Instance().Library
-
-	// If the configured MediaPaths changed since the cache was built, the cache is
-	// stale even if the TTL has not expired: files in newly added paths would never
-	// be seen as duplicates until a restart. Fingerprint the path list and
-	// invalidate on change.
 	pathsFingerprint := strings.Join(cfg.Local.MediaPaths, "\x00")
-	if libCache.ScannedPaths != "" && libCache.ScannedPaths != pathsFingerprint {
-		_ = glg.Infof("invalidating shared cache because MediaPaths changed")
-		libCache.Valid = false
-	}
 
-	// if redis is enabled the cache lifetime is determined by ttl
-	if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
-		_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
+	// CacheLibScan=false: always scan the MediaPaths fresh. Under Docker the walk
+	// is a direct local FS access (<1s), so caching only adds staleness bugs.
+	if !cfg.Local.CacheLibScan {
 		libCache.Valid = false
-	} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
-		_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
-		libCache.Valid = false
+	} else {
+		// If the configured MediaPaths changed since the cache was built, the cache is
+		// stale even if the TTL has not expired: files in newly added paths would never
+		// be seen as duplicates until a restart. Fingerprint the path list and
+		// invalidate on change.
+		if libCache.ScannedPaths != "" && libCache.ScannedPaths != pathsFingerprint {
+			_ = glg.Infof("invalidating shared cache because MediaPaths changed")
+			libCache.Valid = false
+		}
+
+		// if redis is enabled the cache lifetime is determined by ttl
+		if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
+			_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
+			libCache.Valid = false
+		} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute*5)).After(libCache.LastUpdate) {
+			_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
+			libCache.Valid = false
+		}
 	}
 
 	fillCache := false

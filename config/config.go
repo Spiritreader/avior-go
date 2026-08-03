@@ -41,6 +41,12 @@ type Local struct {
 	// e.g. "\\\\192.168.178.75\\recording_pool" -> "/recording_pool".
 	// Empty/nil = no translation (Windows behavior unchanged).
 	PathMappings      map[string]string `json:"PathMappings,omitempty"`
+	// CacheLibScan caches the library scan (MediaPaths walk) in memory and reuses
+	// it for the Redis TTL (24h) instead of rescanning per duplicate check.
+	// Under Docker the walk is a direct local FS access and takes <1s, so caching
+	// only adds staleness bugs; set false to always scan fresh.
+	// Default true keeps the historical Windows/SMB behavior unchanged.
+	CacheLibScan      bool   `json:"CacheLibScan,omitempty"`
 	EstimatedLibSize  int
 	Modules            map[string]ModuleConfig
 	EncoderConfig      map[string]EncoderConfig
@@ -183,6 +189,7 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.Resolutions = map[string]string{"hd": "1280x720", "fhd": "1920x1080"}
 	cfg.Local.EncoderConfig = map[string]EncoderConfig{"hd": *new(EncoderConfig)}
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
+	cfg.Local.CacheLibScan = true
 	cfg.Local.Redis = Redis{
 		Host:          "localhost:6379",
 		Password:      "",
