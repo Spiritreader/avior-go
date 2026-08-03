@@ -46,6 +46,7 @@
     "\\\\192.168.178.75\\recording_pool": "/recording_pool",
     "\\\\192.168.178.75\\recording_spare": "/recording_spare"
   },
+  "CacheLibScan": false,
   "EstimatedLibSize": 66335,
   "Modules": {
     "AgeModule": {
@@ -266,5 +267,4 @@
     }
   },
   "EncoderPriority": "IDLE",
-  "CacheLibScan": false
 }
