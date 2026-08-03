@@ -1,20 +1,23 @@
+# Multi-instance compose: one file, parameterized per stack via environment.
+# Each Komodo stack sets INSTANCE_SUFFIX, HOST_PORT and DATA_DIR (plus optional
+# GPU_DEVICE); container name is derived from the Compose project name, which is
+# set per stack in Komodo (project_name) to avoid name collisions.
 services:
   avior-go:
     build: .
-    container_name: avior-go
-    hostname: avior-go   # client registers as AVIOR-GO in Mongo instead of the container ID
+    hostname: avior-go${INSTANCE_SUFFIX:-}   # client fallback name; ClientName in config.json wins
     environment:
       - PUID=${PUID:-1002}   # run app as this user id (host uid of mm) so created
       - PGID=${PGID:-100}    # files/logs are owned by mm:users; default root
     restart: unless-stopped
     ports:
-      - "10000:10000"
+      - "${HOST_PORT:-10000}:10000"
     volumes:
       - /mnt/user/media:/media
       - /mnt/user/recording_pool:/recording_pool
       - /mnt/disks/recording_spare:/recording_spare
-      - /mnt/user/appdata/avior-go:/data
+      - ${DATA_DIR:-/mnt/user/appdata/avior-go}:/data
     devices:
-      - /dev/dri:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
+      - ${GPU_DEVICE:-/dev/dri}:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
     cap_add:
       - SYS_NICE   # allows negative nice values for encoder priority
