@@ -1,0 +1,260 @@
+{
+  "Instance": 0,
+  "ClientName": "AVIOR-GO",
+  "DatabaseURL": "mongodb://192.168.178.75:27017",
+  "Redis": {
+    "Enabled": true,
+    "Host": "192.168.178.75:6379",
+    "Password": "",
+    "DB": 0,
+    "CacheTtl": 86400000000000,
+    "ChannelPrefix": "avior"
+  },
+  "Ext": ".mkv",
+  "PauseOnEncodeError": false,
+  "AudioFormats": {
+    "StereoTags": [
+      "AC3 Audio Stereo",
+      "[Dolby Digital 2.0]",
+      "[stereo]",
+      "MPEG Audio Stereo",
+      "AC3 2/0"
+    ],
+    "MultiTags": [
+      "AC3 Audio 5.1",
+      "[Dolby Digital 5.1]",
+      "[AC-3]",
+      "AC3 Audio 5.0",
+      " [Dolby Digital 5.0]"
+    ]
+  },
+  "Resolutions": {
+    "fhd": "1920x1080",
+    "hd": "1280x720",
+    "sd": "720x576",
+    "stv_fhd": "1920x1088"
+  },
+  "ObsoletePath": "/media/transcoded",
+  "MediaPaths": [
+    "/media/re_encode"
+  ],
+  "PathMappings": {
+    "\\\\UMS\\recording_pool": "/recording_pool",
+    "\\\\UMS\\recording_spare": "/recording_spare",
+    "\\\\192.168.178.75\\recording_pool": "/recording_pool",
+    "\\\\192.168.178.75\\recording_spare": "/recording_spare"
+  },
+  "EstimatedLibSize": 66335,
+  "Modules": {
+    "AgeModule": {
+      "Enabled": false,
+      "Priority": 2,
+      "Settings": {
+        "MaxAge": 5
+      }
+    },
+    "AudioModule": {
+      "Enabled": true,
+      "Priority": 3,
+      "Settings": {
+        "Accuracy": "med"
+      }
+    },
+    "DuplicateLengthCheckModule": {
+      "Enabled": true,
+      "Priority": 4,
+      "Settings": {
+        "Threshold": 3
+      }
+    },
+    "ErrorReplaceModule": {
+      "Enabled": true,
+      "Priority": 4,
+      "Settings": {
+        "Threshold": 0
+      }
+    },
+    "ErrorSkipModule": {
+      "Enabled": true,
+      "Priority": 4,
+      "Settings": {
+        "Threshold": 8
+      }
+    },
+    "LegacyModule": {
+      "Enabled": true,
+      "Priority": 4,
+      "Settings": null
+    },
+    "LengthModule": {
+      "Enabled": true,
+      "Priority": 4,
+      "Settings": {
+        "Threshold": 20
+      }
+    },
+    "LogMatchModule": {
+      "Enabled": true,
+      "Priority": 3,
+      "Settings": {
+        "Mode": "include"
+      }
+    },
+    "MaxSizeModule": {
+      "Enabled": true,
+      "Priority": 4,
+      "Settings": {
+        "MaxSize": 30
+      }
+    },
+    "ResolutionModule": {
+      "Enabled": true,
+      "Priority": 3,
+      "Settings": {
+        "MinResolution": 20
+      }
+    },
+    "SizeApproxModule": {
+      "Enabled": false,
+      "Priority": 2,
+      "Settings": {
+        "Difference": 20,
+        "Fraction": 10,
+        "SampleCount": 3
+      }
+    }
+  },
+  "EncoderConfig": {
+    "fhd": {
+      "OutDirectory": "/media/transcoded/HD1080",
+      "PreArguments": [
+        "-init_hw_device qsv=qsv",
+        "-filter_hw_device qsv"
+      ],
+      "PostArguments": [
+        "-map 0",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
+        "-vf yadif=0:-1:0",
+        "-global_quality:v 26",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-filter:v scale=1280:720",
+        "-r 25",
+        "-rc constqp",
+        "-qp 21",
+        "",
+        "-af aformat=channel_layouts=5.1",
+        "-b:a 320k"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    },
+    "hd": {
+      "OutDirectory": "/media/re_encode",
+      "PreArguments": [
+        "-hwaccel qsv",
+        "-hwaccel_output_format qsv"
+      ],
+      "PostArguments": [
+        "-map 0",
+        "-t 120",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
+        "-global_quality:v 26",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-af aformat=channel_layouts=5.1",
+        "-b:a 320k"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    },
+    "sd": {
+      "OutDirectory": "/media/transcoded/SD",
+      "PreArguments": [
+        "-hwaccel qsv",
+        "-hwaccel_output_format qsv"
+      ],
+      "PostArguments": [
+        "-map 0",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
+        "-global_quality:v 26",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-af aformat=channel_layouts=5.1",
+        "-b:a 320k",
+        "",
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    },
+    "stv_fhd": {
+      "OutDirectory": "/media/transcoded/HD1080",
+      "PreArguments": [
+        "-init_hw_device qsv=qsv",
+        "-filter_hw_device qsv"
+      ],
+      "PostArguments": [
+        "-map 0",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
+        "-vf yadif=0:-1:0",
+        "-c:a libopus"
+      ],
+      "Stash": [
+        "-vf yadif=0:-1:0 hqdn3d=2:1:2:3",
+        "-vf hqdn3d=2:1:2:3",
+        "-r 25",
+        "-filter:v hqdn3d=2:1:2:3",
+        "-rc constqp",
+        "-qp 21"
+      ],
+      "StereoArguments": [
+        "-af aformat=channel_layouts=stereo",
+        "-b:a 160k"
+      ],
+      "MultiChArguments": [
+        "-af",
+        "pan=7.1|FL=c0|FR=c1|FC=c2|LFE=c3|SL=c4|SR=c5",
+        "-b:a 320k"
+      ]
+    }
+  },
+  "EncoderPriority": "IDLE"
+}
