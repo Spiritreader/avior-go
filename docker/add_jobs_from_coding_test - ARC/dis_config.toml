@@ -8,4 +8,4 @@ Filetypes = [
     'mkv'
 ]
 IgnoredFiletypes = ['INFO.log']
-MinAge = 1
+MinAge = 0
