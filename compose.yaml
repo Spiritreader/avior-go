@@ -1,7 +1,8 @@
 # Multi-instance compose: one file, parameterized per stack via environment.
-# Each Komodo stack sets INSTANCE_SUFFIX, HOST_PORT and DATA_DIR (plus optional
-# GPU_DEVICE); container name is derived from the Compose project name, which is
-# set per stack in Komodo (project_name) to avoid name collisions.
+# Each Komodo stack sets INSTANCE_SUFFIX, HOST_PORT, CONTAINER_PORT and DATA_DIR
+# (plus optional GPU_DEVICE). CONTAINER_PORT must equal 10000 + Instance from the
+# instance's config.json (the app listens on 10000+Instance). Container name is
+# derived from the Compose project name, set per stack via project_name.
 services:
   avior-go:
     build: .
@@ -11,7 +12,7 @@ services:
       - PGID=${PGID:-100}    # files/logs are owned by mm:users; default root
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-10000}:10000"
+      - "${HOST_PORT:-10000}:${CONTAINER_PORT:-10000}"
     volumes:
       - /mnt/user/media:/media
       - /mnt/user/recording_pool:/recording_pool
