@@ -46,7 +46,8 @@ type Local struct {
 	// Under Docker the walk is a direct local FS access and takes <1s, so caching
 	// only adds staleness bugs; set false to always scan fresh.
 	// Default true keeps the historical Windows/SMB behavior unchanged.
-	CacheLibScan      bool   `json:"CacheLibScan,omitempty"`
+	// NOTE: no omitempty - a false value must be persisted, otherwise Save() drops it.
+	CacheLibScan      bool   `json:"CacheLibScan"`
 	EstimatedLibSize  int
 	Modules            map[string]ModuleConfig
 	EncoderConfig      map[string]EncoderConfig
