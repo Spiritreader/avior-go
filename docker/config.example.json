@@ -41,6 +41,8 @@
     "/media/tv"
   ],
   "PathMappings": {
+    "\\\\UMS\\recording_pool": "/recording_pool",
+    "\\\\UMS\\recording_spare": "/recording_spare",
     "\\\\192.168.178.75\\recording_pool": "/recording_pool",
     "\\\\192.168.178.75\\recording_spare": "/recording_spare"
   },
