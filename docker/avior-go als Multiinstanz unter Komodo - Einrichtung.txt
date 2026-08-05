@@ -16,10 +16,14 @@
 
  2. compose.yaml (Repo, parametrisiert)
 
+ Die compose hat container_name: avior-go${INSTANCE_SUFFIX:-} — damit heißen die
+ Container einfach avior-go, avior-go-1, avior-go-2 (statt avior-go-avior-go-1).
+ INSTANCE_SUFFIX steuert also Container-Name UND Hostname (Client-Fallback).
+
  ┌─────────────────┬────────────────────────────┬─────────────────────────────────────┐
  │ Variable        │ Default                    │ Zweck                               │
  ├─────────────────┼────────────────────────────┼─────────────────────────────────────┤
- │ INSTANCE_SUFFIX │ (leer)                     │ Hostname-Suffix (Fallback)          │
+ │ INSTANCE_SUFFIX │ (leer)                     │ Container-Name + Hostname-Suffix    │
  ├─────────────────┼────────────────────────────┼─────────────────────────────────────┤
  │ HOST_PORT       │ 10000                      │ Host-Port                           │
  ├─────────────────┼────────────────────────────┼─────────────────────────────────────┤
@@ -47,6 +51,8 @@
  └─────────┴──────────────────────────┴────────────────────────┴─────────────────┴────────────────┴─────────────┘
 
  Regel: CONTAINER_PORT = 10000 + Instance. Client-Trennung über Instance (Suffix automatisch, wie MMDG/MMDG-1 unter Windows).
+ WICHTIG: ClientName ist IMMER das Basiswort "UNRAID" — nie das Suffix mit hineinschreiben!
+ (Fehlerfall: ClientName "UNRAID-2" + Instance 2 → registriert als "UNRAID-2-2", doppeltes Suffix.)
 
  4. Komodo-Stack-Config pro Instanz
 
@@ -59,10 +65,13 @@
  ├─────────────────┼──────────┼─────────────────────────────────────────────────────────────────────────┤
  │ Environment     │ GENERAL  │ ⭐ Env-Vars (TOML)                                                      │
  ├─────────────────┼──────────┼─────────────────────────────────────────────────────────────────────────┤
- │ Project Name    │ ADVANCED │ Container-Namen-Trennung                                                │
- ├─────────────────┼──────────┼─────────────────────────────────────────────────────────────────────────┤
  │ Extra Args      │ ADVANCED │ --build                                                                 │
  └─────────────────┴──────────┴─────────────────────────────────────────────────────────────────────────┘
+
+ HINWEIS: Project Name muss NICHT gesetzt werden — der Container-Name kommt aus
+ container_name: avior-go${INSTANCE_SUFFIX:-} in der compose. Falls Project Name
+ trotzdem gesetzt war (ältere Variante), kann er entfernt werden; er schadet nur,
+ wenn er mit dem container_name kollidiert.
 
  ### Instanz 1 — Environment (TOML)
 
@@ -71,13 +80,11 @@
    # DATA_DIR /mnt/user/appdata/avior-go
  ```
 
- ┌──────────────┬──────────┐
- │ Feld         │ Wert     │
- ├──────────────┼──────────┤
- │ Project Name │ avior-go │
- ├──────────────┼──────────┤
- │ Extra Args   │ --build  │
- └──────────────┴──────────┘
+ ┌────────────┬──────────┐
+ │ Feld       │ Wert     │
+ ├────────────┼──────────┤
+ │ Extra Args │ --build  │
+ └────────────┴──────────┘
 
  ### Instanz 2 — Environment (TOML)
 
@@ -88,13 +95,26 @@
    DATA_DIR = "/mnt/user/appdata/avior-go-1"
  ```
 
- ┌──────────────┬────────────┐
- │ Feld         │ Wert       │
- ├──────────────┼────────────┤
- │ Project Name │ avior-go-1 │
- ├──────────────┼────────────┤
- │ Extra Args   │ --build    │
- └──────────────┴────────────┘
+ ┌────────────┬──────────┐
+ │ Feld       │ Wert     │
+ ├────────────┼──────────┤
+ │ Extra Args │ --build  │
+ └────────────┴──────────┘
+
+ ### Instanz 3 — Environment (TOML)
+
+ ```toml
+   INSTANCE_SUFFIX = "-2"
+   HOST_PORT = 10002
+   CONTAINER_PORT = 10002
+   DATA_DIR = "/mnt/user/appdata/avior-go-2"
+ ```
+
+ ┌────────────┬──────────┐
+ │ Feld       │ Wert     │
+ ├────────────┼──────────┤
+ │ Extra Args │ --build  │
+ └────────────┴──────────┘
 
  5. config.json pro Instanz
 
@@ -104,22 +124,31 @@
  │ 1       │ UNRAID     │ 0        │ false        │
  ├─────────┼────────────┼──────────┼──────────────┤
  │ 2       │ UNRAID     │ 1        │ false        │
+ ├─────────┼────────────┼──────────┼──────────────┤
+ │ 3       │ UNRAID     │ 2        │ false        │
  └─────────┴────────────┴──────────┴──────────────┘
 
- Weitere Felder (beide): PathMappings (UMS + IP, beide Shares), Encoder-Profile mit -qsv_device /dev/dri/renderD129, MediaPaths [re_encode, transcoded, tv], ChannelPrefix: "avior" (gleich lassen für Redis-Broadcast).
+ Weitere Felder (alle): PathMappings (UMS + IP, beide Shares), Encoder-Profile mit
+ -qsv_device /dev/dri/renderD129, MediaPaths [re_encode, transcoded, tv],
+ ChannelPrefix: "avior" (gleich lassen für Redis-Broadcast).
 
- 6. Reihenfolge Einrichtung Instanz 2
+ TIPP: CacheLibScan lässt sich im Frontend über Client Configuration → Export →
+ JSON bearbeiten ("CacheLibScan": false ergänzen) → Import setzen. Die App
+ normalisiert die Struktur beim Speichern selbst.
+
+ 6. Reihenfolge Einrichtung einer neuen Instanz (z. B. Instanz N)
 
  ┌─────────┬───────────────────────────────────────────────────────────────────────────────────────────────┐
  │ Schritt │ Befehl/Aktion                                                                                 │
  ├─────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
- │ 1       │ Daten-Volume anlegen: mkdir -p /mnt/user/appdata/avior-go-1                                   │
+ │ 1       │ Daten-Volume anlegen: mkdir -p /mnt/user/appdata/avior-go-N                                  │
  ├─────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
- │ 2       │ config.json hinein (ClientName UNRAID, Instance 1, CacheLibScan false, PathMappings, Encoder) │
+ │ 2       │ config.json hinein (ClientName UNRAID, Instance N, CacheLibScan false, PathMappings, Encoder) │
  ├─────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
- │ 3       │ Komodo: Stack avior-go-unraid-docker-1 anlegen/kopieren                                       │
+ │ 3       │ Komodo: Stack avior-go-unraid-docker-N anlegen (Repo/Branch wie Instanz 1)                    │
  ├─────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
- │ 4       │ Komodo: Source (Repo/Branch) → Environment (TOML oben) → Project Name → Extra Args            │
+ │ 4       │ Komodo: Environment setzen: INSTANCE_SUFFIX=-N, HOST_PORT=1000N, CONTAINER_PORT=1000N,        │
+ │         │         DATA_DIR="/mnt/user/appdata/avior-go-N"; Extra Args: --build                          │
  ├─────────┼───────────────────────────────────────────────────────────────────────────────────────────────┤
  │ 5       │ Deploy auslösen                                                                               │
  └─────────┴───────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -149,9 +178,15 @@
  ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
  │ Port-Mapping falsch                │ CONTAINER_PORT muss = 10000 + Instance sein             │
  ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+ │ Doppeltes Suffix (UNRAID-2-2)      │ ClientName immer Basiswort "UNRAID", Suffix kommt       │
+ │                                    │ automatisch aus Instance                                │
+ ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
  │ Gleicher ClientName                │ absichtlich gleich (UNRAID), Trennung über Instance     │
  ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
- │ Cache-Staleness                    │ CacheLibScan: false                                     │
+ │ Cache-Staleness                    │ CacheLibScan: false (via Frontend Export/Import setzen)  │
+ ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
+ │ CacheLibScan verschwindet          │ Neues Binary nötig (omitempty-Fix 63cbed4); im          │
+ │                                    │ Frontend setzen statt Datei-Ende                        │
  ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
  │ QSV auf iGPU statt ARC             │ -qsv_device /dev/dri/renderD129 (ARC), nicht renderD128 │
  ├────────────────────────────────────┼─────────────────────────────────────────────────────────┤
