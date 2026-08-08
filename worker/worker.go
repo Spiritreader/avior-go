@@ -101,14 +101,14 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if cfg.Local.YearAwareDupes && !media.HasYearSuffix(mediaFile.Name) {
 		year := mediaFile.ExtractYearFromFile()
 		if year == "" {
-			_ = glg.Logf("year-aware dupes: no release year for %s, skipping collision check", mediaFile.Name)
+			_ = glg.Infof("year-aware dupes: no release year for %s, skipping collision check", mediaFile.Name)
 		} else {
 			dupeYear := findDuplicateYear(mediaFile, dataStore)
 			switch {
 			case dupeYear == "":
-				_ = glg.Logf("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
+				_ = glg.Infof("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
 			case dupeYear == year:
-				_ = glg.Logf("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
+				_ = glg.Infof("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
 			default:
 				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s)", year, mediaFile.Name, dupeYear)
 				mediaFile.Name = fmt.Sprintf("%s (%s)", mediaFile.Name, year)
