@@ -63,3 +63,22 @@ func TestRealOldFilmLog(t *testing.T) {
 		t.Errorf("alter Film .log: got %q, want 2011", y)
 	}
 }
+
+// Der Produktionsfall: Job bringt den Subtitle mit dem Release-Jahr 2024 mit,
+// die .log des Films enthält aber auch das Aufnahmejahr 2026. Der Subtitle
+// muss gewinnen (wird zuerst geprüft).
+func TestRealSubtitleWinsOverLogRecordingYear(t *testing.T) {
+	f := File{
+		Name:     "Die Löwin",
+		Subtitle: "Spielfilm Deutschland/Estland/Lettland 2024",
+		TunerLog: []string{
+			"arte HD (deu) 03/08/2026",
+			"Timer Name: Die Löwin - Spielfilm Deutschland/Estland/Lettland 2024",
+			"Timer Start: 03/08/2026 22:58:00",
+			"Monitoring Mode: Start/stop by running status",
+		},
+	}
+	if y := f.ExtractYearFromFile(); y != "2024" {
+		t.Errorf("Subtitle-Pfad: got %q, want 2024 (Subtitle gewinnt vor .log 2026)", y)
+	}
+}
