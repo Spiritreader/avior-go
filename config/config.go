@@ -48,6 +48,11 @@ type Local struct {
 	// Default true keeps the historical Windows/SMB behavior unchanged.
 	// NOTE: no omitempty - a false value must be persisted, otherwise Save() drops it.
 	CacheLibScan      bool   `json:"CacheLibScan"`
+	// YearAwareDupes: when true, same-title files with different release years are
+	// treated as separate films: on an exact-name duplicate match whose year differs
+	// from the new film's year, the new film is renamed to "Title (YYYY)" before the
+	// duplicate modules decide. Default true.
+	YearAwareDupes    bool   `json:"YearAwareDupes"`
 	EstimatedLibSize  int
 	Modules            map[string]ModuleConfig
 	EncoderConfig      map[string]EncoderConfig
@@ -191,6 +196,7 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.EncoderConfig = map[string]EncoderConfig{"hd": *new(EncoderConfig)}
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
 	cfg.Local.CacheLibScan = true
+	cfg.Local.YearAwareDupes = true
 	cfg.Local.Redis = Redis{
 		Host:          "localhost:6379",
 		Password:      "",
