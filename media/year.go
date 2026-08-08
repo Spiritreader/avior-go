@@ -161,56 +161,237 @@ func ExtractYear(s string) string {
 	return ""
 }
 
-// yearFromMetaCandidate extracts the release year from a metadata fragment using
-// the library's TXT_META_PATTERN / TYPE2 patterns in order. Group 1 = year in all
-// patterns (country list is a non-capturing alternation).
+// nonCountryWords mirrors the library's _NON_COUNTRY_WORDS: narrative words that
+// must not be mistaken for a country before a year ("Jahr 2022", "im 2024").
+var nonCountryWords = map[string]bool{
+	"jahr": true, "year": true, "im": true, "ein": true, "eine": true,
+	"der": true, "die": true, "das": true, "und": true, "mit": true,
+	"von": true, "für": true, "aus": true, "the": true,
+	"in": true, "at": true, "nach": true, "auf": true, "bei": true,
+	"this": true, "that": true, "all": true,
+}
+
+// narrativeMarkerRe mirrors NARRATIVE_MARKER: a non-country word directly
+// followed by a digit → the "year" is actually narrative text, not a year.
+var narrativeMarkerRe = regexp.MustCompile(`(?i)^\s*(?:jahr|year|im|ein|eine|der|die|das|und|mit|von|für|fuer|aus|the|in|at|nach|auf|bei|this|that|all)\s+\d`)
+
+// preprocessCandidate mirrors the library's candidate cleaning before matching:
+// FSK strip, <> strip, leading/trailing parens, " - subtitle" truncation,
+// "Min." suffix strip, comma→space, whitespace collapse, duplicate words.
+func preprocessCandidate(s string) string {
+	s = strings.TrimSpace(s)
+	fsKRe := regexp.MustCompile(`(?i)^\s*FSK\s*\d+\s*`)
+	s = fsKRe.ReplaceAllString(s, "")
+	s = regexp.MustCompile(`^\s*<\s*`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`\s*>\s*$`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`^\s*\([^)]*\)\s*`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`\s+[-–—]\s+.*$`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`\s*\([^)]*\)\s*$`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`(?i)deutsche\s+demokratische\s+republik`).ReplaceAllString(s, "DDR")
+	s = regexp.MustCompile(`\([^)]*\)`).ReplaceAllString(s, " ")
+	s = regexp.MustCompile(`(?i)\bFSK\s*\d+\b`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`(?i),?\s*[A-Za-zÄÖÜäöü0-9 &]{2,30}\s*\d{1,3}\s*Min\.?$`).ReplaceAllString(s, "")
+	s = regexp.MustCompile(`\s*,\s*`).ReplaceAllString(s, " ")
+	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
+	// Collapse duplicate words: "Deutschland Deutschland 2024" -> "Deutschland 2024"
+	words := strings.Fields(s)
+	out := make([]string, 0, len(words))
+	for i, w := range words {
+		if i > 0 && strings.EqualFold(w, words[i-1]) {
+			continue
+		}
+		out = append(out, w)
+	}
+	return strings.Join(out, " ")
+}
+
+// yearFromMetaCandidate is the full port of the library's _extract_from_candidate
+// cascade (metadata.py:589-733). Group 1 = year in all patterns. Returns "" when
+// no year can be determined.
 func yearFromMetaCandidate(candidate string) string {
 	if candidate == "" {
 		return ""
 	}
-	if m := txtMetaRe.FindStringSubmatch(candidate); len(m) == 2 {
+	s := strings.TrimSpace(candidate)
+	s = preprocessCandidate(s)
+
+	// Determine the first year position to bound the match window.
+	mYearFirst := yearFourRe.FindStringIndex(s)
+
+	// Truncate candidate from the first genre/country word up to the first year
+	// (mirrors start_match logic).
+	startIdx := -1
+	if m := regexp.MustCompile(`(?i)\b(?:` + genreWords + `|` + countryHintPattern + `)\b`).FindStringIndex(s); m != nil {
+		startIdx = m[0]
+	}
+	candidateForMatch := s
+	if startIdx >= 0 {
+		if mYearFirst != nil {
+			candidateForMatch = s[startIdx:mYearFirst[1]]
+		} else {
+			candidateForMatch = s[startIdx:]
+		}
+	} else if mYearFirst != nil {
+		candidateForMatch = s[:mYearFirst[1]]
+	}
+
+	// 1. TXT_META_PATTERN
+	if m := txtMetaRe.FindStringSubmatch(candidateForMatch); len(m) == 2 {
 		return m[1]
 	}
-	if m := type2GenreCountryYearRe.FindStringSubmatch(candidate); len(m) == 2 {
+	// 2. TYPE2_GENRE_COUNTRY_YEAR_PATTERN
+	if m := type2GenreCountryYearRe.FindStringSubmatch(candidateForMatch); len(m) == 2 {
 		return m[1]
 	}
-	if m := type2CountryYearFallbackRe.FindStringSubmatch(candidate); len(m) == 2 {
-		return m[1]
+	// 3. loose_re: <text> <year> at end, gated by NARRATIVE_MARKER
+	candidateNorm := preprocessCandidate(s)
+	candidateNorm = regexp.MustCompile(`\s+[-–—]\s+.*$`).ReplaceAllString(candidateNorm, "")
+	candidateNorm = regexp.MustCompile(`\s*\([^)]*\)\s*$`).ReplaceAllString(candidateNorm, "")
+	if m := looseYearRe.FindStringSubmatch(candidateNorm); len(m) == 2 {
+		rawCountries := m[1]
+		if narrativeMarkerRe.MatchString(rawCountries) {
+			return ""
+		}
+		// Single country starting with a genre word: "Spielfilm Deutschland"
+		parts := splitCountryParts(rawCountries)
+		if len(parts) == 1 {
+			for _, sg := range []string{"zeichentrick", "spielfilm", "film", "serie", "dokumentation", "komödie"} {
+				if strings.HasPrefix(parts[0], sg+" ") {
+					return m[2]
+				}
+			}
+		}
+		if len(parts) > 0 {
+			return m[2]
+		}
 	}
-	if m := logMetaLineRe.FindStringSubmatch(candidate); len(m) == 2 {
-		return m[1]
+	// 4. short_genre_re: "Genre Land Jahr"
+	if m := shortGenreYearRe.FindStringSubmatch(candidate); len(m) == 4 {
+		g := strings.ToLower(strings.TrimSpace(m[1]))
+		if shortGenres[g] {
+			return m[3]
+		}
 	}
-	if m := logMetaLineStrictRe.FindStringSubmatch(candidate); len(m) == 2 {
-		return m[1]
+	// 5. permissive_re: <text> <year> anywhere, gated by NARRATIVE_MARKER
+	if m := permissiveYearRe.FindStringSubmatch(s); len(m) == 3 {
+		combined := m[1] + " " + m[2]
+		if narrativeMarkerRe.MatchString(combined) {
+			return ""
+		}
+		parts := splitCountryParts(m[1])
+		if len(parts) > 0 {
+			return m[2]
+		}
 	}
 	return ""
+}
+
+// looseYearRe mirrors the library's loose_re: <non-digit text> <year> at end.
+var looseYearRe = regexp.MustCompile(`(?i)([^\d\n\r]+?)\s+((?:19|20)\d{2})\s*$`)
+
+// shortGenreYearRe mirrors short_genre_re: Genre + Countries + Year.
+var shortGenreYearRe = regexp.MustCompile(`(?i)^\s*([A-Za-zÄÖÜäöüß\-]{3,20})\s+(.+?)\s+((?:19|20)\d{2})\s*$`)
+
+// permissiveYearRe mirrors m_permissive: <non-digit text> <year>.
+var permissiveYearRe = regexp.MustCompile(`(?i)([^\d\n\r|]+?)\s+((?:19|20)\d{2})\b`)
+
+var shortGenres = map[string]bool{
+	"fernsehfilm": true, "spielfilm": true, "film": true, "serie": true,
+	"dokumentation": true, "komödie": true, "komoedie": true,
+	"tragikomödie": true, "tragikomoedie": true, "drama": true,
+	"thriller": true, "krimi": true, "melodram": true, "animationsfilm": true,
+	"zeichentrick": true, "zeichentrickfilm": true,
+}
+
+// splitCountryParts splits a country string by / , ; und (mirrors the library).
+func splitCountryParts(s string) []string {
+	re := regexp.MustCompile(`(?i)\s*(?:/|,|;|\band\b|\bund\b|und)\s*`)
+	parts := re.Split(s, -1)
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // firstMetaLikeSegment picks the best "Land Jahr"-style segment from a
 // pipe-separated Description= line (mirrors extract_txt_meta_year_and_countries
 // description handling, simplified to the year-bearing segment).
+// firstMetaLikeSegment mirrors the library's Description=-segment selection with
+// scoring (narrative_penalty, meta_like, short_segment): picks the best
+// "Land Jahr"-style segment from a pipe-separated Description= line.
 func firstMetaLikeSegment(desc string) string {
-	if !strings.Contains(desc, "|") {
-		if y := ExtractYear(desc); y != "" {
-			return desc
-		}
-		return ""
-	}
 	parts := []string{}
 	for _, p := range strings.Split(desc, "|") {
 		if t := strings.TrimSpace(p); t != "" {
 			parts = append(parts, t)
 		}
 	}
+	if len(parts) == 0 {
+		return ""
+	}
+	// Single segment: use it if it carries a year.
+	if len(parts) == 1 {
+		if ExtractYear(parts[0]) != "" {
+			return parts[0]
+		}
+		return ""
+	}
+	// Score each year-bearing segment like the library: prefer meta-like
+	// (genre+country+year), short segments, low narrative penalty.
+	type scored struct {
+		penalty int
+		meta    int
+		tail    int
+		words   int
+		seg     string
+	}
+	var candidates []scored
 	for _, seg := range parts {
-		if y := ExtractYear(seg); y != "" {
-			if yearFromMetaCandidate(seg) != "" {
-				return seg
+		mYear := yearFourRe.FindStringIndex(seg)
+		if mYear == nil {
+			continue
+		}
+		tailLen := len(seg) - mYear[1]
+		narrativePenalty := 0
+		if regexp.MustCompile(`\d{4}\s*:\s*[A-Za-z]`).MatchString(seg) {
+			narrativePenalty = 1
+		}
+		metaLike := false
+		if yearFromMetaCandidate(seg) != "" {
+			metaLike = true
+		}
+		wordCount := len(strings.Fields(seg))
+		shortSeg := wordCount <= 10 && tailLen < 40
+		if !metaLike && !shortSeg {
+			continue
+		}
+		metaScore := 0
+		if !metaLike {
+			metaScore = 1
+		}
+		candidates = append(candidates, scored{narrativePenalty, metaScore, tailLen, wordCount, seg})
+	}
+	if len(candidates) > 0 {
+		// Sort: penalty asc, meta asc, tail asc (mirrors the library's sort key).
+		best := candidates[0]
+		for _, c := range candidates[1:] {
+			if c.penalty < best.penalty ||
+				(c.penalty == best.penalty && c.meta < best.meta) ||
+				(c.penalty == best.penalty && c.meta == best.meta && c.tail < best.tail) {
+				best = c
 			}
 		}
+		return best.seg
 	}
-	for _, seg := range parts {
-		if y := ExtractYear(seg); y != "" {
+	// Fallback: last segment carrying a year and letters (mirrors library's last
+	// candidate fallback).
+	for i := len(parts) - 1; i >= 0; i-- {
+		seg := parts[i]
+		if yearFourRe.MatchString(seg) && regexp.MustCompile(`[A-Za-zÄÖÜäöüß]`).MatchString(seg) {
 			return seg
 		}
 	}
@@ -280,8 +461,56 @@ func YearFromSuffix(name string) string {
 	return ""
 }
 
-// sliceLogMetadata bounds the log lines to the metadata section, mirroring
-// movie_nfo_lib _slice_log_lines_for_metadata.
+// IsProbablyEpisodeFilename mirrors is_probably_episode_filename: True for series
+// episode filenames (SxxExx, (N_N), NxNN, (Staffel N, Folge N), (123)-in-parens,
+// 4-digit in parens NOT at end, Folge/Episode/Kapitel N). A year-suffixed film
+// like "Die Löwin (2024)" is NOT an episode (year at end is excluded).
+func IsProbablyEpisodeFilename(name string) bool {
+	stem := strings.TrimSuffix(name, filepathExt(name))
+	for _, re := range episodePatterns {
+		if re.MatchString(stem) {
+			return true
+		}
+	}
+	// 4-digit in parens NOT at stem end -> episode (e.g. (1188) mid-name).
+	// (2011) at the very end is a year, not an episode — handled by the position
+	// check below (RE2 has no lookahead).
+	if m := episodeFourDigitInParensRe.FindStringIndex(stem); m != nil {
+		if m[1] < len(stem) && !regexp.MustCompile(`^\s*$`).MatchString(stem[m[1]:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// filepathExt returns the extension including the dot, or "".
+func filepathExt(name string) string {
+	idx := strings.LastIndexAny(name, "./\\")
+	if idx < 0 || name[idx] != '.' {
+		return ""
+	}
+	return name[idx:]
+}
+
+var episodePatterns = []*regexp.Regexp{
+	// SxxExx / S01_E01
+	regexp.MustCompile(`(?i)\bS\d{1,2}E\d{1,2}\b|\bS\d{1,2}_E\d{1,2}\b`),
+	// (N_N) season_episode in parens
+	regexp.MustCompile(`\(\d{1,2}_\d{1,2}\)`),
+	// NxNN bare notation (2x07)
+	regexp.MustCompile(`\b\d{1,2}x\d{1,2}\b`),
+	// (Staffel N, Folge N) in parens
+	regexp.MustCompile(`(?i)[Ss]taffel\s*\d+[^)]*[Ff]olge\s*\d+`),
+	// 1-3 digit in parens -> episode, never year
+	regexp.MustCompile(`\(\d{1,3}\)`),
+	// Folge 5 / Episode 3 / Kapitel 16
+	regexp.MustCompile(`(?i)\b(?:Folge|Episode|Ep\.?|Kapitel)\s+\d+`),
+}
+
+// episodeFourDigitInParensRe matches "(1188)" NOT at the stem end (episode
+// number). The library uses a lookahead (?!\s*$); RE2 has none, so the position
+// check is done manually in IsProbablyEpisodeFilename.
+var episodeFourDigitInParensRe = regexp.MustCompile(`\(\d{4}\)`)
 func sliceLogMetadata(lines []string) []string {
 	end := len(lines)
 	for i, line := range lines {
