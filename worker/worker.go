@@ -94,6 +94,20 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Logf("trimmed name: %s", mediaFile.OutName())
 	jobLog.AddFileProperties(*mediaFile)
 
+	// Year-aware duplicates: if the exact name already exists in the library but
+	// the release year differs, rename to "Title (YYYY)" so the two films are
+	// treated as separate. The later exact-name duplicate scan then matches the
+	// suffixed name and the existing modules decide replacement.
+	if cfg.Local.YearAwareDupes && !media.HasYearSuffix(mediaFile.Name) {
+		if year := mediaFile.ExtractYearFromFile(); year != "" {
+			if dupeYear := findDuplicateYear(mediaFile, dataStore); dupeYear != "" && dupeYear != year {
+				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s)", year, mediaFile.Name, dupeYear)
+				mediaFile.Name = fmt.Sprintf("%s (%s)", mediaFile.Name, year)
+				jobLog.Add(fmt.Sprintf("Year collision: renamed to %s (existing has %s)", mediaFile.OutName(), dupeYear))
+			}
+		}
+	}
+
 	// run single file modules
 	jobLog.Add("")
 	res := runModules(jobLog, *mediaFile)
@@ -660,4 +674,28 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 		return nil, err
 	}
 	return matches, nil
+}
+
+// findDuplicateYear runs the existing exact-name duplicate scan for file and
+// returns the release year of the first found duplicate (from its .txt/.log via
+// ExtractYearFromFile, or from a " (YYYY)" suffix in its filename). Returns ""
+// when no duplicate exists or no year can be determined.
+func findDuplicateYear(file *media.File, dataStore *db.DataStore) string {
+	duplicates, err := checkForDuplicates(file)
+	if err != nil {
+		_ = glg.Warnf("year collision scan failed: %s", err)
+		return ""
+	}
+	if len(duplicates) == 0 {
+		return ""
+	}
+	// A year suffix in the filename is the cheapest, most reliable source.
+	if y := media.YearFromSuffix(filepath.Base(duplicates[0].Path)); y != "" {
+		return y
+	}
+	dupe := duplicates[0]
+	if err := dupe.Update(); err != nil {
+		_ = glg.Warnf("couldn't parse duplicate log file for year: %s", err)
+	}
+	return dupe.ExtractYearFromFile()
 }
