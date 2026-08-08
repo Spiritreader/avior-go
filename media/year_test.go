@@ -89,6 +89,26 @@ func TestExtractYearFromFileCurrentTxt(t *testing.T) {
 	}
 }
 
+func TestExtractYearFromFileTxtIgnoresRecordingDate(t *testing.T) {
+	// The .txt carries the RECORDING date (Created=03.08.2026) BEFORE the Info=
+	// line. The recording year must NOT be used — only the Info= release year.
+	f := File{
+		Name: "Die Löwin",
+		MetadataLog: []string{
+			"[Media]",
+			"Created=03.08.2026 23:00:06",
+			"Channel=arte HD (deu)",
+			"[0]",
+			"Date=03.08.2026",
+			"Title=Die Löwin",
+			"Info=Spielfilm Deutschland/Estland/Lettland 2024",
+		},
+	}
+	if y := f.ExtractYearFromFile(); y != "2024" {
+		t.Errorf("ExtractYearFromFile(txt with recording date) = %q, want 2024 (release year), got recording year", y)
+	}
+}
+
 func TestExtractYearFromFileTimerName(t *testing.T) {
 	// Timer Name is the most reliable source in .log.
 	f := File{

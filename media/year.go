@@ -37,10 +37,22 @@ func (f *File) ExtractYearFromFile() string {
 	if y := ExtractYear(f.Subtitle); y != "" {
 		return y
 	}
-	// 2. .txt metadata (current format): Info= / Title= lines carry the year.
+	// 2. .txt metadata (current format): the release year lives on the Info= line
+	//    (e.g. "Info=Spielfilm Deutschland/Estland/Lettland 2024"). NEVER scan all
+	//    lines — Created=/Date= carry the RECORDING date (e.g. 03.08.2026) which is
+	//    not the release year.
 	for _, line := range f.MetadataLog {
-		if y := ExtractYear(line); y != "" {
-			return y
+		if strings.HasPrefix(line, "Info=") {
+			if y := ExtractYear(line); y != "" {
+				return y
+			}
+		}
+	}
+	for _, line := range f.MetadataLog {
+		if strings.HasPrefix(line, "Title=") {
+			if y := ExtractYear(line); y != "" {
+				return y
+			}
 		}
 	}
 	// 3. .log (legacy format, no .txt): Timer Name first (most reliable), then
