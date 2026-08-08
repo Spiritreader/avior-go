@@ -107,7 +107,7 @@ var timeRangeRe = regexp.MustCompile(`^\d{1,2}:\d{2}\.\.\d{1,2}:\d{2}$`)
 func (f *File) ExtractYearFromFile() string {
 	// 1. Job subtitle (avior-dis provides it): "Spielfilm Deutschland 2024".
 	if y := ExtractYear(f.Subtitle); y != "" {
-		glg.Logf("year extraction: subtitle -> %s", y)
+		glg.Infof("year extraction: subtitle -> %s", y)
 		return y
 	}
 	// 2. .txt metadata (current format). Info= first, then Description=-derived
@@ -121,34 +121,34 @@ func (f *File) ExtractYearFromFile() string {
 	}
 	if infoLine != "" {
 		if y := yearFromMetaCandidate(infoLine); y != "" {
-			glg.Logf("year extraction: txt Info= -> %s", y)
+			glg.Infof("year extraction: txt Info= -> %s", y)
 			return y
 		}
-		glg.Logf("year extraction: txt Info= line found but no year in %q", infoLine)
+		glg.Infof("year extraction: txt Info= line found but no year in %q", infoLine)
 	}
 	for _, l := range f.MetadataLog {
 		if strings.HasPrefix(l, "Description=") {
 			desc := strings.TrimPrefix(l, "Description=")
 			if seg := firstMetaLikeSegment(desc); seg != "" {
 				if y := yearFromMetaCandidate(seg); y != "" {
-					glg.Logf("year extraction: txt Description= -> %s", y)
+					glg.Infof("year extraction: txt Description= -> %s", y)
 					return y
 				}
 			}
 		}
 	}
 	if len(f.MetadataLog) > 0 {
-		glg.Logf("year extraction: no year in .txt metadata (%d lines)", len(f.MetadataLog))
+		glg.Infof("year extraction: no year in .txt metadata (%d lines)", len(f.MetadataLog))
 	} else {
-		glg.Logf("year extraction: no .txt metadata present")
+		glg.Infof("year extraction: no .txt metadata present")
 	}
 	// 3. .log: Timer Name first (most reliable), then the meta line.
 	logYear := extractYearFromLog(f.TunerLog)
 	if logYear != "" {
-		glg.Logf("year extraction: log -> %s", logYear)
+		glg.Infof("year extraction: log -> %s", logYear)
 		return logYear
 	}
-	glg.Logf("year extraction: no year found in subtitle/.txt/.log for %s", f.Path)
+	glg.Infof("year extraction: no year found in subtitle/.txt/.log for %s", f.Path)
 	return ""
 }
 
