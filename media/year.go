@@ -3,6 +3,8 @@ package media
 import (
 	"regexp"
 	"strings"
+
+	"github.com/kpango/glg"
 )
 
 // Ported from movie_nfo_lib (movie_metadata/metadata.py) — see
@@ -100,10 +102,12 @@ var timeRangeRe = regexp.MustCompile(`^\d{1,2}:\d{2}\.\.\d{1,2}:\d{2}$`)
 // ExtractYearFromFile resolves the release year for f following the library's
 // extract_txt_metadata order: subtitle → .txt (Info=/Description=) → .log
 // (Timer Name → meta line), with .log as supplement when .txt lacks a year.
-// Returns "" when no year can be determined.
+// Returns "" when no year can be determined. Each source is logged so the
+// extraction path is transparent (important for diagnosing missing years).
 func (f *File) ExtractYearFromFile() string {
 	// 1. Job subtitle (avior-dis provides it): "Spielfilm Deutschland 2024".
 	if y := ExtractYear(f.Subtitle); y != "" {
+		glg.Logf("year extraction: subtitle -> %s", y)
 		return y
 	}
 	// 2. .txt metadata (current format). Info= first, then Description=-derived
@@ -117,24 +121,34 @@ func (f *File) ExtractYearFromFile() string {
 	}
 	if infoLine != "" {
 		if y := yearFromMetaCandidate(infoLine); y != "" {
+			glg.Logf("year extraction: txt Info= -> %s", y)
 			return y
 		}
+		glg.Logf("year extraction: txt Info= line found but no year in %q", infoLine)
 	}
 	for _, l := range f.MetadataLog {
 		if strings.HasPrefix(l, "Description=") {
 			desc := strings.TrimPrefix(l, "Description=")
 			if seg := firstMetaLikeSegment(desc); seg != "" {
 				if y := yearFromMetaCandidate(seg); y != "" {
+					glg.Logf("year extraction: txt Description= -> %s", y)
 					return y
 				}
 			}
 		}
 	}
+	if len(f.MetadataLog) > 0 {
+		glg.Logf("year extraction: no year in .txt metadata (%d lines)", len(f.MetadataLog))
+	} else {
+		glg.Logf("year extraction: no .txt metadata present")
+	}
 	// 3. .log: Timer Name first (most reliable), then the meta line.
 	logYear := extractYearFromLog(f.TunerLog)
 	if logYear != "" {
+		glg.Logf("year extraction: log -> %s", logYear)
 		return logYear
 	}
+	glg.Logf("year extraction: no year found in subtitle/.txt/.log for %s", f.Path)
 	return ""
 }
 
