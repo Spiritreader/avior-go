@@ -238,7 +238,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 
 	// invalidate cache in non-redis mode as it won't be recent anymore after encoding a job
-	if !redis.Handle.Running(){
+	if !redis.Handle.Running() {
 		cache.Instance().Library.Valid = false
 	}
 
@@ -267,7 +267,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
-			if (cfg.Local.PauseOnEncodeError) {
+			if cfg.Local.PauseOnEncodeError {
 				state.Paused = true
 				state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
 			}
@@ -289,7 +289,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
-			if (cfg.Local.PauseOnEncodeError) {
+			if cfg.Local.PauseOnEncodeError {
 				state.Paused = true
 				state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
 			}
@@ -322,7 +322,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	}
 
 	// broadcast job if redis is enabled
-	if (redis.Handle.Running()) {
+	if redis.Handle.Running() {
 		_ = glg.Infof("redis: broadcasting job %s", stats.OutputPath)
 		err := redis.Handle.PushMessage(stats.OutputPath)
 		if err != nil {
@@ -593,7 +593,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 		if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
 			_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
 			libCache.Valid = false
-		} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute*5)).After(libCache.LastUpdate) {
+		} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
 			_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
 			libCache.Valid = false
 		}
@@ -628,13 +628,23 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	return matches, nil
 }
 
+func duplicateNameMatch(candidate, existing, extension string) bool {
+	candidateExt := filepath.Ext(candidate)
+	existingExt := filepath.Ext(existing)
+	if !strings.EqualFold(candidateExt, extension) || !strings.EqualFold(existingExt, extension) {
+		return false
+	}
+	return media.DuplicateNameKey(strings.TrimSuffix(candidate, candidateExt)) ==
+		media.DuplicateNameKey(strings.TrimSuffix(existing, existingExt))
+}
+
 func traverseMemCache(file *media.File, libCache *cache.Library) []media.File {
 	matches := make([]media.File, 0)
 	for _, path := range libCache.Data {
-		if filepath.Base(path) == file.OutName()+config.Instance().Local.Ext {
+		if duplicateNameMatch(file.OutName()+config.Instance().Local.Ext, filepath.Base(path), config.Instance().Local.Ext) {
 			_ = glg.Infof("found duplicate: %s", path)
-			file := &media.File{Path: path}
-			matches = append(matches, *file)
+			duplicate := &media.File{Path: path}
+			matches = append(matches, *duplicate)
 		}
 		if state.FileWalker.Position%1000 == 0 {
 			_ = glg.Logf("current dir: %s, position: %d/%d",
@@ -653,10 +663,10 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 			if de.IsDir() && strings.HasPrefix(de.Name(), ".") {
 				return errors.New("directory ignored")
 			}
-			if !de.IsDir() && de.Name() == (file.OutName()+config.Instance().Local.Ext) {
-				file := &media.File{Path: path}
+			if !de.IsDir() && duplicateNameMatch(file.OutName()+config.Instance().Local.Ext, de.Name(), config.Instance().Local.Ext) {
+				duplicate := &media.File{Path: path}
 				_ = glg.Infof("found duplicate: %s", path)
-				matches = append(matches, *file)
+				matches = append(matches, *duplicate)
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
 				if state.FileWalker.Position%1000 == 0 {
