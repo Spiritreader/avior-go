@@ -36,3 +36,22 @@ func TestTraverseDirCleanDirHasNoError(t *testing.T) {
 		t.Errorf("traverseDir() over a clean directory returned error = %v, want nil", err)
 	}
 }
+
+func TestTraverseDirMatchesPunctuationVariants(t *testing.T) {
+	root := t.TempDir()
+	existing := "aktiv und gesund _ Faszientherapie _ Poolkeime _ Stand-up-Paddling.mkv"
+	path := filepath.Join(root, existing)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write existing file: %s", err)
+	}
+	file := media.File{
+		Name: "aktiv und gesund - Faszientherapie - Poolkeime - Stand-up-Paddling",
+	}
+	matches, err := traverseDir(&file, root, false)
+	if err != nil {
+		t.Fatalf("traverseDir() returned error: %s", err)
+	}
+	if len(matches) != 1 || matches[0].Path != path {
+		t.Fatalf("traverseDir() matches = %#v, want original path %q", matches, path)
+	}
+}
