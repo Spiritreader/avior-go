@@ -5,6 +5,11 @@
 *.so
 *.dylib
 
+# Media files
+*.ts
+*.mkv
+*.mp4
+
 # app generated logs and config
 config.json
 log/
