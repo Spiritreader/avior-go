@@ -695,26 +695,35 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 	return matches, nil
 }
 
-// findDuplicateYear runs the existing exact-name duplicate scan for file and
+// findDuplicateYear runs the normalized-name duplicate scan for file and
 // returns the release year of the first found duplicate (from its .txt/.log via
 // ExtractYearFromFile, or from a " (YYYY)" suffix in its filename). Returns ""
 // when no duplicate exists or no year can be determined.
 func findDuplicateYear(file *media.File, dataStore *db.DataStore) string {
 	duplicates, err := checkForDuplicates(file)
 	if err != nil {
-		_ = glg.Warnf("year collision scan failed: %s", err)
+		_ = glg.Warnf("year collision scan failed for %s: %s", file.Path, err)
 		return ""
 	}
 	if len(duplicates) == 0 {
+		_ = glg.Infof("year-aware dupes: no normalized-name duplicate for %s", file.OutName()+config.Instance().Local.Ext)
 		return ""
 	}
+	dupe := duplicates[0]
+	_ = glg.Infof("year-aware dupes: normalized-name duplicate: candidate=%s, existing=%s", file.OutName()+config.Instance().Local.Ext, dupe.Path)
 	// A year suffix in the filename is the cheapest, most reliable source.
-	if y := media.YearFromSuffix(filepath.Base(duplicates[0].Path)); y != "" {
+	if y := media.YearFromSuffix(filepath.Base(dupe.Path)); y != "" {
+		_ = glg.Infof("year-aware dupes: existing duplicate %s -> year %s from filename suffix", dupe.Path, y)
 		return y
 	}
-	dupe := duplicates[0]
 	if err := dupe.Update(); err != nil {
-		_ = glg.Warnf("couldn't parse duplicate log file for year: %s", err)
+		_ = glg.Warnf("couldn't parse duplicate log file for year: %s (existing=%s)", err, dupe.Path)
 	}
-	return dupe.ExtractYearFromFile()
+	year := dupe.ExtractYearFromFile()
+	if year == "" {
+		_ = glg.Infof("year-aware dupes: existing duplicate %s has unknown year", dupe.Path)
+	} else {
+		_ = glg.Infof("year-aware dupes: existing duplicate %s -> year %s from metadata", dupe.Path, year)
+	}
+	return year
 }
