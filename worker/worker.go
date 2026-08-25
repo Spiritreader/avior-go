@@ -111,7 +111,12 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			duplicates = matches
 			switch {
 			case dupeYear == "":
-				_ = glg.Infof("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
+				// findDuplicateYear already logged "no normalized-name
+				// duplicate" when nothing matched; only report a found
+				// duplicate whose year could not be resolved.
+				if len(matches) > 0 {
+					_ = glg.Infof("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
+				}
 			case dupeYear == year:
 				_ = glg.Infof("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
 			default:
