@@ -98,12 +98,17 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	// the release year differs, rename to "Title (YYYY)" so the two films are
 	// treated as separate. The later exact-name duplicate scan then matches the
 	// suffixed name and the existing modules decide replacement.
+	// The year-aware scan doubles as the duplicate scan: checkForDuplicates
+	// returns the same matches the later duplicate check would find, unless a
+	// year collision renamed the file (then the new name needs a fresh scan).
+	var duplicates []media.File
 	if cfg.Local.YearAwareDupes && !media.HasYearSuffix(mediaFile.Name) {
 		year := mediaFile.ExtractYearFromFile()
 		if year == "" {
 			_ = glg.Infof("year-aware dupes: no release year for %s, skipping collision check", mediaFile.Name)
 		} else {
-			dupeYear := findDuplicateYear(mediaFile, dataStore)
+			dupeYear, matches := findDuplicateYear(mediaFile, dataStore)
+			duplicates = matches
 			switch {
 			case dupeYear == "":
 				_ = glg.Infof("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
@@ -112,6 +117,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			default:
 				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s)", year, mediaFile.Name, dupeYear)
 				mediaFile.Name = fmt.Sprintf("%s (%s)", mediaFile.Name, year)
+				duplicates = nil // name changed, previous matches are stale
 				jobLog.Add(fmt.Sprintf("Year collision: renamed to %s (existing has %s)", mediaFile.OutName(), dupeYear))
 			}
 		}
@@ -127,18 +133,22 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		return
 	}
 
-	// check for duplicates and run modules
+	// check for duplicates and run modules.
+	// duplicates is nil when the year-aware check did not run (disabled, name
+	// already suffixed, no year) or renamed the file — only then rescan.
 	var redirectDir *string = nil
 	var obsoleteMovedLogPaths map[string]string = nil
 	var obsoleteMovedFilePath map[string]string = nil
-	duplicates, err := checkForDuplicates(mediaFile)
-	if err != nil {
-		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
-		state.Paused = true
-		state.PauseReason = consts.PAUSE_REASON_DUPLICATE_SCAN
-		appendJobTemplate(*job, jobLog, false)
-		writeSkippedLog(mediaFile, jobLog, false)
-		return
+	if duplicates == nil {
+		duplicates, err = checkForDuplicates(mediaFile)
+		if err != nil {
+			_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
+			state.Paused = true
+			state.PauseReason = consts.PAUSE_REASON_DUPLICATE_SCAN
+			appendJobTemplate(*job, jobLog, false)
+			writeSkippedLog(mediaFile, jobLog, false)
+			return
+		}
 	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
@@ -697,24 +707,25 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 
 // findDuplicateYear runs the normalized-name duplicate scan for file and
 // returns the release year of the first found duplicate (from its .txt/.log via
-// ExtractYearFromFile, or from a " (YYYY)" suffix in its filename). Returns ""
-// when no duplicate exists or no year can be determined.
-func findDuplicateYear(file *media.File, dataStore *db.DataStore) string {
+// ExtractYearFromFile, or from a " (YYYY)" suffix in its filename), plus the
+// full duplicate match list. The year is "" when no duplicate exists or no year
+// can be determined; the matches let the caller skip a second duplicate scan.
+func findDuplicateYear(file *media.File, dataStore *db.DataStore) (string, []media.File) {
 	duplicates, err := checkForDuplicates(file)
 	if err != nil {
 		_ = glg.Warnf("year collision scan failed for %s: %s", file.Path, err)
-		return ""
+		return "", nil
 	}
 	if len(duplicates) == 0 {
 		_ = glg.Infof("year-aware dupes: no normalized-name duplicate for %s", file.OutName()+config.Instance().Local.Ext)
-		return ""
+		return "", duplicates
 	}
 	dupe := duplicates[0]
 	_ = glg.Infof("year-aware dupes: normalized-name duplicate: candidate=%s, existing=%s", file.OutName()+config.Instance().Local.Ext, dupe.Path)
 	// A year suffix in the filename is the cheapest, most reliable source.
 	if y := media.YearFromSuffix(filepath.Base(dupe.Path)); y != "" {
 		_ = glg.Infof("year-aware dupes: existing duplicate %s -> year %s from filename suffix", dupe.Path, y)
-		return y
+		return y, duplicates
 	}
 	if err := dupe.Update(); err != nil {
 		_ = glg.Warnf("couldn't parse duplicate log file for year: %s (existing=%s)", err, dupe.Path)
@@ -725,5 +736,5 @@ func findDuplicateYear(file *media.File, dataStore *db.DataStore) string {
 	} else {
 		_ = glg.Infof("year-aware dupes: existing duplicate %s -> year %s from metadata", dupe.Path, year)
 	}
-	return year
+	return year, duplicates
 }
