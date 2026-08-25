@@ -9,6 +9,14 @@ services:
     restart: unless-stopped
     ports:
       - "10100:10000"
+    healthcheck:
+      # /alive/ always answers 200 while the process runs; curl is present in
+      # the linuxserver/ffmpeg base image (verified: /usr/bin/curl).
+      test: ["CMD-SHELL", "curl -fsS http://localhost:10000/alive/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     volumes:
       - /mnt/user/media:/media
       - /mnt/user/recording_pool:/recording_pool
