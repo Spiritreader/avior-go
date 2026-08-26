@@ -27,6 +27,10 @@ services:
     volumes:
       - /mnt/user/media:/media
       - /mnt/user/recording_pool:/recording_pool
+      # The exists/ symlinks inside the recording pool point to the host path
+      # /mnt/user/recording_pool/recording/exists (central exists storage).
+      # Without this mount the link target is unresolvable inside the container.
+      - /mnt/user/recording_pool:/mnt/user/recording_pool
       - /mnt/disks/recording_spare:/recording_spare
       - ${DATA_DIR:-/mnt/user/appdata/avior-go}:/data
     devices:
