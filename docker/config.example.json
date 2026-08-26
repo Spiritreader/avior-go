@@ -25,7 +25,10 @@
       "[Dolby Digital 5.1]",
       "[AC-3]",
       "AC3 Audio 5.0",
-      " [Dolby Digital 5.0]"
+      " [Dolby Digital 5.0]",
+      "[5.1]",
+      "[5.0]",
+      "[7.1]"
     ]
   },
   "Resolutions": {
