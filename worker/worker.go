@@ -500,9 +500,9 @@ func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data, withFfmpegOut b
 //
 // In case of an error, the path will still be returned for rollback purposes, but the error will be non-nil
 func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
-	_, err := os.Stat(dstDir)
-	if os.IsNotExist(err) {
-		_ = os.Mkdir(dstDir, 0777)
+	if err := os.MkdirAll(dstDir, 0777); err != nil {
+		_ = glg.Errorf("could not create destination directory %s: %s", dstDir, err)
+		return err, nil
 	}
 	fileOut := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
 	if moduleName != nil {
@@ -512,7 +512,7 @@ func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, m
 	}
 	fileOut += filepath.Ext(file.Path)
 	fileOut = filepath.Join(dstDir, fileOut)
-	err = tools.MoppyFile(file.Path, fileOut, true)
+	err := tools.MoppyFile(file.Path, fileOut, true)
 	if err != nil {
 		return err, map[string]string{file.Path: fileOut}
 	}
@@ -527,9 +527,9 @@ func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, m
 //
 // In case of an error, the path of the failed move will still be returned for rollback purposes
 func moveLogs(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
-	_, err := os.Stat(dstDir)
-	if os.IsNotExist(err) {
-		_ = os.Mkdir(dstDir, 0777)
+	if err := os.MkdirAll(dstDir, 0777); err != nil {
+		_ = glg.Errorf("could not create destination directory %s: %s", dstDir, err)
+		return err, nil
 	}
 	toMovePaths := make(map[string]string)
 	for _, log := range file.LogPaths {
@@ -553,9 +553,9 @@ func moveLogs(file media.File, dstDir string, moduleName *string) (error, map[st
 }
 
 func copyLogsToEncOut(file media.File, dstDir string) error {
-	_, err := os.Stat(dstDir)
-	if os.IsNotExist(err) {
-		_ = os.Mkdir(dstDir, 0777)
+	if err := os.MkdirAll(dstDir, 0777); err != nil {
+		_ = glg.Errorf("could not create destination directory %s: %s", dstDir, err)
+		return err
 	}
 	toMovePaths := make(map[string]string)
 	for _, log := range file.LogPaths {
