@@ -1,6 +1,6 @@
 {
   "Instance": 0,
-  "ClientName": "AVIOR-GO-TEST",
+  "ClientName": "UNRAID",
   "DatabaseURL": "mongodb://192.168.178.75:27017",
   "Redis": {
     "Enabled": true,
@@ -39,7 +39,9 @@
   },
   "ObsoletePath": "/media/transcoded",
   "MediaPaths": [
-    "/media/re_encode"
+    "/media/re_encode",
+    "/media/transcoded",
+    "/media/tv"
   ],
   "PathMappings": {
     "\\\\UMS\\recording_pool": "/recording_pool",
@@ -47,6 +49,7 @@
     "\\\\192.168.178.75\\recording_pool": "/recording_pool",
     "\\\\192.168.178.75\\recording_spare": "/recording_spare"
   },
+  "CacheLibScan": false,
   "EstimatedLibSize": 66335,
   "Modules": {
     "AgeModule": {
@@ -130,13 +133,19 @@
   "EncoderConfig": {
     "fhd": {
       "OutDirectory": "/media/transcoded/HD1080",
-      "PreArguments": [],
+      "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
+        "-init_hw_device qsv=qsv",
+        "-filter_hw_device qsv"
+      ],
       "PostArguments": [
         "-map 0",
-        "-c:v libsvtav1",
-        "-preset 8",
-        "-crf 26",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
         "-vf yadif=0:-1:0",
+        "-global_quality:v 26",
         "-c:a libopus"
       ],
       "Stash": [
@@ -162,14 +171,19 @@
       ]
     },
     "hd": {
-      "OutDirectory": "/media/re_encode",
-      "PreArguments": [],
+      "OutDirectory": "/media/transcoded/HD720",
+      "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
+        "-hwaccel qsv",
+        "-hwaccel_output_format qsv"
+      ],
       "PostArguments": [
         "-map 0",
-        "-t 120",
-        "-c:v libsvtav1",
-        "-preset 8",
-        "-crf 26",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
+        "-global_quality:v 26",
         "-c:a libopus"
       ],
       "Stash": [
@@ -188,12 +202,18 @@
     },
     "sd": {
       "OutDirectory": "/media/transcoded/SD",
-      "PreArguments": [],
+      "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
+        "-hwaccel qsv",
+        "-hwaccel_output_format qsv"
+      ],
       "PostArguments": [
         "-map 0",
-        "-c:v libsvtav1",
-        "-preset 8",
-        "-crf 26",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
+        "-global_quality:v 26",
         "-c:a libopus"
       ],
       "Stash": [
@@ -216,12 +236,17 @@
     },
     "stv_fhd": {
       "OutDirectory": "/media/transcoded/HD1080",
-      "PreArguments": [],
+      "PreArguments": [
+        "-qsv_device",
+        "/dev/dri/renderD129",
+        "-init_hw_device qsv=qsv",
+        "-filter_hw_device qsv"
+      ],
       "PostArguments": [
         "-map 0",
-        "-c:v libsvtav1",
-        "-preset 8",
-        "-crf 26",
+        "-c:v av1_qsv",
+        "-preset veryslow",
+        "-profile:v main",
         "-vf yadif=0:-1:0",
         "-c:a libopus"
       ],
@@ -244,6 +269,5 @@
       ]
     }
   },
-  "EncoderPriority": "IDLE",
-  "CacheLibScan": false
+  "EncoderPriority": "IDLE"
 }
