@@ -3,8 +3,10 @@ package worker
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/Spiritreader/avior-go/joblog"
 	"github.com/Spiritreader/avior-go/media"
 )
 
@@ -53,5 +55,24 @@ func TestTraverseDirMatchesPunctuationVariants(t *testing.T) {
 	}
 	if len(matches) != 1 || matches[0].Path != path {
 		t.Fatalf("traverseDir() matches = %#v, want original path %q", matches, path)
+	}
+}
+
+// The .INFO.log files must be world-readable/writable on Unraid so every
+// user (nobody:users) can read/write/delete them. lumberjack creates files
+// with 0600, so writeSkippedLog must fix the mode explicitly.
+func TestWriteSkippedLogInfoPerms(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix file permissions do not exist on windows")
+	}
+	path := filepath.Join(t.TempDir(), "test.ts")
+	f := media.File{Path: path}
+	writeSkippedLog(&f, new(joblog.Data), false)
+	fi, err := os.Stat(path + ".INFO.log")
+	if err != nil {
+		t.Fatalf("stat INFO.log: %s", err)
+	}
+	if got := fi.Mode().Perm(); got != 0o666 {
+		t.Errorf("INFO.log mode = %o, want 666", got)
 	}
 }

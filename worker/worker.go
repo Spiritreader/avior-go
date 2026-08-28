@@ -480,12 +480,18 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 // If the withFfmpegOut flag is set, the ffmpeg output will be appended to the info log, but not to the skipped log.
 func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data, withFfmpegOut bool) {
 	mediaFile.LogPaths = append(mediaFile.LogPaths, mediaFile.Path+".INFO.log")
+	infoLogPath := mediaFile.Path + ".INFO.log"
 	if withFfmpegOut {
 		jobLogWithFfmpeg := *jobLog
 		appendFfmpegOutput(&jobLogWithFfmpeg, state.Encoder)
-		_ = jobLogWithFfmpeg.AppendTo(mediaFile.Path+".INFO.log", false, false)
+		_ = jobLogWithFfmpeg.AppendTo(infoLogPath, false, false)
 	} else {
-		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+		_ = jobLog.AppendTo(infoLogPath, false, false)
+	}
+	// lumberjack creates files with mode 0600. On Unraid the .INFO.log must be
+	// readable/writable by every user (nobody:users), so fix the mode explicitly.
+	if err := os.Chmod(infoLogPath, 0666); err != nil {
+		_ = glg.Warnf("could not chmod INFO log %s: %s", infoLogPath, err)
 	}
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "skipped.log"), false, true)
 }
