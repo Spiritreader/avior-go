@@ -11,8 +11,11 @@ services:
     hostname: avior-go${INSTANCE_SUFFIX:-}   # client fallback name; ClientName in config.json wins
     environment:
       - TZ=${TZ:-Europe/Berlin}   # local time for logs (app uses time.Local)
-      - PUID=${PUID:-1002}   # run app as this user id (host uid of mm) so created
-      - PGID=${PGID:-100}    # files/logs are owned by mm:users; default root
+      # Unraid standard: run as nobody:users so files are owned like every
+      # other share file and SMB/tools work without per-user PUID config.
+      # Override via PUID/PGID env when a dedicated service user is wanted.
+      - PUID=${PUID:-99}
+      - PGID=${PGID:-100}
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-10000}:${CONTAINER_PORT:-10000}"
