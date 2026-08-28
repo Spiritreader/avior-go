@@ -139,3 +139,27 @@ func TestSliceLogMetadataStopsAtNoise(t *testing.T) {
 		t.Errorf("sliceLogMetadata kept %d lines, want 1 (stop at noise)", len(sliced))
 	}
 }
+
+// Regression: yearFromMetaCandidate panicked with "slice bounds out of range"
+// when the first genre/country word appears AFTER the first 4-digit number in
+// the candidate (startIdx > mYearFirst[1]). Seen in production on
+// "Tele-Gym (5 8)" and "Good bye, Lenin!" jobs crashing the whole service.
+func TestYearFromMetaCandidateGenreAfterYear(t *testing.T) {
+	candidates := []string{
+		"2024 Spielfilm",       // genre after year
+		"2023 Deutschland",     // country after year
+		"1980er Jahre Spielfilm", // number-ish prefix, then genre
+		"PID 5126 AC3 5.1",     // log-noise style: number then token
+		"Spielfilm Deutschland 2024", // normal order must still work
+		"Aerobic, Bewegung, Tanz",
+		"Good bye, Lenin!",
+	}
+	for _, c := range candidates {
+		if got := yearFromMetaCandidate(c); got != "" {
+			t.Logf("yearFromMetaCandidate(%q) = %q (no panic, ok)", c, got)
+		}
+	}
+	if y := ExtractYear("Spielfilm Deutschland 2024"); y != "2024" {
+		t.Errorf("ExtractYear normal case = %q, want 2024", y)
+	}
+}

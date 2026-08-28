@@ -240,8 +240,12 @@ func yearFromMetaCandidate(candidate string) string {
 	}
 	candidateForMatch := s
 	if startIdx >= 0 {
-		if mYearFirst != nil {
+		if mYearFirst != nil && startIdx <= mYearFirst[1] {
 			candidateForMatch = s[startIdx:mYearFirst[1]]
+		} else if mYearFirst != nil {
+			// Genre/country word appears after the first year: the bounded
+			// window is empty, fall back to the year-prefix window.
+			candidateForMatch = s[:mYearFirst[1]]
 		} else {
 			candidateForMatch = s[startIdx:]
 		}
