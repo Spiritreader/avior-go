@@ -17,6 +17,11 @@ type Library struct {
 	Data       []string
 	LastUpdate time.Time
 	Valid      bool `json:"-"`
+	// ScannedPaths fingerprints the MediaPaths this cache was built from. When the
+	// configured MediaPaths change (config reload), the cache must be rebuilt even
+	// if the TTL has not expired — otherwise files in newly added paths are never
+	// seen as duplicates until a restart.
+	ScannedPaths string `json:"-"`
 }
 
 // Instance retrieves the current configuration file instance

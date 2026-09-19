@@ -1,0 +1,38 @@
+# Multi-instance compose: one file, parameterized per stack via environment.
+# Each Komodo stack sets INSTANCE_SUFFIX, HOST_PORT, CONTAINER_PORT and DATA_DIR
+# (plus optional GPU_DEVICE). CONTAINER_PORT must equal 10000 + Instance from the
+# instance's config.json (the app listens on 10000+Instance).
+services:
+  avior-go:
+    build: .
+    # Explicit, readable container name per instance (avior-go, avior-go-1, ...);
+    # without it Compose derives <project>-<service>-<replica> (avior-go-avior-go-1).
+    container_name: avior-go${INSTANCE_SUFFIX:-}
+    hostname: avior-go${INSTANCE_SUFFIX:-}   # client fallback name; ClientName in config.json wins
+    environment:
+      - TZ=${TZ:-Europe/Berlin}   # local time for logs (app uses time.Local)
+      # Unraid standard: run as nobody:users so files are owned like every
+      # other share file and SMB/tools work without per-user PUID config.
+      # Override via PUID/PGID env when a dedicated service user is wanted.
+      - PUID=${PUID:-99}
+      - PGID=${PGID:-100}
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-10000}:${CONTAINER_PORT:-10000}"
+    healthcheck:
+      # /alive/ always answers 200 while the process runs; curl is present in
+      # the linuxserver/ffmpeg base image (verified: /usr/bin/curl).
+      test: ["CMD-SHELL", "curl -fsS http://localhost:${CONTAINER_PORT:-10000}/alive/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - /mnt/user/media:/media
+      - /mnt/user/recording_pool:/recording_pool
+      - /mnt/disks/recording_spare:/recording_spare
+      - ${DATA_DIR:-/mnt/user/appdata/avior-go}:/data
+    devices:
+      - ${GPU_DEVICE:-/dev/dri}:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
+    cap_add:
+      - SYS_NICE   # allows negative nice values for encoder priority

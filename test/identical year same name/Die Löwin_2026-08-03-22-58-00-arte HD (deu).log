@@ -1,0 +1,60 @@
+arte HD (deu) 03/08/2026
+\\192.168.178.75\recording_pool\recording\Die Löwin_2026-08-03-22-58-00-arte HD (deu).ts
+Naming Scheme: %event_%year-%date-%time-%station
+Device: Tvheadend:9983 20d48b009f 3
+EventID: 63174, PDC: 0x1C5C0
+Timer Name: Die Löwin - Spielfilm Deutschland/Estland/Lettland 2024
+Timer Start: 03/08/2026 22:58:00
+Timer Duration: 01:44:00 (104 min. incl. 2 min. lead time, 2 min. follow-up time)
+Timer Options: Teletext=0, Subtitles=0, All Audio Tracks=0, Adjust PAT/PMT=1, EIT EPG Data=0, Transponder Dump=0
+Timer Source: Search:Regex Fernsehfilm|Spielfilm|Liebesfilm|Thriller|Liebes
+Monitoring Mode: Start/stop by running status
+
+22:58:00 / 00:00:00 (~ 0,00 MB) Start EPG Monitoring
+22:58:00 / 00:00:00 (~ 0,00 MB) Die Löwin not running | EventID: 63174 PDC: 0x1C5C0
+22:58:01 / 00:00:01 (~ 0,00 MB) Truman Capote und "Kaltblütig" running | EventID: 63173 PDC: 0x1C585
+22:59:50 / 00:01:50 (~ 0,00 MB) Truman Capote und "Kaltblütig" running | EventID: 63173 PDC: 0x1C585
+22:59:51 / 00:01:51 (~ 0,00 MB) Die Löwin starts in a few seconds | EventID: 63174 PDC: 0x1C5C0
+23:00:06 / 00:02:06 (~ 0,00 MB) Die Löwin running | EventID: 63174 PDC: 0x1C5C0
+
+23:00:06 / 00:00:00 (~ 0,00 MB) Start Recording
+23:00:07 / 00:00:00 (~ 0,00 MB) Planet Finance not running | EventID: 63175 PDC: 0x24028
+23:00:08 / 00:00:01 (~ 0,09 MB) PID 5111: H.264 Video, 16:9, 1280x720, 50 fps
+23:00:08 / 00:00:01 (~ 0,09 MB) PID 5112: MPEG Audio Stereo, 48 khz, 192 kbps
+00:24:34 / 01:24:27 (~ 6172,55 MB) Errors: 4
+00:25:26 / 01:25:20 (~ 6237,85 MB) Errors: 4
+00:38:01 / 01:37:54 (~ 7215,25 MB) Planet Finance not running | EventID: 63175 PDC: 0x24028
+00:38:01 / 01:37:55 (~ 7216,55 MB) Die Löwin running | EventID: 63174 PDC: 0x1C5C0
+00:42:25 / 01:42:19 (~ 7488,17 MB) Planet Finance running | EventID: 63175 PDC: 0x24028
+00:42:26 / 01:42:19 (~ 7489,48 MB) Stop
+
+Average Data Rate: 1,220 MB/s
+Total Size: 7489,5 MB (7853286964 Bytes)
+Removed Filler Data: 117,8 MB (1,6%)
+
+avior-go info
+avior-go - Saturday 2026-08-08 10:31:49 +0200 CEST 
+
+OriginalPath: /recording_pool/coding_test/Die Löwin_2026-08-03-22-58-00-arte HD (deu).ts
+Recorded/Length: 102m/100m
+Audio: STEREO
+EncodeParams: []
+
+Module Results:
+LengthModule: noch nicht - ok: r:102m / l:100m (d:-2% / t:20%)
+MaxSizeModule: noch nicht - ok
+ErrorSkipModule: noch nicht - ok
+
+Dupe Module Results:
+DupPath: /media/tv/FilmeHD/FilmeHD_sonst/tobecut/Die Löwin.mkv
+DuplicateLengthCheckModule: noch nicht - duplicate had insufficient length data, skipping module
+ErrorReplaceModule: noch nicht - ok
+LegacyModule: noch nicht - ok
+AudioModule: noch nicht - no action: n:STEREO vs n:STEREO
+ResolutionModule: noch nicht - resolution is the same
+LogMatchModule: allow replacement - include match (mode include): -c:v av1_qsv -global_quality:v
+
+Encoder Info:
+OutputPath: /media/tv/FilmeHD/FilmeHD_sonst/tobecut/Die Löwin.mkv
+Duration: 7m56.265974696s
+Parameters: -n -qsv_device /dev/dri/renderD129 -hwaccel qsv -hwaccel_output_format qsv -i /recording_pool/coding_test/Die Löwin_2026-08-03-22-58-00-arte HD (deu).ts -map 0 -c:v av1_qsv -preset veryslow -profile:v main -global_quality:v 26 -c:a libopus -af aformat=channel_layouts=stereo -b:a 160k /media/tv/FilmeHD/FilmeHD_sonst/tobecut/Die Löwin.mkv
