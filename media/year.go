@@ -335,14 +335,35 @@ func splitCountryParts(s string) []string {
 	return out
 }
 
-// firstMetaLikeSegment picks the best "Land Jahr"-style segment from a
-// pipe-separated Description= line (mirrors extract_txt_meta_year_and_countries
-// description handling, simplified to the year-bearing segment).
-// firstMetaLikeSegment mirrors the library's Description=-segment selection with
-// scoring (narrative_penalty, meta_like, short_segment): picks the best
-// "Land Jahr"-style segment from a pipe-separated Description= line.
+// narrativeYearPrefixRe matches a year used as a narrative prefix
+// ("1950: Handlung ..."), which marks plot text, not a metadata segment.
+var narrativeYearPrefixRe = regexp.MustCompile(`\b(?:19|20)\d{2}\s*:`)
+
+// narrativePenaltyRe matches a year followed by colon+text inside a segment.
+var narrativePenaltyRe = regexp.MustCompile(`\d{4}\s*:\s*[A-Za-z]`)
+
+// hasLettersRe reports whether a segment contains letters at all.
+var hasLettersRe = regexp.MustCompile(`[A-Za-zÄÖÜäöüß]`)
+
+// firstMetaLikeSegment mirrors extract_txt_meta_year_and_countries description
+// handling: it picks the metadata segment of a pipe-separated Description= line.
+// The leading segment wins when it is short or carries its year near the end;
+// otherwise the best-scoring candidate by (narrative_penalty, meta_score,
+// tail_len) is used. Plot text is never promoted: a segment is only accepted
+// when it matches a structural metadata pattern or is short.
+//
+// IMPORTANT: the structural patterns (txtMetaRe, type2GenreCountryYearRe,
+// type2CountryYearFallbackRe) decide meta-likeness. Using the permissive
+// matcher here would accept plot prose such as
+// "Den Grundstein legt 1954 Prinz Alfonso ..." and yield a narrative year as
+// the release year (production bug: Mythos Marbella -> 1954).
 func firstMetaLikeSegment(desc string) string {
-	parts := []string{}
+	// The library only evaluates pipe-separated descriptions; without a '|' the
+	// value is pure plot text and never a metadata source.
+	if !strings.Contains(desc, "|") {
+		return ""
+	}
+	parts := make([]string, 0, 4)
 	for _, p := range strings.Split(desc, "|") {
 		if t := strings.TrimSpace(p); t != "" {
 			parts = append(parts, t)
@@ -351,37 +372,36 @@ func firstMetaLikeSegment(desc string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	// Single segment: use it if it carries a year.
-	if len(parts) == 1 {
-		if ExtractYear(parts[0]) != "" {
+	// Leading segment: short, or the year sits near its end ("Land 2017").
+	if m := yearFourRe.FindStringIndex(parts[0]); m != nil &&
+		!narrativeYearPrefixRe.MatchString(parts[0]) {
+		if len(parts[0]) < 100 || len(parts[0])-m[1] < 20 {
 			return parts[0]
 		}
-		return ""
 	}
-	// Score each year-bearing segment like the library: prefer meta-like
-	// (genre+country+year), short segments, low narrative penalty.
 	type scored struct {
 		penalty int
 		meta    int
 		tail    int
-		words   int
 		seg     string
 	}
 	var candidates []scored
 	for _, seg := range parts {
 		mYear := yearFourRe.FindStringIndex(seg)
-		if mYear == nil {
+		if mYear == nil || narrativeYearPrefixRe.MatchString(seg) {
+			continue
+		}
+		if !hasLettersRe.MatchString(seg) {
 			continue
 		}
 		tailLen := len(seg) - mYear[1]
-		narrativePenalty := 0
-		if regexp.MustCompile(`\d{4}\s*:\s*[A-Za-z]`).MatchString(seg) {
-			narrativePenalty = 1
+		penalty := 0
+		if narrativePenaltyRe.MatchString(seg) {
+			penalty = 1
 		}
-		metaLike := false
-		if yearFromMetaCandidate(seg) != "" {
-			metaLike = true
-		}
+		metaLike := txtMetaRe.MatchString(seg) ||
+			type2GenreCountryYearRe.MatchString(seg) ||
+			type2CountryYearFallbackRe.MatchString(seg)
 		wordCount := len(strings.Fields(seg))
 		shortSeg := wordCount <= 10 && tailLen < 40
 		if !metaLike && !shortSeg {
@@ -391,7 +411,7 @@ func firstMetaLikeSegment(desc string) string {
 		if !metaLike {
 			metaScore = 1
 		}
-		candidates = append(candidates, scored{narrativePenalty, metaScore, tailLen, wordCount, seg})
+		candidates = append(candidates, scored{penalty, metaScore, tailLen, seg})
 	}
 	if len(candidates) > 0 {
 		// Sort: penalty asc, meta asc, tail asc (mirrors the library's sort key).
@@ -405,13 +425,10 @@ func firstMetaLikeSegment(desc string) string {
 		}
 		return best.seg
 	}
-	// Fallback: last segment carrying a year and letters (mirrors library's last
-	// candidate fallback).
-	for i := len(parts) - 1; i >= 0; i-- {
-		seg := parts[i]
-		if yearFourRe.MatchString(seg) && regexp.MustCompile(`[A-Za-zÄÖÜäöüß]`).MatchString(seg) {
-			return seg
-		}
+	// Fallback: last segment carrying a year and letters (mirrors the library).
+	last := parts[len(parts)-1]
+	if yearFourRe.MatchString(last) && hasLettersRe.MatchString(last) {
+		return last
 	}
 	return ""
 }
