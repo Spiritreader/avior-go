@@ -82,3 +82,51 @@ func TestRealSubtitleWinsOverLogRecordingYear(t *testing.T) {
 		t.Errorf("Subtitle-Pfad: got %q, want 2024 (Subtitle gewinnt vor .log 2026)", y)
 	}
 }
+
+// Produktionsfall 2026-09-19: "Mythos Marbella - Der Traum vom ewigen Sommer"
+// hat KEIN Erscheinungsjahr in den Metadaten. Die Description nennt 1954 im
+// Fließtext ("Den Grundstein legt 1954 Prinz Alfonso ...") — das ist
+// Handlungszeit. Der Job wurde fälschlich zu "... (1954)" umbenannt und als
+// Jahres-Kollision gegen die echte Version (2024) behandelt.
+func TestRealMythosMarbellaNarrativeYearIgnored(t *testing.T) {
+	f := File{
+		Name: "Mythos Marbella - Der Traum vom ewigen Sommer",
+		MetadataLog: []string{
+			"[General]",
+			"Version=1.1",
+			"[Media]",
+			"Created=15.09.2026 22:27:25",
+			"Channel=3sat HD (AC3,deu)",
+			"[0]",
+			"Id=54281",
+			"Date=15.09.2026",
+			"Time=22:29:00",
+			"Duration=00:44:00",
+			"Title=Mythos Marbella - Der Traum vom ewigen Sommer",
+			"Info=Film von Hannes Schuler",
+			"Description=Vom Geheimtipp der High Society zum touristischen Hotspot Europas: Marbella steht wie kaum eine andere Stadt für Glamour, Reichtum und internationale Prominenz.||Den Grundstein legt 1954 Prinz Alfonso zu Hohenlohe mit der Eröffnung des \"Marbella Club\". Adel, Superreiche und Hollywoodstars entdecken die malerische Kulisse am Mittelmeer und machen Marbella zum Treffpunkt des internationalen Jetsets.|HD-Produktion||[16:9]   [PDC 15.09. 22:25]",
+			"Charset=255",
+			"Content=144",
+			"MinimumAge=0",
+		},
+		TunerLog: []string{
+			"3sat HD (AC3,deu) 15/09/2026",
+			`\\192.168.178.75\recording_pool\recording\Mythos Marbella - Der Traum vom ewigen Sommer_2026-09-15-22-27-01-3sat HD (AC3,deu).ts`,
+			"Naming Scheme: %event_%year-%date-%time-%station",
+			"Device: Tvheadend:9983 20d48b009f 5",
+			"EventID: 54281, PDC: 0x7CD99",
+			"Timer Name: Mythos Marbella - Der Traum vom ewigen Sommer - Film von Hannes Schuler",
+			"Timer Start: 15/09/2026 22:27:00",
+			"Timer Duration: 00:48:00 (48 min. incl. 2 min. lead time, 2 min. follow-up time)",
+			"Timer Options: Teletext=0, Subtitles=0, All Audio Tracks=0, Adjust PAT/PMT=1, EIT EPG Data=0, Transponder Dump=0",
+			"Timer Source: Search:Mythos",
+			"Monitoring Mode: Start/stop by running status",
+			"22:27:25 / 00:00:00 (~ 0,51 MB) PID 6522: AC3 Audio Stereo, 48 khz, 448 kbps",
+			"22:27:26 / 00:00:01 (~ 2,23 MB) PID 6510: H.264 Video, 16:9, 1280x720, 50 fps",
+			"23:10:45 / 00:43:20 (~ 4311,93 MB) Stop",
+		},
+	}
+	if y := f.ExtractYearFromFile(); y != "" {
+		t.Errorf("Mythos Marbella: got %q, want \"\" (1954 ist Handlungsjahr, kein Erscheinungsjahr)", y)
+	}
+}
