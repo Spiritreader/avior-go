@@ -163,3 +163,83 @@ func TestYearFromMetaCandidateGenreAfterYear(t *testing.T) {
 		t.Errorf("ExtractYear normal case = %q, want 2024", y)
 	}
 }
+
+// Regression (production): "Mythos Marbella - Der Traum vom ewigen Sommer"
+// captured the year 1954 from the plot text ("Den Grundstein legt 1954 Prinz
+// Alfonso ...") instead of no year at all. Per the reference contract
+// (add_rating_ui AGENTS.md 2.9 / movie_nfo_lib
+// extract_txt_meta_year_and_countries) a narrative year in the description
+// body is NEVER a release year: only the Info= line, the metadata segment
+// before the first '|', or a trailing country/year segment qualify.
+func TestExtractYearFromFileNarrativeYearIgnored(t *testing.T) {
+	tests := []struct {
+		name string
+		file File
+	}{
+		{
+			name: "Mythos Marbella (plot year 1954, no release year)",
+			file: File{
+				Name: "Mythos Marbella - Der Traum vom ewigen Sommer",
+				MetadataLog: []string{
+					"Title=Mythos Marbella - Der Traum vom ewigen Sommer",
+					"Info=Film von Hannes Schuler",
+					`Description=Vom Geheimtipp der High Society zum touristischen Hotspot Europas: Marbella steht wie kaum eine andere Stadt für Glamour, Reichtum und internationale Prominenz.||Den Grundstein legt 1954 Prinz Alfonso zu Hohenlohe mit der Eröffnung des "Marbella Club". Adel, Superreiche und Hollywoodstars entdecken die malerische Kulisse am Mittelmeer und machen Marbella zum Treffpunkt des internationalen Jetsets.|HD-Produktion||[16:9]   [PDC 15.09. 22:25]`,
+				},
+			},
+		},
+		{
+			name: "England 1554 (plot year directly in description start)",
+			file: File{
+				Name: "Bergfried",
+				MetadataLog: []string{
+					"Info=",
+					"Description=England 1554. Unter der Herrschaft der katholischen Königin Mary …",
+				},
+			},
+		},
+		{
+			name: "recording dates in .log are not release years",
+			file: File{
+				Name: "Mythos Marbella - Der Traum vom ewigen Sommer",
+				TunerLog: []string{
+					"3sat HD (AC3,deu) 15/09/2026",
+					"Timer Name: Mythos Marbella - Der Traum vom ewigen Sommer - Film von Hannes Schuler",
+					"Timer Start: 15/09/2026 22:27:00",
+					"Timer Duration: 00:48:00 (48 min. incl. 2 min. lead time, 2 min. follow-up time)",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		if y := tt.file.ExtractYearFromFile(); y != "" {
+			t.Errorf("%s: got %q, want \"\" (narrative year is not a release year)", tt.name, y)
+		}
+	}
+}
+
+// The reference contract must still accept the real metadata segment before the
+// first '|' (and the trailing country/year segment).
+func TestExtractYearFromFileDescriptionMetaSegment(t *testing.T) {
+	f := File{
+		Name: "Bergfried",
+		MetadataLog: []string{
+			"Info=Historienfilm, Tschechien 2017",
+			"Description=Historienfilm, Tschechien 2017|Martin Luther schlägt vor 500 Jahren seine Thesen an die Kirchentür …",
+		},
+	}
+	if y := f.ExtractYearFromFile(); y != "2017" {
+		t.Errorf("meta segment: got %q, want 2017", y)
+	}
+
+	// Info= empty, year only in the leading description segment.
+	f2 := File{
+		Name: "Bergfried",
+		MetadataLog: []string{
+			"Info=",
+			"Description=Historienfilm, Tschechien 2017|Martin Luther schlägt vor 500 Jahren seine Thesen an die Kirchentür …",
+		},
+	}
+	if y := f2.ExtractYearFromFile(); y != "2017" {
+		t.Errorf("description meta segment: got %q, want 2017", y)
+	}
+}
