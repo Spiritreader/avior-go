@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
@@ -170,6 +171,18 @@ func (f *File) OutName() string {
 		return f.Name
 	}
 	return f.Name + " - " + f.Subtitle
+}
+
+// DuplicateNameKey returns a comparison key containing only lowercase
+// Unicode letters and digits. It does not modify the original name.
+func DuplicateNameKey(name string) string {
+	var key strings.Builder
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			key.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return key.String()
 }
 
 func (f *File) SanitizeLog() error {

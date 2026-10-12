@@ -1,0 +1,35 @@
+ZDF HD 02.01.2012
+
+Die Löwin
+20:15..21:45
+
+Melodram Südafrika/2011
+
+Nach langen Jahren in Deutschland kehrt die junge Ärztin Lena nach Südafrika zurück. Ihr Großvater Jo, auf dessen Farm sie als Kind mit ihren Eltern gelebt hat, ist sterbenskrank. Lena will den alten Großwildjäger überreden, sich in Berlin behandeln zu lassen. Doch Jo hat eigene Pläne: Seine Enkelin soll die Leitung seiner neuen Stiftung übernehmen, die sich der Auswilderung von verwundeten Löwen widmet. 
+Die Konfrontation mit den majestätischen Raubtieren ruft lang verdrängte Erinnerungen in ihr wach. 
+Südafrika, 2011
+
+20:10:02 Start
+20:10:04 Video: 16:9 / 1280x720 @1,1 MB
+20:10:04 Audio: AC3 2/0 / 448 kbps / 48 khz @1,1 MB
+21:55:00 Stop
+
+Total Size 9078,8 MB (9519807563 Bytes)
+
+avior-go info
+VDR-U - Sunday 2023-06-25 10:15:34 +0200 CEST 
+
+OriginalPath: \\UMS\media\tv\FilmeHD\FilmeHD_sonst\tobecut\Die LÃ¶win.mkv
+Recorded/Length: -1m/-1m
+Audio: STEREO
+EncodeParams: []
+
+Module Results:
+LengthModule: noch nicht - disabled
+MaxSizeModule: noch nicht - disabled
+ErrorSkipModule: noch nicht - disabled
+
+Encoder Info:
+OutputPath: \\UMS\media\re_encode\FilmeHD_sonst\tobecut\Die LÃ¶win.mkv
+Duration: 5m58.142741s
+Parameters: -n -init_hw_device d3d11va=qsv:MFX_IMPL_hw_any -hwaccel qsv -filter_hw_device qsv -hwaccel_output_format qsv -i \\UMS\media\tv\FilmeHD\FilmeHD_sonst\tobecut\Die LÃ¶win.mkv -c:v av1_qsv -global_quality:v 27 -preset veryslow -profile:v main -c:a libopus -af aformat=channel_layouts=stereo -b:a 160k \\UMS\media\re_encode\FilmeHD_sonst\tobecut\Die LÃ¶win.mkv

@@ -8,11 +8,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            binary_name: avior-go
+          - goos: linux
+            goarch: amd64
+            binary_name: avior-go
     steps:
     - uses: actions/checkout@v2
     - uses: wangyoucao577/go-release-action@v1.18
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: windows
-        goarch: amd64
-        binary_name: avior-go
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
+        binary_name: ${{ matrix.binary_name }}
+        ldflags: -s -w
