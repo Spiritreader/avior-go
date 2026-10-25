@@ -7,9 +7,11 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/Spiritreader/avior-go/config"
@@ -183,6 +185,67 @@ func DuplicateNameKey(name string) string {
 		}
 	}
 	return key.String()
+}
+
+// stripPatternCache caches compiled DuplicateStripPatterns. The library scan
+// runs this for every file in the library, so compiling per call would be
+// wasteful. The cache is keyed by the pattern list, so a config reload with
+// changed patterns recompiles automatically.
+var stripPatternCache struct {
+	mu  sync.RWMutex
+	key string
+	res []*regexp.Regexp
+}
+
+// compileStripPatterns compiles the configured patterns once per pattern list.
+// Invalid expressions are logged and skipped: a typo must not disable the whole
+// duplicate detection.
+func compileStripPatterns(patterns []string) []*regexp.Regexp {
+	key := strings.Join(patterns, "\x00")
+	stripPatternCache.mu.RLock()
+	if stripPatternCache.key == key && stripPatternCache.res != nil {
+		res := stripPatternCache.res
+		stripPatternCache.mu.RUnlock()
+		return res
+	}
+	stripPatternCache.mu.RUnlock()
+
+	res := make([]*regexp.Regexp, 0, len(patterns))
+	for _, p := range patterns {
+		if strings.TrimSpace(p) == "" {
+			continue
+		}
+		re, err := regexp.Compile("(?i)" + p)
+		if err != nil {
+			_ = glg.Warnf("invalid duplicate strip pattern %q, ignoring: %s", p, err)
+			continue
+		}
+		res = append(res, re)
+	}
+
+	stripPatternCache.mu.Lock()
+	stripPatternCache.key = key
+	stripPatternCache.res = res
+	stripPatternCache.mu.Unlock()
+	return res
+}
+
+// StripNamePatterns removes every configured pattern from stem. Patterns are
+// case-insensitive and applied in order. It never mutates the caller's slice.
+func StripNamePatterns(stem string, patterns []string) string {
+	for _, re := range compileStripPatterns(patterns) {
+		stem = re.ReplaceAllString(stem, "")
+	}
+	return strings.TrimSpace(stem)
+}
+
+// DuplicateKeyFor resolves the comparison key for a file name: known patterns
+// (framing prefixes, module suffixes) are stripped from the base name before
+// the alphanumeric key is built. The extension is removed first so patterns can
+// anchor on the end of the stem.
+func DuplicateKeyFor(name string, patterns []string) string {
+	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	return DuplicateNameKey(StripNamePatterns(stem, patterns))
 }
 
 func (f *File) SanitizeLog() error {

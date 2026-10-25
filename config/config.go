@@ -73,6 +73,14 @@ type Shared struct {
 	SubExclude  []string
 	LogInclude  []string
 	LogExclude  []string
+	// DuplicateStripPatterns are case-insensitive regular expressions removed
+	// from a file's base name before the duplicate comparison key is built.
+	// They strip framing prefixes that are not part of the work itself
+	// (e.g. "Terra X - ", "42 - Die Antwort auf fast alles") and the module
+	// suffix avior-go appends when parking a replacement (e.g.
+	// "LogMatchModule 2026-09-16 2106"). Global on purpose: the duplicate
+	// detection runs against one shared library, so all instances must agree.
+	DuplicateStripPatterns []string
 }
 
 type AudioFormats struct {

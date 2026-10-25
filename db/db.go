@@ -93,6 +93,17 @@ func (ds *DataStore) LoadSharedConfig() error {
 	for _, field := range logIncludeFields {
 		cfg.Shared.LogInclude = append(cfg.Shared.LogInclude, field.Value)
 	}
+
+	// duplicate strip patterns (framing prefixes / module suffixes removed before
+	// the duplicate comparison key is built)
+	stripPatternFields, err := ds.GetFields("duplicate_strip_patterns")
+	if err != nil {
+		_ = glg.Errorf("could not retrieve duplicate strip patterns: %s", err)
+		return err
+	}
+	for _, field := range stripPatternFields {
+		cfg.Shared.DuplicateStripPatterns = append(cfg.Shared.DuplicateStripPatterns, field.Value)
+	}
 	return nil
 }
 

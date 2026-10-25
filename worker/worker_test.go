@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/joblog"
 	"github.com/Spiritreader/avior-go/media"
 )
@@ -55,6 +56,31 @@ func TestTraverseDirMatchesPunctuationVariants(t *testing.T) {
 	}
 	if len(matches) != 1 || matches[0].Path != path {
 		t.Fatalf("traverseDir() matches = %#v, want original path %q", matches, path)
+	}
+}
+
+// The configured strip patterns must also apply during a real directory scan,
+// not just in the pure key helper: a "Terra X - " source must match the plain
+// library file.
+func TestTraverseDirMatchesStrippedPrefix(t *testing.T) {
+	cfg := config.Instance()
+	prev := cfg.Shared.DuplicateStripPatterns
+	cfg.Shared.DuplicateStripPatterns = []string{`terra\s*x\s*-\s*`}
+	t.Cleanup(func() { cfg.Shared.DuplicateStripPatterns = prev })
+
+	root := t.TempDir()
+	existing := "Die Reise zum Mars.mkv"
+	path := filepath.Join(root, existing)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write existing file: %s", err)
+	}
+	file := media.File{Name: "Terra X - Die Reise zum Mars"}
+	matches, err := traverseDir(&file, root, false)
+	if err != nil {
+		t.Fatalf("traverseDir() returned error: %s", err)
+	}
+	if len(matches) != 1 || matches[0].Path != path {
+		t.Fatalf("traverseDir() matches = %#v, want %q", matches, path)
 	}
 }
 

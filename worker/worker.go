@@ -655,8 +655,11 @@ func duplicateNameMatch(candidate, existing, extension string) bool {
 	if !strings.EqualFold(candidateExt, extension) || !strings.EqualFold(existingExt, extension) {
 		return false
 	}
-	return media.DuplicateNameKey(strings.TrimSuffix(candidate, candidateExt)) ==
-		media.DuplicateNameKey(strings.TrimSuffix(existing, existingExt))
+	// Strip configured framing prefixes and module suffixes before comparing, so
+	// "Terra X - Mars" and "Mars" count as the same work (see
+	// Shared.DuplicateStripPatterns).
+	patterns := config.Instance().Shared.DuplicateStripPatterns
+	return media.DuplicateKeyFor(candidate, patterns) == media.DuplicateKeyFor(existing, patterns)
 }
 
 func traverseMemCache(file *media.File, libCache *cache.Library) []media.File {
