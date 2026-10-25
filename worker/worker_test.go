@@ -201,3 +201,21 @@ func TestKeepBothFor(t *testing.T) {
 		}
 	}
 }
+
+func TestKeptBothAlreadyPresent(t *testing.T) {
+	tests := []struct {
+		exitCode int
+		suffix   string
+		want     bool
+	}{
+		{107, "720p, STEREO", true},
+		{107, "", false}, // ordinary "file already exists" stays an error
+		{108, "720p, STEREO", false},
+		{0, "720p, STEREO", false},
+	}
+	for _, tt := range tests {
+		if got := keptBothAlreadyPresent(tt.exitCode, tt.suffix); got != tt.want {
+			t.Errorf("keptBothAlreadyPresent(%d, %q) = %v, want %v", tt.exitCode, tt.suffix, got, tt.want)
+		}
+	}
+}

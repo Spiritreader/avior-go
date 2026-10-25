@@ -285,6 +285,25 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			isBricked = true
 		} else if stats.ExitCode == 107 {
+			if keptBothAlreadyPresent(stats.ExitCode, mediaFile.QualitySuffix) {
+				// The kept-both version is already in the library: the recording is
+				// a duplicate of a duplicate. Park it like any other duplicate
+				// instead of failing the job (and possibly pausing the instance).
+				_ = glg.Infof("kept-both target %s already exists, treating recording as duplicate", state.Encoder.OutPath)
+				jobLog.Add(fmt.Sprintf("kept-both target already exists: %s", state.Encoder.OutPath))
+				appendJobTemplate(*job, jobLog, true)
+				writeSkippedLog(mediaFile, jobLog, false)
+				if filepath.Dir(mediaFile.Path) != consts.EXIST_DIR {
+					existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
+					if errMove, _ := moveMediaFile(*mediaFile, existDir, nil); errMove != nil {
+						_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", errMove)
+					}
+					if errLogs, _ := moveLogs(*mediaFile, existDir, nil); errLogs != nil {
+						_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", errLogs)
+					}
+				}
+				return
+			}
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			jobLog.Add("encode error: os.IsNotExist returned false and overwrite has been disabled")
 			isBricked = true
@@ -661,6 +680,13 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	// save the config file to update the library size
 	_ = config.Save()
 	return matches, nil
+}
+
+// keptBothAlreadyPresent reports whether an encode stopped because the
+// kept-both target already exists. Only applies when a quality suffix was set,
+// so the ordinary "file already exists" error keeps its meaning.
+func keptBothAlreadyPresent(exitCode int, qualitySuffix string) bool {
+	return exitCode == 107 && qualitySuffix != ""
 }
 
 // keepBothFor reports whether the new recording should be encoded under a
