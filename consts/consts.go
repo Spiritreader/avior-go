@@ -7,7 +7,6 @@ const (
 	MODULE_NAME_LOGMATCH             string = "LogMatchModule"
 	MODULE_NAME_MAXSIZE              string = "MaxSizeModule"
 	MODULE_NAME_RESOLUTION           string = "ResolutionModule"
-	MODULE_NAME_SIZEAPPROX           string = "SizeApproxModule"
 	MODULE_NAME_LEGACY               string = "LegacyModule"
 	MODULE_NAME_ERRORSKIP            string = "ErrorSkipModule"
 	MODULE_NAME_ERRORREPLACE         string = "ErrorReplaceModule"
