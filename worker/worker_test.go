@@ -84,6 +84,73 @@ func TestTraverseDirMatchesStrippedPrefix(t *testing.T) {
 	}
 }
 
+// The strip patterns must be applied to BOTH sides of the comparison: the newly
+// derived output name (Name + Subtitle after excludes/char replacement) and the
+// existing library file. The output naming itself stays unchanged.
+func TestDuplicateNameMatchStripsPrefixFromOutputName(t *testing.T) {
+	cfg := config.Instance()
+	prev := cfg.Shared.DuplicateStripPatterns
+	cfg.Shared.DuplicateStripPatterns = []string{`terra\s*x\s*-\s*`, `^erlebnis\s+erde\s*-?\s*`}
+	t.Cleanup(func() { cfg.Shared.DuplicateStripPatterns = prev })
+
+	tests := []struct {
+		name      string
+		file      media.File
+		existing  string
+		wantMatch bool
+	}{
+		{
+			name: "prefix only in output name",
+			file: media.File{
+				Name:     "Terra X - Die Reise zum Mars",
+				Subtitle: "Dokumentation Deutschland 2024",
+			},
+			existing:  "Die Reise zum Mars - Dokumentation Deutschland 2024.mkv",
+			wantMatch: true,
+		},
+		{
+			name: "prefix in both names",
+			file: media.File{
+				Name:     "Terra X - Die Reise zum Mars",
+				Subtitle: "Dokumentation Deutschland 2024",
+			},
+			existing:  "Terra X - Die Reise zum Mars - Dokumentation Deutschland 2024.mkv",
+			wantMatch: true,
+		},
+		{
+			name:      "erlebnis erde prefix",
+			file:      media.File{Name: "Erlebnis Erde - Wölfe", Subtitle: "Dokumentation Deutschland 2022"},
+			existing:  "Wölfe - Dokumentation Deutschland 2022.mkv",
+			wantMatch: true,
+		},
+		{
+			name:      "different episode does not match",
+			file:      media.File{Name: "Terra X - Die Reise zum Mars", Subtitle: "Dokumentation Deutschland 2024"},
+			existing:  "Die Reise zur Venus - Dokumentation Deutschland 2024.mkv",
+			wantMatch: false,
+		},
+		{
+			name:      "output name stays unchanged",
+			file:      media.File{Name: "Terra X - Die Reise zum Mars", Subtitle: "Dokumentation Deutschland 2024"},
+			existing:  "Unrelated.mkv",
+			wantMatch: false,
+		},
+	}
+	for _, tt := range tests {
+		candidate := tt.file.OutName() + ".mkv"
+		got := duplicateNameMatch(candidate, tt.existing, ".mkv")
+		if got != tt.wantMatch {
+			t.Errorf("%s: duplicateNameMatch(%q, %q) = %v, want %v", tt.name, candidate, tt.existing, got, tt.wantMatch)
+		}
+	}
+
+	// The output name used for encoding must remain the original one.
+	f := media.File{Name: "Terra X - Die Reise zum Mars", Subtitle: "Dokumentation Deutschland 2024"}
+	if got := f.OutName(); got != "Terra X - Die Reise zum Mars - Dokumentation Deutschland 2024" {
+		t.Errorf("OutName() changed: %q", got)
+	}
+}
+
 // The .INFO.log files must be world-readable/writable on Unraid so every
 // user (nobody:users) can read/write/delete them. lumberjack creates files
 // with 0600, so writeSkippedLog must fix the mode explicitly.
