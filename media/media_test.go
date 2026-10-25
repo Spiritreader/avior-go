@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 )
 
@@ -155,5 +156,53 @@ func TestQualitySuffixFor(t *testing.T) {
 	f3 := File{Resolution: Resolution{Value: "1280x720"}}
 	if got := QualitySuffixFor(f3); got != "720p" {
 		t.Errorf("QualitySuffixFor(no audio) = %q, want %q", got, "720p")
+	}
+}
+
+// With the configured sub_exclude entries the subtitle collapses to "" (the
+// term and everything after it is cut), so the quality suffix lands directly on
+// the title: "Der Schut (720p, STEREO).mkv".
+func TestTrimNameThenQualitySuffix(t *testing.T) {
+	cfg := config.Instance()
+	prevSub := cfg.Shared.SubExclude
+	prevName := cfg.Shared.NameExclude
+	cfg.Shared.SubExclude = []string{"Spielfilm"}
+	cfg.Shared.NameExclude = nil
+	t.Cleanup(func() {
+		cfg.Shared.SubExclude = prevSub
+		cfg.Shared.NameExclude = prevName
+	})
+
+	f := File{
+		Name:          "Der Schut",
+		Subtitle:      "Spielfilm, BRD/Frankreich/Italien 1964",
+		QualitySuffix: "720p, STEREO",
+	}
+	f.trimName()
+	if f.Subtitle != "" {
+		t.Fatalf("subtitle should be trimmed to empty, got %q", f.Subtitle)
+	}
+	if got := f.OutName(); got != "Der Schut (720p, STEREO)" {
+		t.Errorf("OutName() = %q, want %q", got, "Der Schut (720p, STEREO)")
+	}
+}
+
+// Without an exclude the subtitle stays and the suffix is appended after it.
+func TestTrimNameKeepsSubtitleWithoutExclude(t *testing.T) {
+	cfg := config.Instance()
+	prevSub := cfg.Shared.SubExclude
+	cfg.Shared.SubExclude = nil
+	t.Cleanup(func() { cfg.Shared.SubExclude = prevSub })
+
+	f := File{
+		Name:          "Der Schut",
+		Subtitle:      "Spielfilm, BRD/Frankreich/Italien 1964",
+		QualitySuffix: "720p, STEREO",
+	}
+	f.trimName()
+	// RemoveIllegalChars maps "/" to "_", so the subtitle keeps that form.
+	want := "Der Schut - Spielfilm, BRD_Frankreich_Italien 1964 (720p, STEREO)"
+	if got := f.OutName(); got != want {
+		t.Errorf("OutName() = %q, want %q", got, want)
 	}
 }
