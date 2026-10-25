@@ -17,7 +17,8 @@ func modifyFields(w http.ResponseWriter, r *http.Request, mode string) {
 	if keys["id"] != "log_exclude" &&
 		keys["id"] != "log_include" &&
 		keys["id"] != "name_exclude" &&
-		keys["id"] != "sub_exclude" {
+		keys["id"] != "sub_exclude" &&
+		keys["id"] != "duplicate_strip_patterns" {
 		_ = glg.Errorf("invalid key %s", keys["id"])
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
@@ -117,7 +118,8 @@ func getAllFields(w http.ResponseWriter, r *http.Request) {
 	if keys["id"] != "log_exclude" &&
 		keys["id"] != "log_include" &&
 		keys["id"] != "name_exclude" &&
-		keys["id"] != "sub_exclude" {
+		keys["id"] != "sub_exclude" &&
+		keys["id"] != "duplicate_strip_patterns" {
 		_ = glg.Errorf("invalid key %s", keys["id"])
 		w.WriteHeader(http.StatusInternalServerError)
 		encoder := json.NewEncoder(w)
