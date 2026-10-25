@@ -108,3 +108,52 @@ func TestDuplicateKeyForInvalidPatternIgnored(t *testing.T) {
 		t.Errorf("valid pattern should still apply with an invalid one present: %q", got)
 	}
 }
+
+// A kept second version is marked by a quality suffix in parentheses.
+func TestOutNameQualitySuffix(t *testing.T) {
+	f := File{Name: "Der Schut", Subtitle: "Spielfilm, BRD/Frankreich/Italien 1964"}
+	if got := f.OutName(); got != "Der Schut - Spielfilm, BRD/Frankreich/Italien 1964" {
+		t.Fatalf("OutName without suffix = %q", got)
+	}
+	f.QualitySuffix = "720p, STEREO"
+	if got := f.OutName(); got != "Der Schut - Spielfilm, BRD/Frankreich/Italien 1964 (720p, STEREO)" {
+		t.Errorf("OutName with suffix = %q", got)
+	}
+	// no subtitle -> suffix still applies
+	f2 := File{Name: "Elvis", QualitySuffix: "1080p, MULTI"}
+	if got := f2.OutName(); got != "Elvis (1080p, MULTI)" {
+		t.Errorf("OutName suffix without subtitle = %q", got)
+	}
+}
+
+func TestVerticalResolution(t *testing.T) {
+	cases := map[string]string{
+		"1280x720":  "720p",
+		"1920x1080": "1080p",
+		"720x576":   "576p",
+		"":          "",
+		"720":       "",
+		"x720":      "720p",
+	}
+	for in, want := range cases {
+		if got := VerticalResolution(in); got != want {
+			t.Errorf("VerticalResolution(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestQualitySuffixFor(t *testing.T) {
+	f := File{Resolution: Resolution{Value: "1280x720"}, AudioFormat: STEREO}
+	if got := QualitySuffixFor(f); got != "720p, STEREO" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "720p, STEREO")
+	}
+	f2 := File{Resolution: Resolution{Value: "1920x1080"}, AudioFormat: MULTI}
+	if got := QualitySuffixFor(f2); got != "1080p, MULTI" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "1080p, MULTI")
+	}
+	// unknown audio is omitted
+	f3 := File{Resolution: Resolution{Value: "1280x720"}}
+	if got := QualitySuffixFor(f3); got != "720p" {
+		t.Errorf("QualitySuffixFor(no audio) = %q, want %q", got, "720p")
+	}
+}

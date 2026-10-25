@@ -6,7 +6,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/Spiritreader/avior-go/comparator"
 	"github.com/Spiritreader/avior-go/config"
+	"github.com/Spiritreader/avior-go/consts"
 	"github.com/Spiritreader/avior-go/joblog"
 	"github.com/Spiritreader/avior-go/media"
 )
@@ -167,5 +169,35 @@ func TestWriteSkippedLogInfoPerms(t *testing.T) {
 	}
 	if got := fi.Mode().Perm(); got != 0o666 {
 		t.Errorf("INFO.log mode = %o, want 666", got)
+	}
+}
+
+// The quality actions decide whether both versions are kept. Defaults keep the
+// previous behaviour (discard on lower quality, replace on higher quality).
+func TestKeepBothFor(t *testing.T) {
+	tests := []struct {
+		name         string
+		res          string
+		module       string
+		lower        string
+		higher       string
+		wantKeepBoth bool
+	}{
+		{"lower quality, discard (default)", comparator.DISC, consts.MODULE_NAME_RESOLUTION, consts.QUALITY_ACTION_DISCARD, consts.QUALITY_ACTION_REPLACE, false},
+		{"lower quality, keep", comparator.DISC, consts.MODULE_NAME_RESOLUTION, consts.QUALITY_ACTION_KEEP, consts.QUALITY_ACTION_REPLACE, true},
+		{"lower audio, keep", comparator.DISC, consts.MODULE_NAME_AUDIO, consts.QUALITY_ACTION_KEEP, consts.QUALITY_ACTION_REPLACE, true},
+		{"higher quality, replace (default)", comparator.REPL, consts.MODULE_NAME_RESOLUTION, consts.QUALITY_ACTION_DISCARD, consts.QUALITY_ACTION_REPLACE, false},
+		{"higher quality, keep", comparator.REPL, consts.MODULE_NAME_RESOLUTION, consts.QUALITY_ACTION_DISCARD, consts.QUALITY_ACTION_KEEP, true},
+		{"higher audio, keep", comparator.REPL, consts.MODULE_NAME_AUDIO, consts.QUALITY_ACTION_DISCARD, consts.QUALITY_ACTION_KEEP, true},
+		{"other module is never affected (discard)", comparator.DISC, consts.MODULE_NAME_LENGTH, consts.QUALITY_ACTION_KEEP, consts.QUALITY_ACTION_KEEP, false},
+		{"other module is never affected (replace)", comparator.REPL, consts.MODULE_NAME_ERRORREPLACE, consts.QUALITY_ACTION_KEEP, consts.QUALITY_ACTION_KEEP, false},
+		{"no decision", comparator.NOCH, consts.MODULE_NAME_RESOLUTION, consts.QUALITY_ACTION_KEEP, consts.QUALITY_ACTION_KEEP, false},
+	}
+	for _, tt := range tests {
+		got := keepBothFor(tt.res, tt.module, tt.lower, tt.higher)
+		if got != tt.wantKeepBoth {
+			t.Errorf("%s: keepBothFor(%q,%q,%q,%q) = %v, want %v",
+				tt.name, tt.res, tt.module, tt.lower, tt.higher, got, tt.wantKeepBoth)
+		}
 	}
 }

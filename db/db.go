@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -103,6 +104,21 @@ func (ds *DataStore) LoadSharedConfig() error {
 	}
 	for _, field := range stripPatternFields {
 		cfg.Shared.DuplicateStripPatterns = append(cfg.Shared.DuplicateStripPatterns, field.Value)
+	}
+
+	// quality actions: one value each, defaulting to the previous behaviour
+	cfg.Shared.LowerQualityAction = consts.QUALITY_ACTION_DISCARD
+	if fields, err := ds.GetFields("lower_quality_action"); err != nil {
+		_ = glg.Errorf("could not retrieve lower quality action: %s", err)
+	} else if len(fields) > 0 {
+		cfg.Shared.LowerQualityAction = strings.ToLower(strings.TrimSpace(fields[0].Value))
+	}
+
+	cfg.Shared.HigherQualityAction = consts.QUALITY_ACTION_REPLACE
+	if fields, err := ds.GetFields("higher_quality_action"); err != nil {
+		_ = glg.Errorf("could not retrieve higher quality action: %s", err)
+	} else if len(fields) > 0 {
+		cfg.Shared.HigherQualityAction = strings.ToLower(strings.TrimSpace(fields[0].Value))
 	}
 	return nil
 }

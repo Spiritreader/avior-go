@@ -81,6 +81,14 @@ type Shared struct {
 	// "LogMatchModule 2026-09-16 2106"). Global on purpose: the duplicate
 	// detection runs against one shared library, so all instances must agree.
 	DuplicateStripPatterns []string
+	// LowerQualityAction selects what happens when the existing file is better
+	// (higher resolution or better audio): "discard" (default) parks the new
+	// recording in exists/, "keep" encodes it under a suffixed name.
+	LowerQualityAction string
+	// HigherQualityAction selects what happens when the new recording is better:
+	// "replace" (default) parks the existing file in .obsolete, "keep" encodes
+	// the new recording under a suffixed name and leaves the existing one alone.
+	HigherQualityAction string
 }
 
 type AudioFormats struct {
