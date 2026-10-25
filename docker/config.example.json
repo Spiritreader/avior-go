@@ -117,13 +117,6 @@
       "Settings": {
         "TolerancePixels": 48
       }
-    },
-    "SizeApproxModule": {
-      "Enabled": false,
-      "Priority": 3,
-      "Settings": {
-        "Fraction": 0
-      }
     }
   },
   "EncoderConfig": {

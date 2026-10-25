@@ -122,12 +122,6 @@ type ResolutionModuleSettings struct {
 	MinResolution int
 }
 
-type SizeApproxModuleSettings struct {
-	Difference  int
-	SampleCount int
-	Fraction    int
-}
-
 type ErrorModuleSettings struct {
 	Threshold int
 }
@@ -248,14 +242,6 @@ func InitWithDefaults(cfg *Data) {
 		Priority: 0,
 		Settings: &MaxSizeModuleSettings{MaxSize: 30},
 	}
-	// SizeApprox Config Defaults
-	cfg.Local.Modules[consts.MODULE_NAME_MAXSIZE] = *moduleConfig
-	moduleConfig = &ModuleConfig{
-		Enabled:  false,
-		Priority: 0,
-		Settings: &SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
-	}
-	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
 	// ResolutionModule Config Defaults
 	moduleConfig = &ModuleConfig{
 		Enabled:  false,

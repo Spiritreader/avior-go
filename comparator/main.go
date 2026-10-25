@@ -34,7 +34,6 @@ func InitDupeModules() []Module {
 		&AudioModule{},
 		&ResolutionModule{},
 		&LogMatchModule{},
-		&SizeApproxModule{},
 	}
 	return initModules(modules)
 }
