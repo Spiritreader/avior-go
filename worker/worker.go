@@ -174,76 +174,90 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// run dupe file modules and prevent replacement if necessary
 		jobLog.Add("")
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
-		switch res {
-		case comparator.DISC, comparator.NOCH:
-			appendJobTemplate(*job, jobLog, true)
-			writeSkippedLog(mediaFile, jobLog, false)
-			if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
-				return
-			}
-			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
-			err, _ = moveMediaFile(*mediaFile, existDir, nil)
-			if err != nil {
-				_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", err)
-			}
-			err, _ = moveLogs(*mediaFile, existDir, nil)
-			if err != nil {
-				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
-			}
-			return
+
+		// Quality decisions (resolution/audio) can be configured to keep both
+		// versions instead of discarding the new one or replacing the old one.
+		keepBoth := keepBothFor(res, moduleName, cfg.Shared.LowerQualityAction, cfg.Shared.HigherQualityAction)
+		if keepBoth {
+			mediaFile.QualitySuffix = media.QualitySuffixFor(*mediaFile)
+			_ = glg.Infof("keeping both: encoding %s as %s", mediaFile.Path, mediaFile.OutName())
+			jobLog.Add(fmt.Sprintf("Keeping both: new file encoded as %s (%s action)", mediaFile.OutName(), moduleName))
+			duplicateDir := filepath.Dir(duplicates[0].Path)
+			redirectDir = &duplicateDir
 		}
 
-		// if dupe file is eligible for replacement, move it to the .obsolete dir
-		obsoleteDir := filepath.Join(cfg.Local.ObsoletePath, consts.OBSOLETE_DIR)
-		var errL error = nil
-		var errM error
-		errM, obsoleteMovedFilePath = moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
-		if errM != nil {
-			// roll back media file move if log move fails to ensure nothing was moved erroneously
-			// map is structured in "original path": "moved path" pairs, so swap directions to move back
-			src := obsoleteMovedFilePath[duplicates[0].Path]
-			errRollback := tools.MoppyFile(src, duplicates[0].Path, true)
-			if errRollback != nil {
-				msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
-				glg.Error(msg)
-				jobLog.Add(fmt.Sprintf("error: %s", msg))
+		if !keepBoth {
+			switch res {
+			case comparator.DISC, comparator.NOCH:
+				appendJobTemplate(*job, jobLog, true)
+				writeSkippedLog(mediaFile, jobLog, false)
+				if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
+					return
+				}
+				existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
+				err, _ = moveMediaFile(*mediaFile, existDir, nil)
+				if err != nil {
+					_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", err)
+				}
+				err, _ = moveLogs(*mediaFile, existDir, nil)
+				if err != nil {
+					_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
+				}
+				return
 			}
-		} else {
-			errL, obsoleteMovedLogPaths = moveLogs(duplicates[0], obsoleteDir, &moduleName)
-			if errL != nil {
-				// roll back log move if media file move fails to ensure nothing was moved erroneously
+
+			// if dupe file is eligible for replacement, move it to the .obsolete dir
+			obsoleteDir := filepath.Join(cfg.Local.ObsoletePath, consts.OBSOLETE_DIR)
+			var errL error = nil
+			var errM error
+			errM, obsoleteMovedFilePath = moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
+			if errM != nil {
+				// roll back media file move if log move fails to ensure nothing was moved erroneously
 				// map is structured in "original path": "moved path" pairs, so swap directions to move back
-				for dst, src := range obsoleteMovedLogPaths {
-					errRollback := tools.MoppyFile(src, dst, true)
-					if errRollback != nil {
-						msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
-						glg.Error(msg)
-						jobLog.Add(fmt.Sprintf("error: %s", msg))
+				src := obsoleteMovedFilePath[duplicates[0].Path]
+				errRollback := tools.MoppyFile(src, duplicates[0].Path, true)
+				if errRollback != nil {
+					msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
+					glg.Error(msg)
+					jobLog.Add(fmt.Sprintf("error: %s", msg))
+				}
+			} else {
+				errL, obsoleteMovedLogPaths = moveLogs(duplicates[0], obsoleteDir, &moduleName)
+				if errL != nil {
+					// roll back log move if media file move fails to ensure nothing was moved erroneously
+					// map is structured in "original path": "moved path" pairs, so swap directions to move back
+					for dst, src := range obsoleteMovedLogPaths {
+						errRollback := tools.MoppyFile(src, dst, true)
+						if errRollback != nil {
+							msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
+							glg.Error(msg)
+							jobLog.Add(fmt.Sprintf("error: %s", msg))
+						}
 					}
 				}
 			}
-		}
 
-		// cancel operation if any move failed
-		if errM != nil || errL != nil {
-			msg := "can't continue without moving duplicate files, skipping job"
-			_ = glg.Error(msg)
-			jobLog.Add("error:")
-			if errM != nil {
-				jobLog.Add(fmt.Sprintf("error: %s", errM.Error()))
+			// cancel operation if any move failed
+			if errM != nil || errL != nil {
+				msg := "can't continue without moving duplicate files, skipping job"
+				_ = glg.Error(msg)
+				jobLog.Add("error:")
+				if errM != nil {
+					jobLog.Add(fmt.Sprintf("error: %s", errM.Error()))
+				}
+				if errL != nil {
+					jobLog.Add(fmt.Sprintf("error: %s", errL.Error()))
+				}
+				jobLog.Add(msg)
+				appendJobTemplate(*job, jobLog, false)
+				writeSkippedLog(mediaFile, jobLog, false)
+				return
 			}
-			if errL != nil {
-				jobLog.Add(fmt.Sprintf("error: %s", errL.Error()))
-			}
-			jobLog.Add(msg)
-			appendJobTemplate(*job, jobLog, false)
-			writeSkippedLog(mediaFile, jobLog, false)
-			return
+			// when everything is successful, set the redirect dir to the dupe dir so the media file encode
+			// destination is the same as the dupe file
+			duplicateDir := filepath.Dir(duplicates[0].Path)
+			redirectDir = &duplicateDir
 		}
-		// when everything is successful, set the redirect dir to the dupe dir so the media file encode
-		// destination is the same as the dupe file
-		duplicateDir := filepath.Dir(duplicates[0].Path)
-		redirectDir = &duplicateDir
 	}
 
 	jobLog.Add("")
@@ -647,6 +661,24 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	// save the config file to update the library size
 	_ = config.Save()
 	return matches, nil
+}
+
+// keepBothFor reports whether the new recording should be encoded under a
+// quality suffix instead of the default action. Only the quality modules
+// (resolution/audio) participate: their DISC means "existing is better"
+// (LowerQualityAction, default discard) and REPL means "new is better"
+// (HigherQualityAction, default replace). Other modules keep their behaviour.
+func keepBothFor(res, moduleName, lowerAction, higherAction string) bool {
+	if moduleName != consts.MODULE_NAME_RESOLUTION && moduleName != consts.MODULE_NAME_AUDIO {
+		return false
+	}
+	switch res {
+	case comparator.DISC:
+		return lowerAction == consts.QUALITY_ACTION_KEEP
+	case comparator.REPL:
+		return higherAction == consts.QUALITY_ACTION_KEEP
+	}
+	return false
 }
 
 func duplicateNameMatch(candidate, existing, extension string) bool {

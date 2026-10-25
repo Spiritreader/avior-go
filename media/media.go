@@ -125,7 +125,11 @@ type File struct {
 	TunerLog         []string
 	LogPaths         []string
 	AllowReplacement bool
-	legacy           bool
+	// QualitySuffix, when set, is appended to the output name in parentheses
+	// ("720p, STEREO") to keep a second quality version of the same work next to
+	// an existing one (Shared.LowerQualityAction/HigherQualityAction = "keep").
+	QualitySuffix string
+	legacy        bool
 }
 
 // Updates the struct to fill out all remaining fields
@@ -169,10 +173,43 @@ func (f *File) LengthDifference() int {
 }
 
 func (f *File) OutName() string {
-	if len(f.Subtitle) == 0 {
-		return f.Name
+	name := f.Name
+	if len(f.Subtitle) != 0 {
+		name += " - " + f.Subtitle
 	}
-	return f.Name + " - " + f.Subtitle
+	// QualitySuffix marks a second version of the same work kept next to the
+	// existing one: "Name - Subtitle (720p, STEREO)".
+	if f.QualitySuffix != "" {
+		name += " (" + f.QualitySuffix + ")"
+	}
+	return name
+}
+
+// VerticalResolution returns the vertical part of a resolution value in the
+// "720p" form ("1280x720" -> "720p"). Returns "" when it cannot be derived.
+func VerticalResolution(value string) string {
+	idx := strings.LastIndex(value, "x")
+	if idx < 0 || idx+1 >= len(value) {
+		return ""
+	}
+	height := strings.TrimSpace(value[idx+1:])
+	if height == "" {
+		return ""
+	}
+	return height + "p"
+}
+
+// QualitySuffixFor builds the suffix that marks a kept second version, e.g.
+// "720p, STEREO". Unknown parts are omitted.
+func QualitySuffixFor(f File) string {
+	parts := make([]string, 0, 2)
+	if v := VerticalResolution(f.Resolution.Value); v != "" {
+		parts = append(parts, v)
+	}
+	if a := f.AudioFormat.String(); a != "" && a != AUDIO_UNKNOWN.String() {
+		parts = append(parts, a)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // DuplicateNameKey returns a comparison key containing only lowercase
