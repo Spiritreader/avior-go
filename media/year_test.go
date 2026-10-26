@@ -294,3 +294,63 @@ func TestYearFromMetaCandidateDashInfoLine(t *testing.T) {
 	// here: the permissive rule is intentionally permissive, exactly like the
 	// reference. See TestRealMythosMarbellaNarrativeYearIgnored.
 }
+
+// The log path must only accept structured "genre + country + year" shapes.
+// Arbitrary numbers in the log (event IDs, filler sizes, prose) are not years.
+func TestExtractYearFromLogRequiresGenreCountryYear(t *testing.T) {
+	tests := []struct {
+		name string
+		log  []string
+		want string
+	}{
+		{
+			name: "arbitrary year without country is ignored",
+			log: []string{
+				"ONE HD (AC3,deu) 28/08/2026",
+				"Timer Name: Irgendwas",
+				"EventID: 59240, PDC: 0xE4414",
+				"Irgendein Text mit 1998 darin",
+			},
+			want: "",
+		},
+		{
+			name: "year in the description block with genre and country",
+			log: []string{
+				"Timer Name: Irgendwas",
+				"Drama Spanien 2017",
+			},
+			want: "2017",
+		},
+		{
+			name: "old format country/year line",
+			log: []string{
+				"ZDF HD 02.01.2012",
+				"Die Löwin",
+				"20:15..21:45",
+				"Melodram Südafrika/2011",
+			},
+			want: "2011",
+		},
+		{
+			name: "timer name with genre and country",
+			log: []string{
+				"Timer Name: Velvet (S04/E12) - Das Blatt wendet sich   - Drama Spanien 2017",
+			},
+			want: "2017",
+		},
+		{
+			name: "type-1 log without metadata",
+			log: []string{
+				"Removed Filler Data: 16,1 MB",
+				"Drama Spanien 2017",
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		f := File{TunerLog: tt.log}
+		if got := f.ExtractYearFromFile(); got != tt.want {
+			t.Errorf("%s: got %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}
