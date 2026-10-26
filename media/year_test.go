@@ -272,3 +272,25 @@ func TestExtractYearFromFileInfoYearOnly(t *testing.T) {
 		t.Errorf("Info=year only: got %q, want 2017", y)
 	}
 }
+
+// The standard metadata shape must resolve through the structured rules, not
+// through ExtractYear's "first 4-digit number" fallback:
+//
+//	Info=Das Blatt wendet sich   - Drama Spanien 2017
+func TestYearFromMetaCandidateDashInfoLine(t *testing.T) {
+	cases := map[string]string{
+		"Das Blatt wendet sich   - Drama Spanien 2017": "2017",
+		"Das Blatt wendet sich - Drama Spanien 2017":   "2017",
+		"Folge 12 - Dokumentation Deutschland 2021":    "2021",
+		"Tatort - Krimi Deutschland 2019":              "2019",
+		"Der Fall - Spielfilm USA 1999":                "1999",
+	}
+	for in, want := range cases {
+		if got := yearFromMetaCandidate(in); got != want {
+			t.Errorf("yearFromMetaCandidate(%q) = %q, want %q", in, got, want)
+		}
+	}
+	// Narrative protection lives in firstMetaLikeSegment (segment selection), not
+	// here: the permissive rule is intentionally permissive, exactly like the
+	// reference. See TestRealMythosMarbellaNarrativeYearIgnored.
+}
