@@ -130,3 +130,35 @@ func TestRealMythosMarbellaNarrativeYearIgnored(t *testing.T) {
 		t.Errorf("Mythos Marbella: got %q, want \"\" (1954 ist Handlungsjahr, kein Erscheinungsjahr)", y)
 	}
 }
+
+// Produktionsfall 2026-10-26: Bei Serien steht in der Info-Zeile erst der
+// Episodentitel, dann " - Genre Land Jahr":
+//
+//	Info=Das Blatt wendet sich   - Drama Spanien 2017
+//
+// preprocessCandidate schneidet bei " - " ab (Subtitle-Konvention), wodurch das
+// Jahr verloren ging und nur der Log-Pfad es noch fand.
+func TestRealSeriesInfoYearAfterDash(t *testing.T) {
+	f := File{
+		Name: "Velvet (S04 E12)",
+		MetadataLog: []string{
+			"[General]",
+			"Version=1.1",
+			"[Media]",
+			"Created=28.08.2026 16:20:21",
+			"Channel=ONE HD (AC3,deu)",
+			"[0]",
+			"Id=59240",
+			"Date=28.08.2026",
+			"Time=16:20:00",
+			"Duration=00:45:00",
+			"Title=Velvet (S04/E12)",
+			"Info=Das Blatt wendet sich   - Drama Spanien 2017",
+			"Series=Velvet",
+			"Description=Ausstrahlung auch im spanischen Originalton||Mateo verweigert sich der Bitte seines Chefs Manuel, die Fotoreportage über Anas neues Schneideratelier zugunsten eines Berichts über die Kosmetiklinie Mandalay abzusagen. Marco wird das nicht hinnehmen, und in seinem Auftrag veranlasst die gut vernetzte Strippenzieherin Cristina Mateos Entlassung. ||Zur gleichen Zeit erhält Mateo einen Umschlag mit einer Karte vom todgeglaubten Alberto. Mateo findet heraus, dass der Umschlag vom New Yorker Unternehmen Silk geschickt wurde, dessen Geschäftsführer niemand anderes ist als Alberto Márquez.||[16:9] [SUB] [12+]   [PDC 28.08. 16:20]",
+		},
+	}
+	if y := f.ExtractYearFromFile(); y != "2017" {
+		t.Errorf("Info mit ' - Genre Land Jahr': got %q, want 2017", y)
+	}
+}
