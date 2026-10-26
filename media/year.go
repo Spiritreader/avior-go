@@ -457,40 +457,96 @@ func firstMetaLikeSegment(desc string) string {
 // Timer Name first, then the meta line after the time range.
 func extractYearFromLog(tunerLog []string) string {
 	metaLines := sliceLogMetadata(tunerLog)
-	// Timer Name is the most reliable source.
+
+	// 1. Timer Name — the most reliable recorder metadata source.
 	for _, line := range metaLines {
-		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "timer name") {
-			v := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(line), "Timer Name"), "timer name"))
-			v = strings.TrimPrefix(v, ":")
-			v = strings.TrimSpace(v)
-			if y := yearFromMetaCandidate(v); y != "" {
-				return y
-			}
-			if y := ExtractYear(v); y != "" {
-				return y
-			}
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(strings.ToLower(trimmed), "timer name") {
+			continue
+		}
+		value := timerNamePrefixRe.ReplaceAllString(trimmed, "")
+		if m := timerNameMetaRe.FindStringSubmatch(value); len(m) == 2 {
+			return m[1]
+		}
+		// Loose fallback (reference: TimerLoose): first year in the timer value.
+		if m := yearFourRe.FindStringSubmatchIndex(value); m != nil {
+			return value[m[0]:m[1]]
 		}
 	}
-	// Old format: meta line directly after the HH:MM..HH:MM time line.
-	for i, line := range metaLines {
-		if timeRangeRe.MatchString(strings.TrimSpace(line)) && i+1 < len(metaLines) {
-			meta := strings.TrimSpace(metaLines[i+1])
-			if m := oldLogMetaRe.FindStringSubmatch(meta); len(m) == 2 {
+
+	// 2. Type-1 logs (Removed Filler Data) carry no metadata block.
+	for _, line := range metaLines {
+		if strings.Contains(strings.ToLower(line), "removed filler data") {
+			return ""
+		}
+	}
+
+	// 3. Type-2 primary: a full line of "genre? country year".
+	for _, line := range metaLines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if m := type2GenreCountryYearRe.FindStringSubmatch(trimmed); len(m) == 2 {
+			return m[1]
+		}
+	}
+
+	// 4. Type-2 fallback (old format): a full line of "country/year", scanned
+	//    backwards like the reference ("Melodram Südafrika/2011").
+	for i := len(metaLines) - 1; i >= 0; i-- {
+		trimmed := strings.TrimSpace(metaLines[i])
+		if trimmed == "" {
+			continue
+		}
+		if m := type2CountryYearFallbackRe.FindStringSubmatch(trimmed); len(m) == 2 {
+			return m[1]
+		}
+	}
+
+	// 5. Metadata section scan (reference order): strict full line, then the
+	//    relaxed "genre country year" search, then loose hints. Only short lines
+	//    qualify, so prose cannot smuggle a year in.
+	for _, line := range metaLines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || logMetaSkipLineRe.MatchString(trimmed) {
+			continue
+		}
+		// 5a. whole line is "genre? country year"
+		if m := logMetaLineStrictRe.FindStringSubmatch(trimmed); len(m) == 2 {
+			return m[1]
+		}
+		words := len(strings.Fields(trimmed))
+		// 5b. "genre country year" anywhere in a short line, e.g.
+		//     "Spielfilm Frankreich 2005 - Schwerpunkt: ARTE FilmFestival"
+		if words <= logMetaMaxWords {
+			if m := logMetaLineRe.FindStringSubmatch(trimmed); len(m) == 2 {
 				return m[1]
 			}
-			if y := yearFromMetaCandidate(meta); y != "" {
-				return y
+			// 5c. loose hints: any year plus any country hint in the same line.
+			if m := yearFourRe.FindStringSubmatch(trimmed); m != nil {
+				if len(countryHintRe.FindAllString(trimmed, -1)) > 0 {
+					return m[1]
+				}
 			}
-		}
-	}
-	// General meta line anywhere in the metadata section.
-	for _, line := range metaLines {
-		if y := yearFromMetaCandidate(line); y != "" {
-			return y
 		}
 	}
 	return ""
 }
+
+// logMetaMaxWords bounds the size of a line that may be treated as metadata
+// (reference: word_count <= 20).
+const logMetaMaxWords = 20
+
+// countryHintRe matches a country hint as a standalone word.
+var countryHintRe = regexp.MustCompile(`(?i)\b(?:` + countryHintPattern + `)\b`)
+
+// timerNamePrefixRe strips the "Timer Name:" label from a recorder log line.
+var timerNamePrefixRe = regexp.MustCompile(`(?i)^\s*Timer Name\s*:\s*`)
+
+// logMetaSkipLineRe mirrors LOG_META_SKIP_LINE_PATTERN: lines that never carry
+// release metadata.
+var logMetaSkipLineRe = regexp.MustCompile(`(?i)(?:\d{2}\.\d{2}\.\d{4}|\d{2}:\d{2}\.\.\d{2}:\d{2}|\d{2}:\d{2}:\d{2}\s+(?:Start|Stop)\b|\b(?:Video|Audio|Errors?|Total Size)\b)`)
 
 // NormalizeName mirrors movie_nfo_lib normalize_title: lowercase, strip non-word
 // chars, collapse whitespace. \p{L}/\p{N} for Unicode (Go \w is ASCII-only).
