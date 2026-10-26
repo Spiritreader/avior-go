@@ -146,10 +146,10 @@ func TestSliceLogMetadataStopsAtNoise(t *testing.T) {
 // "Tele-Gym (5 8)" and "Good bye, Lenin!" jobs crashing the whole service.
 func TestYearFromMetaCandidateGenreAfterYear(t *testing.T) {
 	candidates := []string{
-		"2024 Spielfilm",       // genre after year
-		"2023 Deutschland",     // country after year
-		"1980er Jahre Spielfilm", // number-ish prefix, then genre
-		"PID 5126 AC3 5.1",     // log-noise style: number then token
+		"2024 Spielfilm",             // genre after year
+		"2023 Deutschland",           // country after year
+		"1980er Jahre Spielfilm",     // number-ish prefix, then genre
+		"PID 5126 AC3 5.1",           // log-noise style: number then token
 		"Spielfilm Deutschland 2024", // normal order must still work
 		"Aerobic, Bewegung, Tanz",
 		"Good bye, Lenin!",
@@ -241,5 +241,34 @@ func TestExtractYearFromFileDescriptionMetaSegment(t *testing.T) {
 	}
 	if y := f2.ExtractYearFromFile(); y != "2017" {
 		t.Errorf("description meta segment: got %q, want 2017", y)
+	}
+}
+
+// Reference parity: a candidate containing a recording date must not yield a
+// year (28.08.2026 is the broadcast date, not the release year).
+func TestExtractYearRejectsRecordingDate(t *testing.T) {
+	f := File{
+		Name: "Velvet",
+		MetadataLog: []string{
+			"Info=Bericht vom 28.08.2026",
+			"Description=Bericht vom 28.08.2026 über die Dreharbeiten",
+		},
+	}
+	if y := f.ExtractYearFromFile(); y != "" {
+		t.Errorf("recording date must not be a release year: got %q", y)
+	}
+	if y := yearFromMetaCandidate("Spielfilm Deutschland 28.08.2026"); y != "" {
+		t.Errorf("yearFromMetaCandidate with date = %q, want \"\"", y)
+	}
+}
+
+// Reference parity: Info= lines that consist of the year alone.
+func TestExtractYearFromFileInfoYearOnly(t *testing.T) {
+	f := File{
+		Name:        "Bergfried",
+		MetadataLog: []string{"Info=2017"},
+	}
+	if y := f.ExtractYearFromFile(); y != "2017" {
+		t.Errorf("Info=year only: got %q, want 2017", y)
 	}
 }

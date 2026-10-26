@@ -86,6 +86,14 @@ var type2CountryYearFallbackRe = regexp.MustCompile(`(?i)^\s*(?:` + countryHintP
 // (genre + country + year at end). Group 1 = year.
 var oldLogMetaRe = regexp.MustCompile(`(?i)^\s*(?:` + genreWords + `)\s+(?:` + countryHintPattern + `)(?:\s*(?:/|,|;|und)\s*(?:` + countryHintPattern + `))*\s*((?:19|20)\d{2})\s*$`)
 
+// recordingDateRe matches a dotted recording date (28.08.2026). Its year is the
+// broadcast date, never the release year — the reference rejects such candidates
+// outright.
+var recordingDateRe = regexp.MustCompile(`\b\d{1,2}\.\d{1,2}\.(?:19|20)\d{2}\b`)
+
+// infoYearOnlyRe matches an Info= line that consists of the year alone.
+var infoYearOnlyRe = regexp.MustCompile(`^\s*((?:19|20)\d{2})\s*$`)
+
 // yearFourRe mirrors YEAR_FOUR_RE: 4-digit year. Decade forms like "1980er"
 // are rejected manually (RE2 has no lookahead). Group 1 = year.
 var yearFourRe = regexp.MustCompile(`((?:19|20)\d{2})`)
@@ -123,6 +131,11 @@ func (f *File) ExtractYearFromFile() string {
 		if y := yearFromMetaCandidate(infoLine); y != "" {
 			glg.Infof("year extraction: txt Info= -> %s", y)
 			return y
+		}
+		// Info=2017 (year alone) carries no country to anchor a pattern.
+		if m := infoYearOnlyRe.FindStringSubmatch(infoLine); len(m) == 2 {
+			glg.Infof("year extraction: txt Info= (year only) -> %s", m[1])
+			return m[1]
 		}
 		glg.Infof("year extraction: txt Info= line found but no year in %q", infoLine)
 	}
@@ -226,11 +239,15 @@ func yearFromMetaCandidate(candidate string) string {
 	if candidate == "" {
 		return ""
 	}
-	s := strings.TrimSpace(candidate)
-	s = preprocessCandidate(s)
+	raw := strings.TrimSpace(candidate)
+	s := preprocessCandidate(raw)
 
 	// Determine the first year position to bound the match window.
 	mYearFirst := yearFourRe.FindStringIndex(s)
+	// A candidate carrying a recording date is not a release-year source.
+	if recordingDateRe.MatchString(s) {
+		return ""
+	}
 
 	// Truncate candidate from the first genre/country word up to the first year
 	// (mirrors start_match logic).
@@ -290,8 +307,11 @@ func yearFromMetaCandidate(candidate string) string {
 			return m[3]
 		}
 	}
-	// 5. permissive_re: <text> <year> anywhere, gated by NARRATIVE_MARKER
-	if m := permissiveYearRe.FindStringSubmatch(s); len(m) == 3 {
+	// 5. permissive_re: <text> <year> anywhere, gated by NARRATIVE_MARKER.
+	// Runs on the original candidate: the reference matches meta_candidate, not
+	// the variant truncated at " - " (Info lines look like
+	// "Das Blatt wendet sich   - Drama Spanien 2017").
+	if m := permissiveYearRe.FindStringSubmatch(raw); len(m) == 3 {
 		combined := m[1] + " " + m[2]
 		if narrativeMarkerRe.MatchString(combined) {
 			return ""
@@ -546,6 +566,7 @@ var episodePatterns = []*regexp.Regexp{
 // number). The library uses a lookahead (?!\s*$); RE2 has none, so the position
 // check is done manually in IsProbablyEpisodeFilename.
 var episodeFourDigitInParensRe = regexp.MustCompile(`\(\d{4}\)`)
+
 func sliceLogMetadata(lines []string) []string {
 	end := len(lines)
 	for i, line := range lines {
