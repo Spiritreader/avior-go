@@ -219,3 +219,50 @@ func TestKeptBothAlreadyPresent(t *testing.T) {
 		}
 	}
 }
+
+// A kept-both variant must carry the library file's metadata sidecar, otherwise
+// the second quality version has no .nfo for the scraper/frontend.
+func TestCopyNfoSidecar(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "Little Big Man.mkv")
+	existingNfo := filepath.Join(dir, "Little Big Man.nfo")
+	newOut := filepath.Join(dir, "Little Big Man (720p, 5.1).mkv")
+	for path, content := range map[string]string{
+		existing:    "x",
+		existingNfo: "<movie><title>Little Big Man</title></movie>",
+		newOut:      "y",
+	} {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("setup %s: %s", path, err)
+		}
+	}
+
+	copyNfoSidecar(existing, newOut)
+
+	want := filepath.Join(dir, "Little Big Man (720p, 5.1).nfo")
+	data, err := os.ReadFile(want)
+	if err != nil {
+		t.Fatalf("sidecar not created at %s: %s", want, err)
+	}
+	if string(data) != "<movie><title>Little Big Man</title></movie>" {
+		t.Errorf("sidecar content = %q", string(data))
+	}
+}
+
+// No .nfo next to the existing file: nothing to copy, no error, no empty file.
+func TestCopyNfoSidecarWithoutSource(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "Little Big Man.mkv")
+	newOut := filepath.Join(dir, "Little Big Man (720p, 5.1).mkv")
+	for _, p := range []string{existing, newOut} {
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatalf("setup: %s", err)
+		}
+	}
+
+	copyNfoSidecar(existing, newOut)
+
+	if _, err := os.Stat(filepath.Join(dir, "Little Big Man (720p, 5.1).nfo")); !os.IsNotExist(err) {
+		t.Errorf("no sidecar expected when the source has none, stat err = %v", err)
+	}
+}
