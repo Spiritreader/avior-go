@@ -46,6 +46,19 @@ const (
 	MULTI           = AudioFormat(3)
 )
 
+// QualityLabel returns the standardized channel-family label used in file
+// names ("STEREO" or "5.1"). The internal certainty levels (MAYBE/PROBABLY) are
+// deliberately not exposed: the name must stay stable when detection improves.
+func (a AudioFormat) QualityLabel() string {
+	switch {
+	case a < AUDIO_UNKNOWN:
+		return "STEREO"
+	case a > AUDIO_UNKNOWN:
+		return "5.1"
+	}
+	return ""
+}
+
 func (a AudioFormat) String() string {
 	switch a {
 	case STEREO:
@@ -206,7 +219,7 @@ func QualitySuffixFor(f File) string {
 	if v := VerticalResolution(f.Resolution.Value); v != "" {
 		parts = append(parts, v)
 	}
-	if a := f.AudioFormat.String(); a != "" && a != AUDIO_UNKNOWN.String() {
+	if a := f.AudioFormat.QualityLabel(); a != "" {
 		parts = append(parts, a)
 	}
 	return strings.Join(parts, ", ")

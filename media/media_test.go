@@ -149,8 +149,8 @@ func TestQualitySuffixFor(t *testing.T) {
 		t.Errorf("QualitySuffixFor = %q, want %q", got, "720p, STEREO")
 	}
 	f2 := File{Resolution: Resolution{Value: "1920x1080"}, AudioFormat: MULTI}
-	if got := QualitySuffixFor(f2); got != "1080p, MULTI" {
-		t.Errorf("QualitySuffixFor = %q, want %q", got, "1080p, MULTI")
+	if got := QualitySuffixFor(f2); got != "1080p, 5.1" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "1080p, 5.1")
 	}
 	// unknown audio is omitted
 	f3 := File{Resolution: Resolution{Value: "1280x720"}}
@@ -204,5 +204,37 @@ func TestTrimNameKeepsSubtitleWithoutExclude(t *testing.T) {
 	want := "Der Schut - Spielfilm, BRD_Frankreich_Italien 1964 (720p, STEREO)"
 	if got := f.OutName(); got != want {
 		t.Errorf("OutName() = %q, want %q", got, want)
+	}
+}
+
+// The file name must carry a standardized channel label, not the internal
+// certainty level. UNKNOWN contributes nothing.
+func TestAudioFormatQualityLabel(t *testing.T) {
+	cases := map[AudioFormat]string{
+		STEREO:          "STEREO",
+		STEREO_PROBABLY: "STEREO",
+		STEREO_MAYBE:    "STEREO",
+		AUDIO_UNKNOWN:   "",
+		MULTI_MAYBE:     "5.1",
+		MULTI_PROBABLY:  "5.1",
+		MULTI:           "5.1",
+	}
+	for in, want := range cases {
+		if got := in.QualityLabel(); got != want {
+			t.Errorf("QualityLabel(%d/%s) = %q, want %q", int(in), in.String(), got, want)
+		}
+	}
+}
+
+// Production case: a 720p recording whose audio was detected only as
+// MULTI_PROBABLY must be named "… (720p, 5.1)", not "… (720p, MULTI_PROBABLY)".
+func TestQualitySuffixForUncertainMulti(t *testing.T) {
+	f := File{Name: "Little Big Man", Resolution: Resolution{Value: "1280x720"}, AudioFormat: MULTI_PROBABLY}
+	if got := QualitySuffixFor(f); got != "720p, 5.1" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "720p, 5.1")
+	}
+	f.QualitySuffix = QualitySuffixFor(f)
+	if got := f.OutName(); got != "Little Big Man (720p, 5.1)" {
+		t.Errorf("OutName = %q, want %q", got, "Little Big Man (720p, 5.1)")
 	}
 }
