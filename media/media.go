@@ -349,9 +349,16 @@ func (f *File) getAudio() {
 
 	f.getAudioFromLogs()
 
-	if f.AudioFormat == AUDIO_UNKNOWN {
-		channels, channel_layout, err := tools.FfProbeChannels(f.Path)
+	// Ask ffprobe when the logs leave the format uncertain. A recording whose PID
+	// changes layout is only classified from the log timeline when the log has a
+	// stop line; otherwise the tags can only say "maybe".
+	if f.AudioFormat == AUDIO_UNKNOWN || f.AudioFormat == MULTI_MAYBE || f.AudioFormat == STEREO_MAYBE {
+		channels, channel_layout, err := tools.FfProbeChannelsDeep(f.Path)
 		if err != nil {
+			if f.AudioFormat == AUDIO_UNKNOWN {
+				return
+			}
+			glg.Infof("detected audio format: %s", f.AudioFormat.String())
 			return
 		}
 		glg.Logf("ffprobe reports %d channels with layout %s for %s", channels, channel_layout, f.Path)
@@ -379,7 +386,15 @@ func (f *File) getAudioFromLogs() {
 		// guaranteed to be multichannel if tuner only picks up one audio codec
 		f.AudioFormat = MULTI
 	} else if tunerStereo && tunerMulti {
-		// complement info with tags if available
+		// Both tags appear in the log because the PID changes format during the
+		// recording. The timeline states when each format applies, so the format
+		// covering the most seconds is the recording's real one (e.g. a stereo
+		// lead-in followed by 5.1 for the film).
+		if fmt, ok := dominantAudioFormat(f.TunerLog); ok {
+			f.AudioFormat = fmt
+			return
+		}
+		// No usable timeline: complement info with tags if available
 		metaStereo, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags, nil)
 		metaMulti, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags, nil)
 
