@@ -17,7 +17,7 @@ import (
 var ZeroDurationError error = fmt.Errorf("duration is 0")
 var NoStreamsError error = fmt.Errorf("no streams found")
 
-//InTimeSpan(start, end, check) determines if check lies between start and end
+// InTimeSpan(start, end, check) determines if check lies between start and end
 func InTimeSpan(startString string, endString string, checkTime time.Time) bool {
 	if startString == endString {
 		return true
@@ -112,10 +112,26 @@ type PassThru struct {
 // Gets the channel layout and number of channels from a file using ffprobe
 // Returns the number of channels, the channel layout and an error if one occurs
 func FfProbeChannels(path string) (int, string, error) {
+	return ffProbeChannels(path, nil)
+}
+
+// FfProbeChannelsDeep is FfProbeChannels with a large analysis window. A recorder
+// PID can change its channel layout during the recording, and ffprobe only looks
+// at the first moments by default — which reports the lead-in, not the film.
+// Analysing the first 60 seconds costs a few hundred milliseconds and resolves
+// the dominant layout of that window.
+func FfProbeChannelsDeep(path string) (int, string, error) {
+	return ffProbeChannels(path, []string{"-analyzeduration", "60000000", "-probesize", "50000000"})
+}
+
+func ffProbeChannels(path string, analysis []string) (int, string, error) {
 	// open ffprobe at the specified path via cmd.exec, get the number of audio channels from the output and save into an integer
 	channels := -1
 	channel_layout := "unknown"
-	ffprobe := exec.Command("ffprobe", "-v", "quiet", "-select_streams", "a:0", "-show_entries", "stream=channels, channel_layout", "-of", "default=noprint_wrappers=1", path)
+	args := []string{"-v", "quiet"}
+	args = append(args, analysis...)
+	args = append(args, "-select_streams", "a:0", "-show_entries", "stream=channels, channel_layout", "-of", "default=noprint_wrappers=1", path)
+	ffprobe := exec.Command("ffprobe", args...)
 	output, err := ffprobe.Output()
 	if err != nil {
 		return channels, channel_layout, err
@@ -139,7 +155,7 @@ func FfProbeVerfiy(path string) (bool, error) {
 	if err != nil {
 		return true, err
 	}
-	if (len(output) == 0) {
+	if len(output) == 0 {
 		return false, NoStreamsError
 	}
 	data := strings.Split(string(output), "\n")
