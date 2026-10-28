@@ -362,15 +362,34 @@ func (f *File) getAudio() {
 			return
 		}
 		glg.Logf("ffprobe reports %d channels with layout %s for %s", channels, channel_layout, f.Path)
-		if channels == 2 || channel_layout == "stereo" {
-			f.AudioFormat = STEREO
-		}
-		if channels > 2 || channel_layout == "5.1(side)" || channel_layout == "5.1" {
-			f.AudioFormat = MULTI
+		if probed := audioFormatFromProbe(channels, channel_layout); probed != AUDIO_UNKNOWN {
+			f.AudioFormat = probed
 		}
 	}
 
 	glg.Infof("detected audio format: %s", f.AudioFormat.String())
+}
+
+// audioFormatFromProbe maps an ffprobe channel count/layout to the format family.
+//
+// 8 channels is not "more" than 5.1: our encoder maps a 5.1(side) source into a
+// 7.1 layout where BL/BR stay silent, so the file carries 8 channels but only 6
+// with signal. It has to count as multichannel exactly like 6 channels, both when
+// checking a library file for replacement and when guarding against a downgrade.
+func audioFormatFromProbe(channels int, layout string) AudioFormat {
+	switch {
+	case channels > 2:
+		return MULTI
+	case channels == 2:
+		return STEREO
+	}
+	switch strings.ToLower(strings.TrimSpace(layout)) {
+	case "5.1(side)", "5.1", "7.1":
+		return MULTI
+	case "stereo":
+		return STEREO
+	}
+	return AUDIO_UNKNOWN
 }
 
 func (f *File) getAudioFromLogs() {

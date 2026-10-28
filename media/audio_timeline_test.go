@@ -108,3 +108,43 @@ func TestAudioFromLogsUsesTimeline(t *testing.T) {
 		t.Errorf("Bayern audio = %s, want STEREO (stereo covers ~34 min)", f2.AudioFormat)
 	}
 }
+
+// Library files encoded by us carry 8 channels because a 5.1(side) source is
+// mapped into a 7.1 layout with silent BL/BR. A replacement check must read that
+// as 5.1 (MULTI), never as "better than 5.1" and never as unknown.
+func TestAudioFormatFromProbe(t *testing.T) {
+	tests := []struct {
+		name     string
+		channels int
+		layout   string
+		want     AudioFormat
+	}{
+		{"our own 7.1 container of a 5.1 source", 8, "7.1", MULTI},
+		{"5.1 side source", 6, "5.1(side)", MULTI},
+		{"5.1 back source", 6, "5.1", MULTI},
+		{"8 channels with odd layout", 8, "unknown", MULTI},
+		{"stereo by channels", 2, "stereo", STEREO},
+		{"stereo by layout", 2, "unknown", STEREO},
+		{"mono is neither", 1, "mono", AUDIO_UNKNOWN},
+		{"no probe data", -1, "unknown", AUDIO_UNKNOWN},
+	}
+	for _, tt := range tests {
+		if got := audioFormatFromProbe(tt.channels, tt.layout); got != tt.want {
+			t.Errorf("%s: audioFormatFromProbe(%d, %q) = %s, want %s",
+				tt.name, tt.channels, tt.layout, got, tt.want)
+		}
+	}
+}
+
+// End to end: a library file with 8 channels must not look better or worse than
+// a fresh 5.1 recording, so the audio module sees MULTI on both sides.
+func TestProbedLibraryFileCountsAsMulti(t *testing.T) {
+	library := audioFormatFromProbe(8, "7.1")
+	fresh := audioFormatFromProbe(6, "5.1(side)")
+	if library != MULTI || fresh != MULTI {
+		t.Fatalf("library=%s fresh=%s, both must be MULTI", library, fresh)
+	}
+	if library != fresh {
+		t.Errorf("8-channel container must compare equal to 5.1: %s vs %s", library, fresh)
+	}
+}
