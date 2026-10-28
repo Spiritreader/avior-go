@@ -144,6 +144,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	var redirectDir *string = nil
 	var obsoleteMovedLogPaths map[string]string = nil
 	var obsoleteMovedFilePath map[string]string = nil
+	// keptBothSourcePath is the library file a kept-both variant was derived from;
+	// its metadata sidecar is copied onto the new variant after the encode.
+	var keptBothSourcePath string
 	if duplicates == nil {
 		duplicates, err = checkForDuplicates(mediaFile)
 		if err != nil {
@@ -179,6 +182,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// versions instead of discarding the new one or replacing the old one.
 		keepBoth := keepBothFor(res, moduleName, cfg.Shared.LowerQualityAction, cfg.Shared.HigherQualityAction)
 		if keepBoth {
+			keptBothSourcePath = duplicates[0].Path
 			mediaFile.QualitySuffix = media.QualitySuffixFor(*mediaFile)
 			_ = glg.Infof("keeping both: encoding %s as %s", mediaFile.Path, mediaFile.OutName())
 			jobLog.Add(fmt.Sprintf("Keeping both: new file encoded as %s (%s action)", mediaFile.OutName(), moduleName))
@@ -363,6 +367,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	err = copyLogsToEncOut(*mediaFile, filepath.Dir(stats.OutputPath))
 	if err != nil {
 		_ = glg.Errorf("couldn't copy source log files to encoded file directory, err: %s", err)
+	}
+	// A kept-both variant gets the existing library file's metadata sidecar.
+	if keptBothSourcePath != "" {
+		copyNfoSidecar(keptBothSourcePath, stats.OutputPath)
 	}
 	err, _ = moveLogs(*mediaFile, doneDir, nil)
 	if err != nil {
@@ -589,6 +597,25 @@ func moveLogs(file media.File, dstDir string, moduleName *string) (error, map[st
 		}
 	}
 	return nil, toMovePaths
+}
+
+// copyNfoSidecar copies the metadata sidecar (.nfo) of an existing library file
+// to a newly produced variant, so "keep both" versions carry the same metadata.
+// A missing sidecar is not an error — most library files have none at first.
+func copyNfoSidecar(existingPath, newOutputPath string) {
+	if existingPath == "" || newOutputPath == "" {
+		return
+	}
+	src := strings.TrimSuffix(existingPath, filepath.Ext(existingPath)) + ".nfo"
+	if _, err := os.Stat(src); err != nil {
+		return
+	}
+	dst := strings.TrimSuffix(newOutputPath, filepath.Ext(newOutputPath)) + ".nfo"
+	if err := tools.MoppyFile(src, dst, false); err != nil {
+		_ = glg.Warnf("couldn't copy metadata sidecar %s to %s, err: %s", src, dst, err)
+		return
+	}
+	_ = glg.Infof("copied metadata sidecar %s to %s", src, dst)
 }
 
 func copyLogsToEncOut(file media.File, dstDir string) error {
