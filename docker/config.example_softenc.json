@@ -52,13 +52,6 @@
   "CacheLibScan": false,
   "EstimatedLibSize": 66493,
   "Modules": {
-    "AgeModule": {
-      "Enabled": false,
-      "Priority": 2,
-      "Settings": {
-        "MaxAge": 5
-      }
-    },
     "AudioModule": {
       "Enabled": true,
       "Priority": 3,
