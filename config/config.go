@@ -23,7 +23,7 @@ type Data struct {
 
 // Local is the main application configuration
 type Local struct {
-	Instance           int
+	Instance int
 	// ClientName overrides the machine hostname used to register this instance in
 	// the DB (collection clients). In Docker the container hostname may be a
 	// container ID or a stale inherited value; setting ClientName makes the
@@ -40,23 +40,23 @@ type Local struct {
 	// PathMappings maps UNC prefixes found in DB job paths to local container paths,
 	// e.g. "\\\\192.168.178.75\\recording_pool" -> "/recording_pool".
 	// Empty/nil = no translation (Windows behavior unchanged).
-	PathMappings      map[string]string `json:"PathMappings,omitempty"`
+	PathMappings map[string]string `json:"PathMappings,omitempty"`
 	// CacheLibScan caches the library scan (MediaPaths walk) in memory and reuses
 	// it for the Redis TTL (24h) instead of rescanning per duplicate check.
 	// Under Docker the walk is a direct local FS access and takes <1s, so caching
 	// only adds staleness bugs; set false to always scan fresh.
 	// Default true keeps the historical Windows/SMB behavior unchanged.
 	// NOTE: no omitempty - a false value must be persisted, otherwise Save() drops it.
-	CacheLibScan      bool   `json:"CacheLibScan"`
+	CacheLibScan bool `json:"CacheLibScan"`
 	// YearAwareDupes: when true, same-title files with different release years are
 	// treated as separate films: on an exact-name duplicate match whose year differs
 	// from the new film's year, the new film is renamed to "Title (YYYY)" before the
 	// duplicate modules decide. Default true.
-	YearAwareDupes    bool   `json:"YearAwareDupes"`
-	EstimatedLibSize  int
-	Modules            map[string]ModuleConfig
-	EncoderConfig      map[string]EncoderConfig
-	EncoderPriority    string
+	YearAwareDupes   bool `json:"YearAwareDupes"`
+	EstimatedLibSize int
+	Modules          map[string]ModuleConfig
+	EncoderConfig    map[string]EncoderConfig
+	EncoderPriority  string
 }
 
 type Redis struct {
@@ -114,8 +114,22 @@ type LengthModuleSettings struct {
 	Threshold int
 }
 
+// ToleranceStep grants a shortfall in minutes for recordings below a runtime
+// bracket. The last step without BelowMinutes is the catch-all.
+type ToleranceStep struct {
+	BelowMinutes int `mapstructure:"below_minutes"`
+	Minutes      int `mapstructure:"minutes"`
+}
+
 type DuplicateLengthCheckSettings struct {
+	// Threshold is the legacy percent comparison against the existing file. It is
+	// only used when the new recording has no EPG duration to check against.
 	Threshold int
+	// Tolerances maps the new recording's planned runtime to the allowed
+	// shortfall in minutes: a 115 min film may be 5 min short, a 9 min short
+	// film only 2 min. Sender EPG durations include commercial breaks, so the
+	// existing file's runtime is not a usable reference.
+	Tolerances []ToleranceStep
 }
 
 type LogMatchModuleSettings struct {
