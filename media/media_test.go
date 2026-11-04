@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
 )
 
-func TestSanitize (t *testing.T) {
+func TestSanitize(t *testing.T) {
 	//testFile := &File{Path: "D:\\Recording\\Monaco 110 - Madonna di Napoli.mkv"}
 	//testFile := &File{Path: "D:\\Recording\\Neva Give üp - Der einzig wahre Japaner.mkv"}
 	testFile := &File{Path: "D:\\Temp\\test.log.log"}
@@ -19,7 +20,221 @@ func TestSanitize (t *testing.T) {
 	fmt.Printf("contains line: %t\n", contains)
 }
 
-func TestAudioParsing (t *testing.T) {
+func TestAudioParsing(t *testing.T) {
 	testFile := &File{Path: `\\UMS\recording_pool\Manual\Thomas Hengelbrock dirigiert Ravel und Franck.mkv`}
 	testFile.Update()
+}
+
+func TestDuplicateNameKey(t *testing.T) {
+	want := "aktivundgesundfaszientherapiepoolkeimestanduppaddling"
+	for _, name := range []string{
+		"aktiv und gesund - Faszientherapie - Poolkeime - Stand-up-Paddling",
+		"aktiv und gesund   Faszientherapie   Poolkeime   Stand-up-Paddling",
+		"aktiv und gesund _ Faszientherapie _ Poolkeime _ Stand-up-Paddling",
+	} {
+		if got := DuplicateNameKey(name); got != want {
+			t.Errorf("DuplicateNameKey(%q) = %q, want %q", name, got, want)
+		}
+	}
+	if got := DuplicateNameKey("Ä Ö Ü ß 2024"); got != "äöüß2024" {
+		t.Errorf("DuplicateNameKey Unicode = %q", got)
+	}
+	if got := DuplicateNameKey("A/B"); got != DuplicateNameKey("AB") {
+		t.Errorf("punctuation should not affect key: %q != %q", got, DuplicateNameKey("AB"))
+	}
+}
+
+// Framing prefixes (documentation series) must not prevent duplicate detection.
+// avior-dedup's semantic_prefixes serve the same purpose.
+func TestDuplicateKeyForStripsPrefixes(t *testing.T) {
+	patterns := []string{
+		`terra\s*x\s*-\s*`,
+		`42\s*-\s*die\s+antwort\s+auf\s+fast\s+alles`,
+		`^erlebnis\s+erde\s*-?\s*`,
+		`^abenteuer\s+wildnis\s*-?\s*`,
+		`^heiter\s+bis\s+t[oö]dlich`,
+	}
+	same := [][2]string{
+		{"Terra X - Die Reise zum Mars.mkv", "Die Reise zum Mars.mkv"},
+		{"terra x - Der Mars.mkv", "Der Mars.mkv"},
+		{"42 - Die Antwort auf fast alles - Schlaf.mkv", "Schlaf.mkv"},
+		{"Erlebnis Erde - Wölfe.mkv", "Wölfe.mkv"},
+		{"Erlebnis Erde Wölfe.mkv", "Wölfe.mkv"},
+		{"Abenteuer Wildnis - Amazonas.mkv", "Amazonas.mkv"},
+		{"Heiter bis tödlich - Nordisch herb.mkv", "Nordisch herb.mkv"},
+	}
+	for _, pair := range same {
+		a := DuplicateKeyFor(pair[0], patterns)
+		b := DuplicateKeyFor(pair[1], patterns)
+		if a != b {
+			t.Errorf("DuplicateKeyFor(%q)=%q != DuplicateKeyFor(%q)=%q", pair[0], a, pair[1], b)
+		}
+	}
+	// A prefix in the middle of a name must stay: it is part of the title.
+	if DuplicateKeyFor("Die Terra X Story.mkv", patterns) == DuplicateKeyFor("Story.mkv", patterns) {
+		t.Error("mid-title occurrence must not be stripped")
+	}
+	// Unrelated titles stay distinct.
+	if DuplicateKeyFor("Terra X - Mars.mkv", patterns) == DuplicateKeyFor("Erlebnis Erde - Venus.mkv", patterns) {
+		t.Error("different titles must not collide")
+	}
+}
+
+// Module suffixes appended when a replacement is parked must not hide the
+// duplicate (avior-go: "Name LogMatchModule 2026-09-16 2106.mkv").
+func TestDuplicateKeyForStripsModuleSuffix(t *testing.T) {
+	patterns := []string{
+		`\s+logmatchmodule.*$`,
+		`\s+errorreplacemodule.*$`,
+	}
+	cases := [][2]string{
+		{"Basic Instinct LogMatchModule 2026-09-16 2106.mkv", "Basic Instinct.mkv"},
+		{"Basic Instinct ErrorReplaceModule 2024-01-02 1504.mkv", "Basic Instinct.mkv"},
+	}
+	for _, c := range cases {
+		if a, b := DuplicateKeyFor(c[0], patterns), DuplicateKeyFor(c[1], patterns); a != b {
+			t.Errorf("DuplicateKeyFor(%q)=%q != %q", c[0], a, b)
+		}
+	}
+	// Titles that merely contain the word are untouched when no timestamp follows.
+	if DuplicateKeyFor("LogMatchModule Story.mkv", patterns) == DuplicateKeyFor("Story.mkv", patterns) {
+		t.Error("leading occurrence must not be stripped")
+	}
+}
+
+// A broken pattern must not disable duplicate detection.
+func TestDuplicateKeyForInvalidPatternIgnored(t *testing.T) {
+	patterns := []string{`terra\s*x\s*-\s*`, `([unclosed`}
+	if got := DuplicateKeyFor("Terra X - Mars.mkv", patterns); got != DuplicateKeyFor("Mars.mkv", patterns) {
+		t.Errorf("valid pattern should still apply with an invalid one present: %q", got)
+	}
+}
+
+// A kept second version is marked by a quality suffix in parentheses.
+func TestOutNameQualitySuffix(t *testing.T) {
+	f := File{Name: "Der Schut", Subtitle: "Spielfilm, BRD/Frankreich/Italien 1964"}
+	if got := f.OutName(); got != "Der Schut - Spielfilm, BRD/Frankreich/Italien 1964" {
+		t.Fatalf("OutName without suffix = %q", got)
+	}
+	f.QualitySuffix = "720p, STEREO"
+	if got := f.OutName(); got != "Der Schut - Spielfilm, BRD/Frankreich/Italien 1964 (720p, STEREO)" {
+		t.Errorf("OutName with suffix = %q", got)
+	}
+	// no subtitle -> suffix still applies
+	f2 := File{Name: "Elvis", QualitySuffix: "1080p, MULTI"}
+	if got := f2.OutName(); got != "Elvis (1080p, MULTI)" {
+		t.Errorf("OutName suffix without subtitle = %q", got)
+	}
+}
+
+func TestVerticalResolution(t *testing.T) {
+	cases := map[string]string{
+		"1280x720":  "720p",
+		"1920x1080": "1080p",
+		"720x576":   "576p",
+		"":          "",
+		"720":       "",
+		"x720":      "720p",
+	}
+	for in, want := range cases {
+		if got := VerticalResolution(in); got != want {
+			t.Errorf("VerticalResolution(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestQualitySuffixFor(t *testing.T) {
+	f := File{Resolution: Resolution{Value: "1280x720"}, AudioFormat: STEREO}
+	if got := QualitySuffixFor(f); got != "720p, STEREO" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "720p, STEREO")
+	}
+	f2 := File{Resolution: Resolution{Value: "1920x1080"}, AudioFormat: MULTI}
+	if got := QualitySuffixFor(f2); got != "1080p, 5.1" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "1080p, 5.1")
+	}
+	// unknown audio is omitted
+	f3 := File{Resolution: Resolution{Value: "1280x720"}}
+	if got := QualitySuffixFor(f3); got != "720p" {
+		t.Errorf("QualitySuffixFor(no audio) = %q, want %q", got, "720p")
+	}
+}
+
+// With the configured sub_exclude entries the subtitle collapses to "" (the
+// term and everything after it is cut), so the quality suffix lands directly on
+// the title: "Der Schut (720p, STEREO).mkv".
+func TestTrimNameThenQualitySuffix(t *testing.T) {
+	cfg := config.Instance()
+	prevSub := cfg.Shared.SubExclude
+	prevName := cfg.Shared.NameExclude
+	cfg.Shared.SubExclude = []string{"Spielfilm"}
+	cfg.Shared.NameExclude = nil
+	t.Cleanup(func() {
+		cfg.Shared.SubExclude = prevSub
+		cfg.Shared.NameExclude = prevName
+	})
+
+	f := File{
+		Name:          "Der Schut",
+		Subtitle:      "Spielfilm, BRD/Frankreich/Italien 1964",
+		QualitySuffix: "720p, STEREO",
+	}
+	f.trimName()
+	if f.Subtitle != "" {
+		t.Fatalf("subtitle should be trimmed to empty, got %q", f.Subtitle)
+	}
+	if got := f.OutName(); got != "Der Schut (720p, STEREO)" {
+		t.Errorf("OutName() = %q, want %q", got, "Der Schut (720p, STEREO)")
+	}
+}
+
+// Without an exclude the subtitle stays and the suffix is appended after it.
+func TestTrimNameKeepsSubtitleWithoutExclude(t *testing.T) {
+	cfg := config.Instance()
+	prevSub := cfg.Shared.SubExclude
+	cfg.Shared.SubExclude = nil
+	t.Cleanup(func() { cfg.Shared.SubExclude = prevSub })
+
+	f := File{
+		Name:          "Der Schut",
+		Subtitle:      "Spielfilm, BRD/Frankreich/Italien 1964",
+		QualitySuffix: "720p, STEREO",
+	}
+	f.trimName()
+	// RemoveIllegalChars maps "/" to "_", so the subtitle keeps that form.
+	want := "Der Schut - Spielfilm, BRD_Frankreich_Italien 1964 (720p, STEREO)"
+	if got := f.OutName(); got != want {
+		t.Errorf("OutName() = %q, want %q", got, want)
+	}
+}
+
+// The file name must carry a standardized channel label, not the internal
+// certainty level. UNKNOWN contributes nothing.
+func TestAudioFormatQualityLabel(t *testing.T) {
+	cases := map[AudioFormat]string{
+		STEREO:          "STEREO",
+		STEREO_PROBABLY: "STEREO",
+		STEREO_MAYBE:    "STEREO",
+		AUDIO_UNKNOWN:   "",
+		MULTI_MAYBE:     "5.1",
+		MULTI_PROBABLY:  "5.1",
+		MULTI:           "5.1",
+	}
+	for in, want := range cases {
+		if got := in.QualityLabel(); got != want {
+			t.Errorf("QualityLabel(%d/%s) = %q, want %q", int(in), in.String(), got, want)
+		}
+	}
+}
+
+// Production case: a 720p recording whose audio was detected only as
+// MULTI_PROBABLY must be named "… (720p, 5.1)", not "… (720p, MULTI_PROBABLY)".
+func TestQualitySuffixForUncertainMulti(t *testing.T) {
+	f := File{Name: "Little Big Man", Resolution: Resolution{Value: "1280x720"}, AudioFormat: MULTI_PROBABLY}
+	if got := QualitySuffixFor(f); got != "720p, 5.1" {
+		t.Errorf("QualitySuffixFor = %q, want %q", got, "720p, 5.1")
+	}
+	f.QualitySuffix = QualitySuffixFor(f)
+	if got := f.OutName(); got != "Little Big Man (720p, 5.1)" {
+		t.Errorf("OutName = %q, want %q", got, "Little Big Man (720p, 5.1)")
+	}
 }

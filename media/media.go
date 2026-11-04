@@ -7,9 +7,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"unicode"
 
 	"github.com/Spiritreader/avior-go/config"
 	"github.com/Spiritreader/avior-go/consts"
@@ -42,6 +45,19 @@ const (
 	MULTI_PROBABLY  = AudioFormat(2)
 	MULTI           = AudioFormat(3)
 )
+
+// QualityLabel returns the standardized channel-family label used in file
+// names ("STEREO" or "5.1"). The internal certainty levels (MAYBE/PROBABLY) are
+// deliberately not exposed: the name must stay stable when detection improves.
+func (a AudioFormat) QualityLabel() string {
+	switch {
+	case a < AUDIO_UNKNOWN:
+		return "STEREO"
+	case a > AUDIO_UNKNOWN:
+		return "5.1"
+	}
+	return ""
+}
 
 func (a AudioFormat) String() string {
 	switch a {
@@ -122,7 +138,11 @@ type File struct {
 	TunerLog         []string
 	LogPaths         []string
 	AllowReplacement bool
-	legacy           bool
+	// QualitySuffix, when set, is appended to the output name in parentheses
+	// ("720p, STEREO") to keep a second quality version of the same work next to
+	// an existing one (Shared.LowerQualityAction/HigherQualityAction = "keep").
+	QualitySuffix string
+	legacy        bool
 }
 
 // Updates the struct to fill out all remaining fields
@@ -166,10 +186,116 @@ func (f *File) LengthDifference() int {
 }
 
 func (f *File) OutName() string {
-	if len(f.Subtitle) == 0 {
-		return f.Name
+	name := f.Name
+	if len(f.Subtitle) != 0 {
+		name += " - " + f.Subtitle
 	}
-	return f.Name + " - " + f.Subtitle
+	// QualitySuffix marks a second version of the same work kept next to the
+	// existing one: "Name - Subtitle (720p, STEREO)".
+	if f.QualitySuffix != "" {
+		name += " (" + f.QualitySuffix + ")"
+	}
+	return name
+}
+
+// VerticalResolution returns the vertical part of a resolution value in the
+// "720p" form ("1280x720" -> "720p"). Returns "" when it cannot be derived.
+func VerticalResolution(value string) string {
+	idx := strings.LastIndex(value, "x")
+	if idx < 0 || idx+1 >= len(value) {
+		return ""
+	}
+	height := strings.TrimSpace(value[idx+1:])
+	if height == "" {
+		return ""
+	}
+	return height + "p"
+}
+
+// QualitySuffixFor builds the suffix that marks a kept second version, e.g.
+// "720p, STEREO". Unknown parts are omitted.
+func QualitySuffixFor(f File) string {
+	parts := make([]string, 0, 2)
+	if v := VerticalResolution(f.Resolution.Value); v != "" {
+		parts = append(parts, v)
+	}
+	if a := f.AudioFormat.QualityLabel(); a != "" {
+		parts = append(parts, a)
+	}
+	return strings.Join(parts, ", ")
+}
+
+// DuplicateNameKey returns a comparison key containing only lowercase
+// Unicode letters and digits. It does not modify the original name.
+func DuplicateNameKey(name string) string {
+	var key strings.Builder
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			key.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return key.String()
+}
+
+// stripPatternCache caches compiled DuplicateStripPatterns. The library scan
+// runs this for every file in the library, so compiling per call would be
+// wasteful. The cache is keyed by the pattern list, so a config reload with
+// changed patterns recompiles automatically.
+var stripPatternCache struct {
+	mu  sync.RWMutex
+	key string
+	res []*regexp.Regexp
+}
+
+// compileStripPatterns compiles the configured patterns once per pattern list.
+// Invalid expressions are logged and skipped: a typo must not disable the whole
+// duplicate detection.
+func compileStripPatterns(patterns []string) []*regexp.Regexp {
+	key := strings.Join(patterns, "\x00")
+	stripPatternCache.mu.RLock()
+	if stripPatternCache.key == key && stripPatternCache.res != nil {
+		res := stripPatternCache.res
+		stripPatternCache.mu.RUnlock()
+		return res
+	}
+	stripPatternCache.mu.RUnlock()
+
+	res := make([]*regexp.Regexp, 0, len(patterns))
+	for _, p := range patterns {
+		if strings.TrimSpace(p) == "" {
+			continue
+		}
+		re, err := regexp.Compile("(?i)" + p)
+		if err != nil {
+			_ = glg.Warnf("invalid duplicate strip pattern %q, ignoring: %s", p, err)
+			continue
+		}
+		res = append(res, re)
+	}
+
+	stripPatternCache.mu.Lock()
+	stripPatternCache.key = key
+	stripPatternCache.res = res
+	stripPatternCache.mu.Unlock()
+	return res
+}
+
+// StripNamePatterns removes every configured pattern from stem. Patterns are
+// case-insensitive and applied in order. It never mutates the caller's slice.
+func StripNamePatterns(stem string, patterns []string) string {
+	for _, re := range compileStripPatterns(patterns) {
+		stem = re.ReplaceAllString(stem, "")
+	}
+	return strings.TrimSpace(stem)
+}
+
+// DuplicateKeyFor resolves the comparison key for a file name: known patterns
+// (framing prefixes, module suffixes) are stripped from the base name before
+// the alphanumeric key is built. The extension is removed first so patterns can
+// anchor on the end of the stem.
+func DuplicateKeyFor(name string, patterns []string) string {
+	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	return DuplicateNameKey(StripNamePatterns(stem, patterns))
 }
 
 func (f *File) SanitizeLog() error {
@@ -223,21 +349,47 @@ func (f *File) getAudio() {
 
 	f.getAudioFromLogs()
 
-	if f.AudioFormat == AUDIO_UNKNOWN {
-		channels, channel_layout, err := tools.FfProbeChannels(f.Path)
+	// Ask ffprobe when the logs leave the format uncertain. A recording whose PID
+	// changes layout is only classified from the log timeline when the log has a
+	// stop line; otherwise the tags can only say "maybe".
+	if f.AudioFormat == AUDIO_UNKNOWN || f.AudioFormat == MULTI_MAYBE || f.AudioFormat == STEREO_MAYBE {
+		channels, channel_layout, err := tools.FfProbeChannelsDeep(f.Path)
 		if err != nil {
+			if f.AudioFormat == AUDIO_UNKNOWN {
+				return
+			}
+			glg.Infof("detected audio format: %s", f.AudioFormat.String())
 			return
 		}
 		glg.Logf("ffprobe reports %d channels with layout %s for %s", channels, channel_layout, f.Path)
-		if channels == 2 || channel_layout == "stereo" {
-			f.AudioFormat = STEREO
-		}
-		if channels > 2 || channel_layout == "5.1(side)" || channel_layout == "5.1" {
-			f.AudioFormat = MULTI
+		if probed := audioFormatFromProbe(channels, channel_layout); probed != AUDIO_UNKNOWN {
+			f.AudioFormat = probed
 		}
 	}
 
 	glg.Infof("detected audio format: %s", f.AudioFormat.String())
+}
+
+// audioFormatFromProbe maps an ffprobe channel count/layout to the format family.
+//
+// 8 channels is not "more" than 5.1: our encoder maps a 5.1(side) source into a
+// 7.1 layout where BL/BR stay silent, so the file carries 8 channels but only 6
+// with signal. It has to count as multichannel exactly like 6 channels, both when
+// checking a library file for replacement and when guarding against a downgrade.
+func audioFormatFromProbe(channels int, layout string) AudioFormat {
+	switch {
+	case channels > 2:
+		return MULTI
+	case channels == 2:
+		return STEREO
+	}
+	switch strings.ToLower(strings.TrimSpace(layout)) {
+	case "5.1(side)", "5.1", "7.1":
+		return MULTI
+	case "stereo":
+		return STEREO
+	}
+	return AUDIO_UNKNOWN
 }
 
 func (f *File) getAudioFromLogs() {
@@ -253,7 +405,15 @@ func (f *File) getAudioFromLogs() {
 		// guaranteed to be multichannel if tuner only picks up one audio codec
 		f.AudioFormat = MULTI
 	} else if tunerStereo && tunerMulti {
-		// complement info with tags if available
+		// Both tags appear in the log because the PID changes format during the
+		// recording. The timeline states when each format applies, so the format
+		// covering the most seconds is the recording's real one (e.g. a stereo
+		// lead-in followed by 5.1 for the film).
+		if fmt, ok := dominantAudioFormat(f.TunerLog); ok {
+			f.AudioFormat = fmt
+			return
+		}
+		// No usable timeline: complement info with tags if available
 		metaStereo, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.StereoTags, nil)
 		metaMulti, _, _ := find(f.MetadataLog, cfg.Local.AudioFormats.MultiTags, nil)
 

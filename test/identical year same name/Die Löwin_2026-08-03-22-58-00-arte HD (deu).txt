@@ -1,0 +1,26 @@
+[General]
+Version=1.1
+
+[Media]
+Created=03.08.2026 23:00:06
+Channel=arte HD (deu)
+
+[0]
+Id=63174
+Date=03.08.2026
+Time=23:00:00
+Duration=01:40:00
+Title=Die Löwin
+Info=Spielfilm Deutschland/Estland/Lettland 2024
+Description=Sanitäterin Helena sucht verzweifelt nach ihrer 15-jährigen Tochter Stefi, die in eine gewaltbereite Jugendclique abzugleiten droht. Als das Mädchen nach einer dramatischen Nacht im Krankenhaus landet, bringt Helena sie gegen ihren Willen in ein abgelegenes Landhaus. Drama aus Estland über Fürsorge und Kontrolle.||[16:9] [SUB] [AD]   [PDC 03.08. 23:00]
+Charset=255
+Content=16
+MinimumAge=0
+TimerID={69137C2D-AF4D-47C5-9F94-4A70D5D7927A}
+
+[Stats]
+Errors=9
+Size=7,31 GB (7853286964 bytes)
+Avr. Datarate=1,220 MB/s
+Device=Tvheadend:9983 20d48b009f 3
+

@@ -30,6 +30,40 @@ var (
 	previousEncoderLineOut []string
 )
 
+// translatePath maps UNC paths from DB jobs to local container paths using the
+// configured mappings (longest prefix match, case-insensitive). Returns input
+// unchanged when mappings is empty or no prefix matches.
+func translatePath(path string, mappings map[string]string) string {
+	if len(mappings) == 0 || path == "" {
+		return path
+	}
+	// Normalize the input to backslash form so both / and \ separators compare equal.
+	normalized := strings.ReplaceAll(path, "/", "\\")
+	// Build normalized-key -> original-key index once.
+	normToOrig := make(map[string]string, len(mappings))
+	for orig, _ := range mappings {
+		k := strings.TrimRight(strings.ReplaceAll(orig, "/", "\\"), "\\")
+		if k != "" {
+			normToOrig[k] = orig
+		}
+	}
+	bestKey := ""
+	bestLen := -1
+	for k := range normToOrig {
+		if len(k) > bestLen && len(normalized) >= len(k) &&
+			strings.EqualFold(normalized[:len(k)], k) {
+			bestKey = k
+			bestLen = len(k)
+		}
+	}
+	if bestKey == "" {
+		return path
+	}
+	value := strings.TrimRight(strings.ReplaceAll(mappings[normToOrig[bestKey]], "\\", "/"), "/")
+	remainder := strings.ReplaceAll(normalized[bestLen:], "\\", "/")
+	return value + remainder
+}
+
 func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Job, resumeChan chan string) {
 	cfg := config.Instance()
 	state.InFile = job.Path
@@ -46,7 +80,11 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	}()
 
 	//populate media file
-	mediaFile := &media.File{Path: job.Path, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
+	translatedPath := translatePath(job.Path, cfg.Local.PathMappings)
+	if translatedPath != job.Path {
+		_ = glg.Infof("translated job path %s -> %s", job.Path, translatedPath)
+	}
+	mediaFile := &media.File{Path: translatedPath, Name: job.Name, Subtitle: job.Subtitle, CustomParams: job.CustomParameters}
 	err := mediaFile.Update()
 	if err != nil {
 		_ = glg.Errorf("couldn't parse media file: %s", err)
@@ -55,6 +93,40 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	_ = glg.Logf("input file: %s", mediaFile.Path)
 	_ = glg.Logf("trimmed name: %s", mediaFile.OutName())
 	jobLog.AddFileProperties(*mediaFile)
+
+	// Year-aware duplicates: if the exact name already exists in the library but
+	// the release year differs, rename to "Title (YYYY)" so the two films are
+	// treated as separate. The later exact-name duplicate scan then matches the
+	// suffixed name and the existing modules decide replacement.
+	// The year-aware scan doubles as the duplicate scan: checkForDuplicates
+	// returns the same matches the later duplicate check would find, unless a
+	// year collision renamed the file (then the new name needs a fresh scan).
+	var duplicates []media.File
+	if cfg.Local.YearAwareDupes && !media.HasYearSuffix(mediaFile.Name) {
+		year := mediaFile.ExtractYearFromFile()
+		if year == "" {
+			_ = glg.Infof("year-aware dupes: no release year for %s, skipping collision check", mediaFile.Name)
+		} else {
+			dupeYear, matches := findDuplicateYear(mediaFile, dataStore)
+			duplicates = matches
+			switch {
+			case dupeYear == "":
+				// findDuplicateYear already logged "no normalized-name
+				// duplicate" when nothing matched; only report a found
+				// duplicate whose year could not be resolved.
+				if len(matches) > 0 {
+					_ = glg.Infof("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
+				}
+			case dupeYear == year:
+				_ = glg.Infof("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
+			default:
+				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s)", year, mediaFile.Name, dupeYear)
+				mediaFile.Name = fmt.Sprintf("%s (%s)", mediaFile.Name, year)
+				duplicates = nil // name changed, previous matches are stale
+				jobLog.Add(fmt.Sprintf("Year collision: renamed to %s (existing has %s)", mediaFile.OutName(), dupeYear))
+			}
+		}
+	}
 
 	// run single file modules
 	jobLog.Add("")
@@ -66,18 +138,25 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		return
 	}
 
-	// check for duplicates and run modules
+	// check for duplicates and run modules.
+	// duplicates is nil when the year-aware check did not run (disabled, name
+	// already suffixed, no year) or renamed the file — only then rescan.
 	var redirectDir *string = nil
 	var obsoleteMovedLogPaths map[string]string = nil
 	var obsoleteMovedFilePath map[string]string = nil
-	duplicates, err := checkForDuplicates(mediaFile)
-	if err != nil {
-		_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
-		state.Paused = true
-		state.PauseReason = consts.PAUSE_REASON_DUPLICATE_SCAN
-		appendJobTemplate(*job, jobLog, false)
-		writeSkippedLog(mediaFile, jobLog, false)
-		return
+	// keptBothSourcePath is the library file a kept-both variant was derived from;
+	// its metadata sidecar is copied onto the new variant after the encode.
+	var keptBothSourcePath string
+	if duplicates == nil {
+		duplicates, err = checkForDuplicates(mediaFile)
+		if err != nil {
+			_ = glg.Errorf("duplicate scan failed, please fix. Pausing service to prevent unwanted behavior: %s", err)
+			state.Paused = true
+			state.PauseReason = consts.PAUSE_REASON_DUPLICATE_SCAN
+			appendJobTemplate(*job, jobLog, false)
+			writeSkippedLog(mediaFile, jobLog, false)
+			return
+		}
 	}
 	if dupeLen := len(duplicates); dupeLen > 0 {
 		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
@@ -98,76 +177,91 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		// run dupe file modules and prevent replacement if necessary
 		jobLog.Add("")
 		res, moduleName := runDupeModules(jobLog, *mediaFile, duplicates[0])
-		switch res {
-		case comparator.DISC, comparator.NOCH:
-			appendJobTemplate(*job, jobLog, true)
-			writeSkippedLog(mediaFile, jobLog, false)
-			if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
-				return
-			}
-			existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
-			err, _ = moveMediaFile(*mediaFile, existDir, nil)
-			if err != nil {
-				_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", err)
-			}
-			err, _ = moveLogs(*mediaFile, existDir, nil)
-			if err != nil {
-				_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
-			}
-			return
+
+		// Quality decisions (resolution/audio) can be configured to keep both
+		// versions instead of discarding the new one or replacing the old one.
+		keepBoth := keepBothFor(res, moduleName, cfg.Shared.LowerQualityAction, cfg.Shared.HigherQualityAction)
+		if keepBoth {
+			keptBothSourcePath = duplicates[0].Path
+			mediaFile.QualitySuffix = media.QualitySuffixFor(*mediaFile)
+			_ = glg.Infof("keeping both: encoding %s as %s", mediaFile.Path, mediaFile.OutName())
+			jobLog.Add(fmt.Sprintf("Keeping both: new file encoded as %s (%s action)", mediaFile.OutName(), moduleName))
+			duplicateDir := filepath.Dir(duplicates[0].Path)
+			redirectDir = &duplicateDir
 		}
 
-		// if dupe file is eligible for replacement, move it to the .obsolete dir
-		obsoleteDir := filepath.Join(cfg.Local.ObsoletePath, consts.OBSOLETE_DIR)
-		var errL error = nil
-		var errM error
-		errM, obsoleteMovedFilePath = moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
-		if errM != nil {
-			// roll back media file move if log move fails to ensure nothing was moved erroneously
-			// map is structured in "original path": "moved path" pairs, so swap directions to move back
-			src := obsoleteMovedFilePath[duplicates[0].Path]
-			errRollback := tools.MoppyFile(src, duplicates[0].Path, true)
-			if errRollback != nil {
-				msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
-				glg.Error(msg)
-				jobLog.Add(fmt.Sprintf("error: %s", msg))
+		if !keepBoth {
+			switch res {
+			case comparator.DISC, comparator.NOCH:
+				appendJobTemplate(*job, jobLog, true)
+				writeSkippedLog(mediaFile, jobLog, false)
+				if filepath.Dir(mediaFile.Path) == consts.EXIST_DIR {
+					return
+				}
+				existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
+				err, _ = moveMediaFile(*mediaFile, existDir, nil)
+				if err != nil {
+					_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", err)
+				}
+				err, _ = moveLogs(*mediaFile, existDir, nil)
+				if err != nil {
+					_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", err)
+				}
+				return
 			}
-		} else {
-			errL, obsoleteMovedLogPaths = moveLogs(duplicates[0], obsoleteDir, &moduleName)
-			if errL != nil {
-				// roll back log move if media file move fails to ensure nothing was moved erroneously
+
+			// if dupe file is eligible for replacement, move it to the .obsolete dir
+			obsoleteDir := filepath.Join(cfg.Local.ObsoletePath, consts.OBSOLETE_DIR)
+			var errL error = nil
+			var errM error
+			errM, obsoleteMovedFilePath = moveMediaFile(duplicates[0], obsoleteDir, &moduleName)
+			if errM != nil {
+				// roll back media file move if log move fails to ensure nothing was moved erroneously
 				// map is structured in "original path": "moved path" pairs, so swap directions to move back
-				for dst, src := range obsoleteMovedLogPaths {
-					errRollback := tools.MoppyFile(src, dst, true)
-					if errRollback != nil {
-						msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
-						glg.Error(msg)
-						jobLog.Add(fmt.Sprintf("error: %s", msg))
+				src := obsoleteMovedFilePath[duplicates[0].Path]
+				errRollback := tools.MoppyFile(src, duplicates[0].Path, true)
+				if errRollback != nil {
+					msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
+					glg.Error(msg)
+					jobLog.Add(fmt.Sprintf("error: %s", msg))
+				}
+			} else {
+				errL, obsoleteMovedLogPaths = moveLogs(duplicates[0], obsoleteDir, &moduleName)
+				if errL != nil {
+					// roll back log move if media file move fails to ensure nothing was moved erroneously
+					// map is structured in "original path": "moved path" pairs, so swap directions to move back
+					for dst, src := range obsoleteMovedLogPaths {
+						errRollback := tools.MoppyFile(src, dst, true)
+						if errRollback != nil {
+							msg := fmt.Sprintf("failed to roll back media file move for %s, err: %s", src, errRollback)
+							glg.Error(msg)
+							jobLog.Add(fmt.Sprintf("error: %s", msg))
+						}
 					}
 				}
 			}
-		}
 
-		// cancel operation if any move failed
-		if errM != nil || errL != nil {
-			msg := "can't continue without moving duplicate files, skipping job"
-			_ = glg.Error(msg)
-			jobLog.Add("error:")
-			if errM != nil {
-				jobLog.Add(fmt.Sprintf("error: %s", errM.Error()))
+			// cancel operation if any move failed
+			if errM != nil || errL != nil {
+				msg := "can't continue without moving duplicate files, skipping job"
+				_ = glg.Error(msg)
+				jobLog.Add("error:")
+				if errM != nil {
+					jobLog.Add(fmt.Sprintf("error: %s", errM.Error()))
+				}
+				if errL != nil {
+					jobLog.Add(fmt.Sprintf("error: %s", errL.Error()))
+				}
+				jobLog.Add(msg)
+				appendJobTemplate(*job, jobLog, false)
+				writeSkippedLog(mediaFile, jobLog, false)
+				return
 			}
-			if errL != nil {
-				jobLog.Add(fmt.Sprintf("error: %s", errL.Error()))
-			}
-			jobLog.Add(msg)
-			appendJobTemplate(*job, jobLog, false)
-			writeSkippedLog(mediaFile, jobLog, false)
-			return
+			// when everything is successful, set the redirect dir to the dupe dir so the media file encode
+			// destination is the same as the dupe file
+			duplicateDir := filepath.Dir(duplicates[0].Path)
+			redirectDir = &duplicateDir
 		}
-		// when everything is successful, set the redirect dir to the dupe dir so the media file encode
-		// destination is the same as the dupe file
-		duplicateDir := filepath.Dir(duplicates[0].Path)
-		redirectDir = &duplicateDir
 	}
 
 	jobLog.Add("")
@@ -177,7 +271,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	jobLog.Add("Encoder Info:")
 
 	// invalidate cache in non-redis mode as it won't be recent anymore after encoding a job
-	if !redis.Handle.Running(){
+	if !redis.Handle.Running() {
 		cache.Instance().Library.Valid = false
 	}
 
@@ -195,6 +289,25 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			jobLog.Add("encode error: ffmpeg exit code 1 (file already exists)")
 			isBricked = true
 		} else if stats.ExitCode == 107 {
+			if keptBothAlreadyPresent(stats.ExitCode, mediaFile.QualitySuffix) {
+				// The kept-both version is already in the library: the recording is
+				// a duplicate of a duplicate. Park it like any other duplicate
+				// instead of failing the job (and possibly pausing the instance).
+				_ = glg.Infof("kept-both target %s already exists, treating recording as duplicate", state.Encoder.OutPath)
+				jobLog.Add(fmt.Sprintf("kept-both target already exists: %s", state.Encoder.OutPath))
+				appendJobTemplate(*job, jobLog, true)
+				writeSkippedLog(mediaFile, jobLog, false)
+				if filepath.Dir(mediaFile.Path) != consts.EXIST_DIR {
+					existDir := filepath.Join(filepath.Dir(mediaFile.Path), consts.EXIST_DIR)
+					if errMove, _ := moveMediaFile(*mediaFile, existDir, nil); errMove != nil {
+						_ = glg.Warnf("couldn't move source media file to exist directory, err: %s", errMove)
+					}
+					if errLogs, _ := moveLogs(*mediaFile, existDir, nil); errLogs != nil {
+						_ = glg.Warnf("couldn't move source log files to exist directory, err: %s", errLogs)
+					}
+				}
+				return
+			}
 			_ = glg.Errorf("encoding of %s failed, err: %s (file already exists)", state.Encoder.OutPath, err)
 			jobLog.Add("encode error: os.IsNotExist returned false and overwrite has been disabled")
 			isBricked = true
@@ -206,7 +319,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
-			if (cfg.Local.PauseOnEncodeError) {
+			if cfg.Local.PauseOnEncodeError {
 				state.Paused = true
 				state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
 			}
@@ -228,7 +341,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			if redirectDir != nil {
 				rollbackAllDupMoves(jobLog, obsoleteMovedFilePath, obsoleteMovedLogPaths)
 			}
-			if (cfg.Local.PauseOnEncodeError) {
+			if cfg.Local.PauseOnEncodeError {
 				state.Paused = true
 				state.PauseReason = consts.PAUSE_REASON_ENCODE_ERROR
 			}
@@ -255,13 +368,17 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	if err != nil {
 		_ = glg.Errorf("couldn't copy source log files to encoded file directory, err: %s", err)
 	}
+	// A kept-both variant gets the existing library file's metadata sidecar.
+	if keptBothSourcePath != "" {
+		copyNfoSidecar(keptBothSourcePath, stats.OutputPath)
+	}
 	err, _ = moveLogs(*mediaFile, doneDir, nil)
 	if err != nil {
 		_ = glg.Errorf("couldn't move source media file to done directory, err: %s", err)
 	}
 
 	// broadcast job if redis is enabled
-	if (redis.Handle.Running()) {
+	if redis.Handle.Running() {
 		_ = glg.Infof("redis: broadcasting job %s", stats.OutputPath)
 		err := redis.Handle.PushMessage(stats.OutputPath)
 		if err != nil {
@@ -404,12 +521,18 @@ func runDupeModules(jobLog *joblog.Data, fileNew media.File, fileDup media.File)
 // If the withFfmpegOut flag is set, the ffmpeg output will be appended to the info log, but not to the skipped log.
 func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data, withFfmpegOut bool) {
 	mediaFile.LogPaths = append(mediaFile.LogPaths, mediaFile.Path+".INFO.log")
+	infoLogPath := mediaFile.Path + ".INFO.log"
 	if withFfmpegOut {
 		jobLogWithFfmpeg := *jobLog
 		appendFfmpegOutput(&jobLogWithFfmpeg, state.Encoder)
-		_ = jobLogWithFfmpeg.AppendTo(mediaFile.Path+".INFO.log", false, false)
+		_ = jobLogWithFfmpeg.AppendTo(infoLogPath, false, false)
 	} else {
-		_ = jobLog.AppendTo(mediaFile.Path+".INFO.log", false, false)
+		_ = jobLog.AppendTo(infoLogPath, false, false)
+	}
+	// lumberjack creates files with mode 0600. On Unraid the .INFO.log must be
+	// readable/writable by every user (nobody:users), so fix the mode explicitly.
+	if err := os.Chmod(infoLogPath, 0666); err != nil {
+		_ = glg.Warnf("could not chmod INFO log %s: %s", infoLogPath, err)
 	}
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "skipped.log"), false, true)
 }
@@ -424,9 +547,9 @@ func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data, withFfmpegOut b
 //
 // In case of an error, the path will still be returned for rollback purposes, but the error will be non-nil
 func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
-	_, err := os.Stat(dstDir)
-	if os.IsNotExist(err) {
-		_ = os.Mkdir(dstDir, 0777)
+	if err := os.MkdirAll(dstDir, 0777); err != nil {
+		_ = glg.Errorf("could not create destination directory %s: %s", dstDir, err)
+		return err, nil
 	}
 	fileOut := strings.TrimSuffix(filepath.Base(file.Path), filepath.Ext(file.Path))
 	if moduleName != nil {
@@ -436,7 +559,7 @@ func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, m
 	}
 	fileOut += filepath.Ext(file.Path)
 	fileOut = filepath.Join(dstDir, fileOut)
-	err = tools.MoppyFile(file.Path, fileOut, true)
+	err := tools.MoppyFile(file.Path, fileOut, true)
 	if err != nil {
 		return err, map[string]string{file.Path: fileOut}
 	}
@@ -451,9 +574,9 @@ func moveMediaFile(file media.File, dstDir string, moduleName *string) (error, m
 //
 // In case of an error, the path of the failed move will still be returned for rollback purposes
 func moveLogs(file media.File, dstDir string, moduleName *string) (error, map[string]string) {
-	_, err := os.Stat(dstDir)
-	if os.IsNotExist(err) {
-		_ = os.Mkdir(dstDir, 0777)
+	if err := os.MkdirAll(dstDir, 0777); err != nil {
+		_ = glg.Errorf("could not create destination directory %s: %s", dstDir, err)
+		return err, nil
 	}
 	toMovePaths := make(map[string]string)
 	for _, log := range file.LogPaths {
@@ -476,10 +599,29 @@ func moveLogs(file media.File, dstDir string, moduleName *string) (error, map[st
 	return nil, toMovePaths
 }
 
+// copyNfoSidecar copies the metadata sidecar (.nfo) of an existing library file
+// to a newly produced variant, so "keep both" versions carry the same metadata.
+// A missing sidecar is not an error — most library files have none at first.
+func copyNfoSidecar(existingPath, newOutputPath string) {
+	if existingPath == "" || newOutputPath == "" {
+		return
+	}
+	src := strings.TrimSuffix(existingPath, filepath.Ext(existingPath)) + ".nfo"
+	if _, err := os.Stat(src); err != nil {
+		return
+	}
+	dst := strings.TrimSuffix(newOutputPath, filepath.Ext(newOutputPath)) + ".nfo"
+	if err := tools.MoppyFile(src, dst, false); err != nil {
+		_ = glg.Warnf("couldn't copy metadata sidecar %s to %s, err: %s", src, dst, err)
+		return
+	}
+	_ = glg.Infof("copied metadata sidecar %s to %s", src, dst)
+}
+
 func copyLogsToEncOut(file media.File, dstDir string) error {
-	_, err := os.Stat(dstDir)
-	if os.IsNotExist(err) {
-		_ = os.Mkdir(dstDir, 0777)
+	if err := os.MkdirAll(dstDir, 0777); err != nil {
+		_ = glg.Errorf("could not create destination directory %s: %s", dstDir, err)
+		return err
 	}
 	toMovePaths := make(map[string]string)
 	for _, log := range file.LogPaths {
@@ -512,14 +654,30 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	matches := make([]media.File, 0)
 
 	libCache := &cache.Instance().Library
+	pathsFingerprint := strings.Join(cfg.Local.MediaPaths, "\x00")
 
-	// if redis is enabled the cache lifetime is determined by ttl
-	if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
-		_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
+	// CacheLibScan=false: always scan the MediaPaths fresh. Under Docker the walk
+	// is a direct local FS access (<1s), so caching only adds staleness bugs.
+	if !cfg.Local.CacheLibScan {
 		libCache.Valid = false
-	} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
-		_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
-		libCache.Valid = false
+	} else {
+		// If the configured MediaPaths changed since the cache was built, the cache is
+		// stale even if the TTL has not expired: files in newly added paths would never
+		// be seen as duplicates until a restart. Fingerprint the path list and
+		// invalidate on change.
+		if libCache.ScannedPaths != "" && libCache.ScannedPaths != pathsFingerprint {
+			_ = glg.Infof("invalidating shared cache because MediaPaths changed")
+			libCache.Valid = false
+		}
+
+		// if redis is enabled the cache lifetime is determined by ttl
+		if redis.Get().Handle.Running() && (time.Now().Add(-cfg.Local.Redis.CacheTtl)).After(libCache.LastUpdate) {
+			_ = glg.Infof("invalidating shared cache after %s due to ttl", cfg.Local.Redis.CacheTtl)
+			libCache.Valid = false
+		} else if !redis.Get().Handle.Running() && (time.Now().Add(-time.Minute * 5)).After(libCache.LastUpdate) {
+			_ = glg.Infof("auto invalidating local lib cache after 5 minutes")
+			libCache.Valid = false
+		}
 	}
 
 	fillCache := false
@@ -538,6 +696,7 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 		}
 		libCache.Valid = true
 		libCache.LastUpdate = time.Now()
+		libCache.ScannedPaths = pathsFingerprint
 		cfg.Local.EstimatedLibSize = state.FileWalker.Position
 	} else {
 		_ = glg.Infof("scanning via memcache")
@@ -550,13 +709,51 @@ func checkForDuplicates(file *media.File) ([]media.File, error) {
 	return matches, nil
 }
 
+// keptBothAlreadyPresent reports whether an encode stopped because the
+// kept-both target already exists. Only applies when a quality suffix was set,
+// so the ordinary "file already exists" error keeps its meaning.
+func keptBothAlreadyPresent(exitCode int, qualitySuffix string) bool {
+	return exitCode == 107 && qualitySuffix != ""
+}
+
+// keepBothFor reports whether the new recording should be encoded under a
+// quality suffix instead of the default action. Only the quality modules
+// (resolution/audio) participate: their DISC means "existing is better"
+// (LowerQualityAction, default discard) and REPL means "new is better"
+// (HigherQualityAction, default replace). Other modules keep their behaviour.
+func keepBothFor(res, moduleName, lowerAction, higherAction string) bool {
+	if moduleName != consts.MODULE_NAME_RESOLUTION && moduleName != consts.MODULE_NAME_AUDIO {
+		return false
+	}
+	switch res {
+	case comparator.DISC:
+		return lowerAction == consts.QUALITY_ACTION_KEEP
+	case comparator.REPL:
+		return higherAction == consts.QUALITY_ACTION_KEEP
+	}
+	return false
+}
+
+func duplicateNameMatch(candidate, existing, extension string) bool {
+	candidateExt := filepath.Ext(candidate)
+	existingExt := filepath.Ext(existing)
+	if !strings.EqualFold(candidateExt, extension) || !strings.EqualFold(existingExt, extension) {
+		return false
+	}
+	// Strip configured framing prefixes and module suffixes before comparing, so
+	// "Terra X - Mars" and "Mars" count as the same work (see
+	// Shared.DuplicateStripPatterns).
+	patterns := config.Instance().Shared.DuplicateStripPatterns
+	return media.DuplicateKeyFor(candidate, patterns) == media.DuplicateKeyFor(existing, patterns)
+}
+
 func traverseMemCache(file *media.File, libCache *cache.Library) []media.File {
 	matches := make([]media.File, 0)
 	for _, path := range libCache.Data {
-		if filepath.Base(path) == file.OutName()+config.Instance().Local.Ext {
+		if duplicateNameMatch(file.OutName()+config.Instance().Local.Ext, filepath.Base(path), config.Instance().Local.Ext) {
 			_ = glg.Infof("found duplicate: %s", path)
-			file := &media.File{Path: path}
-			matches = append(matches, *file)
+			duplicate := &media.File{Path: path}
+			matches = append(matches, *duplicate)
 		}
 		if state.FileWalker.Position%1000 == 0 {
 			_ = glg.Logf("current dir: %s, position: %d/%d",
@@ -575,10 +772,10 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 			if de.IsDir() && strings.HasPrefix(de.Name(), ".") {
 				return errors.New("directory ignored")
 			}
-			if !de.IsDir() && de.Name() == (file.OutName()+config.Instance().Local.Ext) {
-				file := &media.File{Path: path}
+			if !de.IsDir() && duplicateNameMatch(file.OutName()+config.Instance().Local.Ext, de.Name(), config.Instance().Local.Ext) {
+				duplicate := &media.File{Path: path}
 				_ = glg.Infof("found duplicate: %s", path)
-				matches = append(matches, *file)
+				matches = append(matches, *duplicate)
 			}
 			if !de.IsDir() && strings.HasSuffix(de.Name(), config.Instance().Local.Ext) {
 				if state.FileWalker.Position%1000 == 0 {
@@ -605,4 +802,38 @@ func traverseDir(file *media.File, path string, fillCache bool) ([]media.File, e
 		return nil, err
 	}
 	return matches, nil
+}
+
+// findDuplicateYear runs the normalized-name duplicate scan for file and
+// returns the release year of the first found duplicate (from its .txt/.log via
+// ExtractYearFromFile, or from a " (YYYY)" suffix in its filename), plus the
+// full duplicate match list. The year is "" when no duplicate exists or no year
+// can be determined; the matches let the caller skip a second duplicate scan.
+func findDuplicateYear(file *media.File, dataStore *db.DataStore) (string, []media.File) {
+	duplicates, err := checkForDuplicates(file)
+	if err != nil {
+		_ = glg.Warnf("year collision scan failed for %s: %s", file.Path, err)
+		return "", nil
+	}
+	if len(duplicates) == 0 {
+		_ = glg.Infof("year-aware dupes: no normalized-name duplicate for %s", file.OutName()+config.Instance().Local.Ext)
+		return "", duplicates
+	}
+	dupe := duplicates[0]
+	_ = glg.Infof("year-aware dupes: normalized-name duplicate: candidate=%s, existing=%s", file.OutName()+config.Instance().Local.Ext, dupe.Path)
+	// A year suffix in the filename is the cheapest, most reliable source.
+	if y := media.YearFromSuffix(filepath.Base(dupe.Path)); y != "" {
+		_ = glg.Infof("year-aware dupes: existing duplicate %s -> year %s from filename suffix", dupe.Path, y)
+		return y, duplicates
+	}
+	if err := dupe.Update(); err != nil {
+		_ = glg.Warnf("couldn't parse duplicate log file for year: %s (existing=%s)", err, dupe.Path)
+	}
+	year := dupe.ExtractYearFromFile()
+	if year == "" {
+		_ = glg.Infof("year-aware dupes: existing duplicate %s has unknown year", dupe.Path)
+	} else {
+		_ = glg.Infof("year-aware dupes: existing duplicate %s -> year %s from metadata", dupe.Path, year)
+	}
+	return year, duplicates
 }

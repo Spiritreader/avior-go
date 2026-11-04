@@ -23,7 +23,12 @@ type Data struct {
 
 // Local is the main application configuration
 type Local struct {
-	Instance           int
+	Instance int
+	// ClientName overrides the machine hostname used to register this instance in
+	// the DB (collection clients). In Docker the container hostname may be a
+	// container ID or a stale inherited value; setting ClientName makes the
+	// registration deterministic. Empty = use os.Hostname() (previous behavior).
+	ClientName         string `json:"ClientName,omitempty"`
 	DatabaseURL        string
 	Redis              Redis
 	Ext                string
@@ -32,10 +37,26 @@ type Local struct {
 	Resolutions        map[string]string
 	ObsoletePath       string
 	MediaPaths         []string
-	EstimatedLibSize   int
-	Modules            map[string]ModuleConfig
-	EncoderConfig      map[string]EncoderConfig
-	EncoderPriority    string
+	// PathMappings maps UNC prefixes found in DB job paths to local container paths,
+	// e.g. "\\\\192.168.178.75\\recording_pool" -> "/recording_pool".
+	// Empty/nil = no translation (Windows behavior unchanged).
+	PathMappings map[string]string `json:"PathMappings,omitempty"`
+	// CacheLibScan caches the library scan (MediaPaths walk) in memory and reuses
+	// it for the Redis TTL (24h) instead of rescanning per duplicate check.
+	// Under Docker the walk is a direct local FS access and takes <1s, so caching
+	// only adds staleness bugs; set false to always scan fresh.
+	// Default true keeps the historical Windows/SMB behavior unchanged.
+	// NOTE: no omitempty - a false value must be persisted, otherwise Save() drops it.
+	CacheLibScan bool `json:"CacheLibScan"`
+	// YearAwareDupes: when true, same-title files with different release years are
+	// treated as separate films: on an exact-name duplicate match whose year differs
+	// from the new film's year, the new film is renamed to "Title (YYYY)" before the
+	// duplicate modules decide. Default true.
+	YearAwareDupes   bool `json:"YearAwareDupes"`
+	EstimatedLibSize int
+	Modules          map[string]ModuleConfig
+	EncoderConfig    map[string]EncoderConfig
+	EncoderPriority  string
 }
 
 type Redis struct {
@@ -52,6 +73,22 @@ type Shared struct {
 	SubExclude  []string
 	LogInclude  []string
 	LogExclude  []string
+	// DuplicateStripPatterns are case-insensitive regular expressions removed
+	// from a file's base name before the duplicate comparison key is built.
+	// They strip framing prefixes that are not part of the work itself
+	// (e.g. "Terra X - ", "42 - Die Antwort auf fast alles") and the module
+	// suffix avior-go appends when parking a replacement (e.g.
+	// "LogMatchModule 2026-09-16 2106"). Global on purpose: the duplicate
+	// detection runs against one shared library, so all instances must agree.
+	DuplicateStripPatterns []string
+	// LowerQualityAction selects what happens when the existing file is better
+	// (higher resolution or better audio): "discard" (default) parks the new
+	// recording in exists/, "keep" encodes it under a suffixed name.
+	LowerQualityAction string
+	// HigherQualityAction selects what happens when the new recording is better:
+	// "replace" (default) parks the existing file in .obsolete, "keep" encodes
+	// the new recording under a suffixed name and leaves the existing one alone.
+	HigherQualityAction string
 }
 
 type AudioFormats struct {
@@ -65,10 +102,6 @@ type ModuleConfig struct {
 	Settings interface{}
 }
 
-type AgeModuleSettings struct {
-	MaxAge int
-}
-
 type AudioModuleSettings struct {
 	Accuracy string
 }
@@ -77,8 +110,22 @@ type LengthModuleSettings struct {
 	Threshold int
 }
 
+// ToleranceStep grants a shortfall in minutes for recordings below a runtime
+// bracket. The last step without BelowMinutes is the catch-all.
+type ToleranceStep struct {
+	BelowMinutes int `mapstructure:"below_minutes"`
+	Minutes      int `mapstructure:"minutes"`
+}
+
 type DuplicateLengthCheckSettings struct {
+	// Threshold is the legacy percent comparison against the existing file. It is
+	// only used when the new recording has no EPG duration to check against.
 	Threshold int
+	// Tolerances maps the new recording's planned runtime to the allowed
+	// shortfall in minutes: a 115 min film may be 5 min short, a 9 min short
+	// film only 2 min. Sender EPG durations include commercial breaks, so the
+	// existing file's runtime is not a usable reference.
+	Tolerances []ToleranceStep
 }
 
 type LogMatchModuleSettings struct {
@@ -91,12 +138,6 @@ type MaxSizeModuleSettings struct {
 
 type ResolutionModuleSettings struct {
 	MinResolution int
-}
-
-type SizeApproxModuleSettings struct {
-	Difference  int
-	SampleCount int
-	Fraction    int
 }
 
 type ErrorModuleSettings struct {
@@ -174,6 +215,8 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.Resolutions = map[string]string{"hd": "1280x720", "fhd": "1920x1080"}
 	cfg.Local.EncoderConfig = map[string]EncoderConfig{"hd": *new(EncoderConfig)}
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
+	cfg.Local.CacheLibScan = true
+	cfg.Local.YearAwareDupes = true
 	cfg.Local.Redis = Redis{
 		Host:          "localhost:6379",
 		Password:      "",
@@ -183,15 +226,8 @@ func InitWithDefaults(cfg *Data) {
 		CacheTtl:      24 * time.Hour,
 	}
 
-	// AgeModule Config Defaults
-	moduleConfig := &ModuleConfig{
-		Enabled:  false,
-		Priority: 0,
-		Settings: &AgeModuleSettings{MaxAge: 90},
-	}
-	cfg.Local.Modules[consts.MODULE_NAME_AGE] = *moduleConfig
 	// AudioModule Config Defaults
-	moduleConfig = &ModuleConfig{
+	moduleConfig := &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
 		Settings: &AudioModuleSettings{Accuracy: consts.AUDIO_ACC_MED},
@@ -217,14 +253,6 @@ func InitWithDefaults(cfg *Data) {
 		Priority: 0,
 		Settings: &MaxSizeModuleSettings{MaxSize: 30},
 	}
-	// SizeApprox Config Defaults
-	cfg.Local.Modules[consts.MODULE_NAME_MAXSIZE] = *moduleConfig
-	moduleConfig = &ModuleConfig{
-		Enabled:  false,
-		Priority: 0,
-		Settings: &SizeApproxModuleSettings{Difference: 20, Fraction: 5, SampleCount: 2},
-	}
-	cfg.Local.Modules[consts.MODULE_NAME_SIZEAPPROX] = *moduleConfig
 	// ResolutionModule Config Defaults
 	moduleConfig = &ModuleConfig{
 		Enabled:  false,
