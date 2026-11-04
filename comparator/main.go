@@ -30,7 +30,6 @@ func InitDupeModules() []Module {
 		&DuplicateLengthCheckModule{},
 		&ErrorReplaceModule{},
 		&LegacyModule{},
-		&AgeModule{},
 		&AudioModule{},
 		&ResolutionModule{},
 		&LogMatchModule{},

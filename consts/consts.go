@@ -1,7 +1,6 @@
 package consts
 
 const (
-	MODULE_NAME_AGE                  string = "AgeModule"
 	MODULE_NAME_AUDIO                string = "AudioModule"
 	MODULE_NAME_LENGTH               string = "LengthModule"
 	MODULE_NAME_LOGMATCH             string = "LogMatchModule"

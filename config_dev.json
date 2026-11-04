@@ -28,13 +28,6 @@
   ],
   "EstimatedLibSize": 127,
   "Modules": {
-    "AgeModule": {
-      "Enabled": true,
-      "Priority": 0,
-      "Settings": {
-        "MaxAge": 5
-      }
-    },
     "AudioModule": {
       "Enabled": true,
       "Priority": 0,

@@ -102,10 +102,6 @@ type ModuleConfig struct {
 	Settings interface{}
 }
 
-type AgeModuleSettings struct {
-	MaxAge int
-}
-
 type AudioModuleSettings struct {
 	Accuracy string
 }
@@ -230,15 +226,8 @@ func InitWithDefaults(cfg *Data) {
 		CacheTtl:      24 * time.Hour,
 	}
 
-	// AgeModule Config Defaults
-	moduleConfig := &ModuleConfig{
-		Enabled:  false,
-		Priority: 0,
-		Settings: &AgeModuleSettings{MaxAge: 90},
-	}
-	cfg.Local.Modules[consts.MODULE_NAME_AGE] = *moduleConfig
 	// AudioModule Config Defaults
-	moduleConfig = &ModuleConfig{
+	moduleConfig := &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
 		Settings: &AudioModuleSettings{Accuracy: consts.AUDIO_ACC_MED},
