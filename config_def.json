@@ -39,9 +39,7 @@
     "DuplicateLengthCheckModule": {
       "Enabled": true,
       "Priority": 0,
-      "Settings": {
-        "Threshold": 2
-      }
+      "Settings": {}
     },
     "ErrorReplaceModule": {
       "Enabled": true,

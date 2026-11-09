@@ -20,14 +20,13 @@ func toleranceSteps() []config.ToleranceStep {
 	}
 }
 
-func runModule(t *testing.T, newFile, dupe media.File, threshold int) (string, string) {
+func runModule(t *testing.T, newFile, dupe media.File) (string, string) {
 	t.Helper()
 	m := &DuplicateLengthCheckModule{}
 	m.Init(config.ModuleConfig{
 		Enabled:  true,
 		Priority: 4,
 		Settings: map[string]interface{}{
-			"Threshold":  threshold,
 			"Tolerances": toleranceSteps(),
 		},
 	})
@@ -55,24 +54,21 @@ func TestDuplicateLengthToleranceByRuntime(t *testing.T) {
 	for _, tt := range tests {
 		newFile := media.File{RecordedLength: tt.recorded, Length: tt.length}
 		dupe := media.File{RecordedLength: tt.dupeLen, Length: -1}
-		got, msg := runModule(t, newFile, dupe, 3)
+		got, msg := runModule(t, newFile, dupe)
 		if got != tt.want {
 			t.Errorf("%s: got %s (%s), want %s", tt.name, got, msg, tt.want)
 		}
 	}
 }
 
-// Without EPG data for the new recording, fall back to the previous
-// percent comparison against the existing file.
-func TestDuplicateLengthFallbackWithoutEPG(t *testing.T) {
-	newFile := media.File{RecordedLength: 113, Length: -1}
-	dupe := media.File{RecordedLength: 138, Length: -1}
-	if got, msg := runModule(t, newFile, dupe, 3); got != DISC {
-		t.Errorf("no EPG + 18%% shorter: got %s (%s), want %s", got, msg, DISC)
-	}
-	newFile2 := media.File{RecordedLength: 136, Length: -1}
-	if got, msg := runModule(t, newFile2, dupe, 3); got != NOCH {
-		t.Errorf("no EPG + 1.4%% shorter: got %s (%s), want %s", got, msg, NOCH)
+// Without a planned runtime for the new recording the module cannot judge it.
+// There is deliberately no percentage comparison against the existing file any
+// more: that only punished old recordings that ran long (commercials, overrun).
+func TestDuplicateLengthWithoutPlannedRuntimeSkips(t *testing.T) {
+	newFile := media.File{RecordedLength: 88, Length: -1}
+	dupe := media.File{RecordedLength: 95, Length: -1}
+	if got, msg := runModule(t, newFile, dupe); got != NOCH {
+		t.Errorf("no planned runtime: got %s (%s), want %s", got, msg, NOCH)
 	}
 }
 
@@ -80,18 +76,18 @@ func TestDuplicateLengthFallbackWithoutEPG(t *testing.T) {
 func TestDuplicateLengthMissingData(t *testing.T) {
 	newFile := media.File{RecordedLength: -1, Length: -1}
 	dupe := media.File{RecordedLength: 138, Length: -1}
-	if got, _ := runModule(t, newFile, dupe, 3); got != NOCH {
+	if got, _ := runModule(t, newFile, dupe); got != NOCH {
 		t.Errorf("missing recorded length: got %s, want %s", got, NOCH)
 	}
 }
 
-// The module must be usable without the tolerance list (legacy configs).
-func TestDuplicateLengthWithoutTolerances(t *testing.T) {
+// A config without tolerances cannot judge either, and must not fall back to the
+// removed percentage comparison.
+func TestDuplicateLengthWithoutTolerancesSkips(t *testing.T) {
 	m := &DuplicateLengthCheckModule{}
-	m.Init(config.ModuleConfig{Enabled: true, Priority: 4, Settings: map[string]interface{}{"Threshold": 3}})
-	_, result, _ := m.Run(media.File{RecordedLength: 113, Length: 115}, media.File{RecordedLength: 138, Length: -1})
-	if result != DISC {
-		t.Errorf("legacy behaviour without tolerances: got %s, want %s", result, DISC)
+	m.Init(config.ModuleConfig{Enabled: true, Priority: 4, Settings: map[string]interface{}{}})
+	if _, result, msg := m.Run(media.File{RecordedLength: 113, Length: 115}, media.File{RecordedLength: 138, Length: -1}); result != NOCH {
+		t.Errorf("no tolerances: got %s (%s), want %s", result, msg, NOCH)
 	}
 }
 
@@ -105,7 +101,6 @@ func TestDuplicateLengthTolerancesFromDecodedJSON(t *testing.T) {
 		Enabled:  true,
 		Priority: 4,
 		Settings: map[string]interface{}{
-			"Threshold": 3,
 			"Tolerances": []interface{}{
 				map[string]interface{}{"below_minutes": 10, "minutes": 2},
 				map[string]interface{}{"below_minutes": 60, "minutes": 3},
@@ -128,26 +123,16 @@ func TestDuplicateLengthTolerancesFromDecodedJSON(t *testing.T) {
 }
 
 // Log evaluations match the historic "new file too short for replacement"
-// wording. Both discarding paths (own planned runtime and the legacy fallback
-// without EPG data) must use it so a single grep keeps working.
+// wording, so the single remaining discard path must keep it.
 func TestDuplicateLengthDiscardMessagePrefix(t *testing.T) {
 	const prefix = "new file too short for replacement"
 
 	newFile := media.File{RecordedLength: 46, Length: 50}
-	got, msg := runModule(t, newFile, media.File{RecordedLength: 60, Length: -1}, 3)
+	got, msg := runModule(t, newFile, media.File{RecordedLength: 60, Length: -1})
 	if got != DISC {
 		t.Fatalf("expected DISC for 4 min shortfall, got %s", got)
 	}
 	if !strings.HasPrefix(msg, prefix) {
-		t.Errorf("EPG path message = %q, want prefix %q", msg, prefix)
-	}
-
-	noEPG := media.File{RecordedLength: 88, Length: -1}
-	got2, msg2 := runModule(t, noEPG, media.File{RecordedLength: 95, Length: -1}, 3)
-	if got2 != DISC {
-		t.Fatalf("expected DISC for 7%% shortfall, got %s", got2)
-	}
-	if !strings.HasPrefix(msg2, prefix) {
-		t.Errorf("fallback message = %q, want prefix %q", msg2, prefix)
+		t.Errorf("message = %q, want prefix %q", msg, prefix)
 	}
 }
