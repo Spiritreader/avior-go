@@ -61,7 +61,6 @@
       "Enabled": true,
       "Priority": 5,
       "Settings": {
-        "Threshold": 3,
         "Tolerances": [
           {
             "below_minutes": 10,

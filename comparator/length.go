@@ -32,6 +32,11 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), NOCH, "err"
 	}
 	file := files[0]
+	// Without a planned runtime the percentage is meaningless (Length = -1 would
+	// yield an absurd value), so the module must not judge the recording.
+	if file.RecordedLength <= 0 || file.Length <= 0 {
+		return s.Name(), NOCH, "no planned runtime available, skipping module"
+	}
 	diff := file.LengthDifference()
 	if diff > settings.Threshold {
 		return s.Name(), DISC, fmt.Sprintf("recording too short: r:%dm / l:%dm (d:%d%% / t:%d%%)",

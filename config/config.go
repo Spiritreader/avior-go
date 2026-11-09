@@ -118,13 +118,11 @@ type ToleranceStep struct {
 }
 
 type DuplicateLengthCheckSettings struct {
-	// Threshold is the legacy percent comparison against the existing file. It is
-	// only used when the new recording has no EPG duration to check against.
-	Threshold int
 	// Tolerances maps the new recording's planned runtime to the allowed
 	// shortfall in minutes: a 115 min film may be 5 min short, a 9 min short
 	// film only 2 min. Sender EPG durations include commercial breaks, so the
-	// existing file's runtime is not a usable reference.
+	// existing file's runtime is not a usable reference — there is deliberately
+	// no percentage comparison against it.
 	Tolerances []ToleranceStep
 }
 
@@ -278,7 +276,15 @@ func InitWithDefaults(cfg *Data) {
 	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &DuplicateLengthCheckSettings{Threshold: 0},
+		Settings: &DuplicateLengthCheckSettings{
+			Tolerances: []ToleranceStep{
+				{BelowMinutes: 10, Minutes: 2},
+				{BelowMinutes: 60, Minutes: 3},
+				{BelowMinutes: 90, Minutes: 4},
+				{BelowMinutes: 120, Minutes: 5},
+				{Minutes: 6},
+			},
+		},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_DUPLICATELENGTHCHECK] = *moduleConfig
 }
