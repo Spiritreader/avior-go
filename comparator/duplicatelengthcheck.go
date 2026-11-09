@@ -43,7 +43,9 @@ func (s *DuplicateLengthCheckModule) Run(files ...media.File) (string, string, s
 		tolerance := toleranceFor(settings.Tolerances, file.Length)
 		shortfall := file.Length - file.RecordedLength
 		if shortfall > tolerance {
-			return s.Name(), DISC, fmt.Sprintf("new recording incomplete: %dm recorded vs %dm planned (shortfall %dm > tolerance %dm)",
+			// Keep the historic prefix: log evaluations match on
+			// "no encode - new file too short for replacement".
+			return s.Name(), DISC, fmt.Sprintf("new file too short for replacement: %dm recorded vs %dm planned (shortfall %dm > tolerance %dm)",
 				file.RecordedLength, file.Length, shortfall, tolerance)
 		}
 		return s.Name(), NOCH, fmt.Sprintf("ok: %dm recorded vs %dm planned (shortfall %dm <= tolerance %dm)",
@@ -57,7 +59,7 @@ func (s *DuplicateLengthCheckModule) Run(files ...media.File) (string, string, s
 	// discard file if new file is shorter than the threshold compared to the duplicate
 	diff := float64(1) - (float64(file.RecordedLength) / float64(duplicate.RecordedLength))
 	if (diff * 100) > float64(settings.Threshold) {
-		return s.Name(), DISC, fmt.Sprintf("new file too short for replacement, (n:%dm/d:%dm) with diff: %d%%, t:%d%%",
+		return s.Name(), DISC, fmt.Sprintf("new file too short for replacement: (n:%dm/d:%dm) with diff: %d%%, t:%d%%",
 			file.RecordedLength, duplicate.RecordedLength, int64(diff*100), settings.Threshold)
 	}
 	return s.Name(), NOCH, fmt.Sprintf("ok (n:%dm/d:%dm) with diff: %d%%, t:%d%%", file.RecordedLength, duplicate.RecordedLength, int64(diff*100), settings.Threshold)
