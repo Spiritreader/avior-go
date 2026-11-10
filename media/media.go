@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -178,11 +177,6 @@ func (f *File) LogsContain(terms []string, ignoredLines []string) (bool, string)
 		return true, mMatch
 	}
 	return false, ""
-}
-
-// Returns, in percent from 0-100, the difference in length between the recorded and actual length
-func (f *File) LengthDifference() int {
-	return int(math.Round(100 - (float64(f.RecordedLength) / float64(f.Length) * 100)))
 }
 
 func (f *File) OutName() string {
