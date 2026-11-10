@@ -36,11 +36,6 @@
         "Accuracy": "med"
       }
     },
-    "DuplicateLengthCheckModule": {
-      "Enabled": true,
-      "Priority": 0,
-      "Settings": {}
-    },
     "ErrorReplaceModule": {
       "Enabled": true,
       "Priority": 0,

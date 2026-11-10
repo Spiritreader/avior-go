@@ -107,10 +107,10 @@ type AudioModuleSettings struct {
 }
 
 type LengthModuleSettings struct {
-	// Tolerances works exactly like DuplicateLengthCheckModule: the recording is
-	// judged against its own planned runtime, with the allowed shortfall growing
-	// with the runtime. It replaces the former percentage check, which could not
-	// tell a truncated recording from a short film.
+	// Tolerances maps the planned runtime to the allowed shortfall in minutes:
+	// the recording is judged against its own planned runtime, with the allowed
+	// shortfall growing with the runtime. It replaces the former percentage
+	// check, which could not tell a truncated recording from a short film.
 	Tolerances []ToleranceStep
 }
 
@@ -119,15 +119,6 @@ type LengthModuleSettings struct {
 type ToleranceStep struct {
 	BelowMinutes int `mapstructure:"below_minutes"`
 	Minutes      int `mapstructure:"minutes"`
-}
-
-type DuplicateLengthCheckSettings struct {
-	// Tolerances maps the new recording's planned runtime to the allowed
-	// shortfall in minutes: a 115 min film may be 5 min short, a 9 min short
-	// film only 2 min. Sender EPG durations include commercial breaks, so the
-	// existing file's runtime is not a usable reference — there is deliberately
-	// no percentage comparison against it.
-	Tolerances []ToleranceStep
 }
 
 type LogMatchModuleSettings struct {
@@ -283,22 +274,7 @@ func InitWithDefaults(cfg *Data) {
 		Priority: 0,
 		Settings: &ErrorModuleSettings{Threshold: 0},
 	}
-	// DuplicateLengthCheckModule Config Defaults
 	cfg.Local.Modules[consts.MODULE_NAME_ERRORREPLACE] = *moduleConfig
-	moduleConfig = &ModuleConfig{
-		Enabled:  false,
-		Priority: 0,
-		Settings: &DuplicateLengthCheckSettings{
-			Tolerances: []ToleranceStep{
-				{BelowMinutes: 10, Minutes: 2},
-				{BelowMinutes: 60, Minutes: 3},
-				{BelowMinutes: 90, Minutes: 4},
-				{BelowMinutes: 120, Minutes: 5},
-				{Minutes: 6},
-			},
-		},
-	}
-	cfg.Local.Modules[consts.MODULE_NAME_DUPLICATELENGTHCHECK] = *moduleConfig
 }
 
 func LoadLocal() error {

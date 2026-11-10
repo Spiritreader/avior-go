@@ -32,9 +32,9 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), NOCH, "err"
 	}
 	file := files[0]
-	// Same rule as DuplicateLengthCheckModule: the recording is judged against its
-	// own planned runtime. Without one the module cannot tell a truncated
-	// recording from a short film, so it must not discard anything.
+	// The recording is judged against its own planned runtime. Without one the
+	// module cannot tell a truncated recording from a short film, so it must not
+	// discard anything.
 	if file.RecordedLength <= 0 || file.Length <= 0 || len(settings.Tolerances) == 0 {
 		return s.Name(), NOCH, "no planned runtime for the recording, skipping module"
 	}

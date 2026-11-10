@@ -58,33 +58,6 @@
         "Accuracy": "med"
       }
     },
-    "DuplicateLengthCheckModule": {
-      "Enabled": true,
-      "Priority": 4,
-      "Settings": {
-        "Tolerances": [
-          {
-            "below_minutes": 10,
-            "minutes": 2
-          },
-          {
-            "below_minutes": 60,
-            "minutes": 3
-          },
-          {
-            "below_minutes": 90,
-            "minutes": 4
-          },
-          {
-            "below_minutes": 120,
-            "minutes": 5
-          },
-          {
-            "minutes": 6
-          }
-        ]
-      }
-    },
     "ErrorReplaceModule": {
       "Enabled": true,
       "Priority": 4,
