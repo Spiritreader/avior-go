@@ -107,7 +107,11 @@ type AudioModuleSettings struct {
 }
 
 type LengthModuleSettings struct {
-	Threshold int
+	// Tolerances works exactly like DuplicateLengthCheckModule: the recording is
+	// judged against its own planned runtime, with the allowed shortfall growing
+	// with the runtime. It replaces the former percentage check, which could not
+	// tell a truncated recording from a short film.
+	Tolerances []ToleranceStep
 }
 
 // ToleranceStep grants a shortfall in minutes for recordings below a runtime
@@ -235,7 +239,15 @@ func InitWithDefaults(cfg *Data) {
 	moduleConfig = &ModuleConfig{
 		Enabled:  false,
 		Priority: 0,
-		Settings: &LengthModuleSettings{Threshold: 25},
+		Settings: &LengthModuleSettings{
+			Tolerances: []ToleranceStep{
+				{BelowMinutes: 10, Minutes: 2},
+				{BelowMinutes: 60, Minutes: 3},
+				{BelowMinutes: 90, Minutes: 4},
+				{BelowMinutes: 120, Minutes: 5},
+				{Minutes: 6},
+			},
+		},
 	}
 	cfg.Local.Modules[consts.MODULE_NAME_LENGTH] = *moduleConfig
 	// LogMatch Config Defaults
