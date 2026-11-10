@@ -32,13 +32,21 @@ func (s *LengthModule) Run(files ...media.File) (string, string, string) {
 		return s.Name(), NOCH, "err"
 	}
 	file := files[0]
-	diff := file.LengthDifference()
-	if diff > settings.Threshold {
-		return s.Name(), DISC, fmt.Sprintf("recording too short: r:%dm / l:%dm (d:%d%% / t:%d%%)",
-			file.RecordedLength, file.Length, diff, settings.Threshold)
+	// Same rule as DuplicateLengthCheckModule: the recording is judged against its
+	// own planned runtime. Without one the module cannot tell a truncated
+	// recording from a short film, so it must not discard anything.
+	if file.RecordedLength <= 0 || file.Length <= 0 || len(settings.Tolerances) == 0 {
+		return s.Name(), NOCH, "no planned runtime for the recording, skipping module"
 	}
-	return s.Name(), NOCH, fmt.Sprintf("ok: r:%dm / l:%dm (d:%d%% / t:%d%%)",
-		file.RecordedLength, file.Length, diff, settings.Threshold)
+
+	tolerance := toleranceFor(settings.Tolerances, file.Length)
+	shortfall := file.Length - file.RecordedLength
+	if shortfall > tolerance {
+		return s.Name(), DISC, fmt.Sprintf("recording too short: %dm recorded vs %dm planned (shortfall %dm > tolerance %dm)",
+			file.RecordedLength, file.Length, shortfall, tolerance)
+	}
+	return s.Name(), NOCH, fmt.Sprintf("ok: %dm recorded vs %dm planned (shortfall %dm <= tolerance %dm)",
+		file.RecordedLength, file.Length, shortfall, tolerance)
 }
 
 func (s *LengthModule) Priority() int {

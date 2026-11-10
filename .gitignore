@@ -5,6 +5,11 @@
 *.so
 *.dylib
 
+# Media files
+*.ts
+*.mkv
+*.mp4
+
 # app generated logs and config
 config.json
 log/
@@ -29,4 +34,4 @@ log/
 .history/
 
 # debug bin file
-__debug_bin
+__debug_bindist/
