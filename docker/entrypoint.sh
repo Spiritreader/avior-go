@@ -11,10 +11,11 @@ rm -f /data/avior-go
 cp /opt/avior-go-bin /data/avior-go
 chmod +x /data/avior-go
 cd /data
-# Drop the restrictive umask some base images inherit (linuxserver sets 077): files
-# the app creates (0600-umasked) must stay readable/writable for other users on the
-# host (SMB/NFS). 002 keeps owner+group rw and lets group/other read.
-umask 002
+# Files the app creates must stay readable/writable for every authorized user on
+# the host (SMB/NFS), matching the other Unraid tools (add_rating_ui sets umask 0
+# for the same reason). umask only removes permission bits, so loggers that open
+# their file with 0600 (lumberjack) are additionally chmodded by the app.
+umask 000
 # PUID/PGID (LinuxServer convention): run the app as the configured user/group so
 # every file it creates (logs in /data/log, .INFO.log next to media, config.json)
 # is owned by that UID/GID on the host. Default: root (no env set).
