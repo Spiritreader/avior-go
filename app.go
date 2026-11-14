@@ -65,7 +65,7 @@ func main() {
 
 	// Set up logger
 	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
-	// Create the log dir explicitly with 0755: glg.FileWriter's perm argument is
+	// Create the log dir explicitly with 0775: glg.FileWriter's perm argument is
 	// passed BOTH to os.MkdirAll (dir) and OpenFile (file), so one value cannot be
 	// right for both. A dir needs the x bit (0755), a file should be 0644. The old
 	// os.ModeAppend (flag bit = 0 as permission) made the dir 000 on Linux.
@@ -73,10 +73,10 @@ func main() {
 	// MkdirAll does NOT fix permissions of an already existing directory. A legacy
 	// log/ dir created with mode 000 (by the old os.ModeAppend bug) would stay
 	// inaccessible forever, so chmod explicitly after creation.
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0775); err != nil {
 		_ = glg.Errorf("could not create log directory %s: %s", logDir, err)
 	}
-	if err := os.Chmod(logDir, 0755); err != nil {
+	if err := os.Chmod(logDir, 0775); err != nil {
 		_ = glg.Errorf("could not fix permissions on log directory %s: %s", logDir, err)
 	}
 	errlog := glg.FileWriter(filepath.Join(logDir, "err.log"), 0666)
