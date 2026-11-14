@@ -49,6 +49,26 @@ Or use `make build-windows` / `make build-linux` / `make all` (requires `make`).
 - godirwalk pinned below v1.17.0 (see `go.mod` exclude) — v1.17.0 reports io.EOF
   as a walk error on Windows.
 
+## File permissions (all files the process creates)
+
+Everything the app writes must be readable **and writable by every authorized host
+user** — logs in `/data/log`, `.INFO.log` next to the media, `config.json`. The
+container runs as `nobody:users` (PUID/PGID) and its output is shared with SMB
+users and other tools (`add_rating_ui`, `avior-dedup`, scrapers). The matching rule
+in `add_rating_ui` is `process.umask(0)` ("Dateien 666, world-writable").
+
+- **Files: `0666`. Directories: `0775`/`0777`.** Do not ship anything stricter.
+- `docker/entrypoint.sh` sets `umask 000` for that reason — do not lower it back.
+- **A umask is not enough**: it only removes permission bits. Loggers that pass a
+  mode to `os.OpenFile` keep it. `lumberjack` hardcodes `0600`, so every file it
+  writes (`main.log`, rotated `main-<ts>.log`, `processed.log`, `skipped.log`,
+  `.INFO.log`) is chmodded to `0666` explicitly.
+- `app.go: ensureLogPermissions` re-applies the mode for `main.log`/`err.log`
+  every 30 s because lumberjack rotates at 10 MB and would otherwise leave a
+  `0600` file behind.
+- When adding a new writer (logger, exporter, cache dump), set `0666` at creation
+  **or** chmod after the first write — and add a test that asserts the mode.
+
 ## Docker
 
 `compose.yaml` + `Dockerfile` in repo root for Komodo deployment.
