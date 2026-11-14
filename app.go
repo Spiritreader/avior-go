@@ -28,22 +28,29 @@ var (
 // umask cannot help here: lumberjack passes 0600 to os.OpenFile, and a umask only
 // removes permission bits. The mode is fixed once the file exists and re-checked
 // periodically so lumberjack's 10 MB rotation does not leave a 0600 file behind.
-func ensureLogPermissions(logDir string, names ...string) {
-	fixLogPermissions(logDir, names...)
+func ensureLogPermissions(logDir string) {
+	fixLogPermissions(logDir)
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
-		fixLogPermissions(logDir, names...)
+		fixLogPermissions(logDir)
 	}
 }
 
-// fixLogPermissions applies the mode once; missing files are skipped.
-func fixLogPermissions(logDir string, names ...string) {
-	for _, name := range names {
-		path := filepath.Join(logDir, name)
-		if _, err := os.Stat(path); err != nil {
+// fixLogPermissions makes every file in the log directory world-readable and
+// writable. It covers lumberjack's rotated files and logs created before this
+// rule existed, not just the two the process holds open.
+func fixLogPermissions(logDir string) {
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		_ = glg.Warnf("could not read log directory %s: %s", logDir, err)
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
 			continue
 		}
+		path := filepath.Join(logDir, entry.Name())
 		if err := os.Chmod(path, 0666); err != nil {
 			_ = glg.Warnf("could not chmod log file %s: %s", path, err)
 		}
@@ -97,9 +104,10 @@ func main() {
 	defer log.Close()
 
 	// Runtime logs must be readable/writable for every authorized user on the host.
-	// lumberjack opens its file with 0600 and rotates it, so the mode is corrected
-	// here and re-applied periodically for the rotated files.
-	go ensureLogPermissions(logDir, "main.log", "err.log")
+	// lumberjack opens its file with 0600 and rotates it, and logs written before a
+	// fix stay 0600, so the whole directory is corrected here and re-checked
+	// periodically.
+	go ensureLogPermissions(logDir)
 
 	// read cli args
 	if len(os.Args) > 1 {
