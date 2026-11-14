@@ -23,6 +23,33 @@ var (
 	resumeChan chan string
 )
 
+// ensureLogPermissions keeps the runtime log files world-readable/writable.
+//
+// umask cannot help here: lumberjack passes 0600 to os.OpenFile, and a umask only
+// removes permission bits. The mode is fixed once the file exists and re-checked
+// periodically so lumberjack's 10 MB rotation does not leave a 0600 file behind.
+func ensureLogPermissions(logDir string, names ...string) {
+	fixLogPermissions(logDir, names...)
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		fixLogPermissions(logDir, names...)
+	}
+}
+
+// fixLogPermissions applies the mode once; missing files are skipped.
+func fixLogPermissions(logDir string, names ...string) {
+	for _, name := range names {
+		path := filepath.Join(logDir, name)
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+		if err := os.Chmod(path, 0666); err != nil {
+			_ = glg.Warnf("could not chmod log file %s: %s", path, err)
+		}
+	}
+}
+
 func main() {
 	resumeChan = make(chan string, 1)
 	apiChan := make(chan string)
@@ -45,7 +72,7 @@ func main() {
 	if err := os.Chmod(logDir, 0755); err != nil {
 		_ = glg.Errorf("could not fix permissions on log directory %s: %s", logDir, err)
 	}
-	errlog := glg.FileWriter(filepath.Join(logDir, "err.log"), 0644)
+	errlog := glg.FileWriter(filepath.Join(logDir, "err.log"), 0666)
 	log := &lumberjack.Logger{
 		Filename: filepath.Join(globalstate.ReflectionPath(), "log", "main.log"),
 		MaxSize:  10, // megabytes
@@ -68,6 +95,11 @@ func main() {
 		SetLevelColor(glg.DEBG, glg.Cyan)
 	_ = glg.Info("version ==>", "hey (2.0.1) codename odysseus")
 	defer log.Close()
+
+	// Runtime logs must be readable/writable for every authorized user on the host.
+	// lumberjack opens its file with 0600 and rotates it, so the mode is corrected
+	// here and re-applied periodically for the rotated files.
+	go ensureLogPermissions(logDir, "main.log", "err.log")
 
 	// read cli args
 	if len(os.Args) > 1 {

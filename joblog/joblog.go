@@ -58,6 +58,12 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 			_ = glg.Errorf("error closing file: %s", err)
 		}
 	}()
+	// lumberjack opens log files with 0600, which keeps other users (SMB, other
+	// containers) out. Every log we write must stay readable/writable for all
+	// authorized users, so the mode is corrected after the file exists.
+	if err := os.Chmod(path, 0666); err != nil {
+		_ = glg.Warnf("could not chmod log file %s: %s", path, err)
+	}
 	hostname, _ := os.Hostname()
 	writer := bufio.NewWriter(file)
 	if newline {

@@ -529,11 +529,6 @@ func writeSkippedLog(mediaFile *media.File, jobLog *joblog.Data, withFfmpegOut b
 	} else {
 		_ = jobLog.AppendTo(infoLogPath, false, false)
 	}
-	// lumberjack creates files with mode 0600. On Unraid the .INFO.log must be
-	// readable/writable by every user (nobody:users), so fix the mode explicitly.
-	if err := os.Chmod(infoLogPath, 0666); err != nil {
-		_ = glg.Warnf("could not chmod INFO log %s: %s", infoLogPath, err)
-	}
 	_ = jobLog.AppendTo(filepath.Join(globalstate.ReflectionPath(), "log", "skipped.log"), false, true)
 }
 
