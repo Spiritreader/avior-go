@@ -268,21 +268,6 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 	// encode with one retry that overwrites (in case the old one failed)
 	_ = glg.Infof("encoding file %s", mediaFile.Path)
 	_ = glg.Logf("media struct: %+v", *mediaFile)
-	// Publish the source sidecars before the output MKV becomes visible. Other
-	// avior instances scan the shared library concurrently; without this, they
-	// can see a new MKV while its .log/.txt files are still being copied and
-	// classify the old duplicate as unknown.
-	if encoderConfig, ok := cfg.Local.EncoderConfig[mediaFile.Resolution.Tag]; ok {
-		outputDir := encoderConfig.OutDirectory
-		if redirectDir != nil {
-			outputDir = *redirectDir
-		}
-		if outputDir != "" {
-			if err := prepareOutputLogs(*mediaFile, outputDir, cfg.Local.Ext); err != nil {
-				_ = glg.Warnf("couldn't publish output sidecars before encoding: %s", err)
-			}
-		}
-	}
 	jobLog.Add("Encoder Info:")
 
 	// invalidate cache in non-redis mode as it won't be recent anymore after encoding a job
@@ -626,19 +611,6 @@ func copyNfoSidecar(existingPath, newOutputPath string) {
 		return
 	}
 	_ = glg.Infof("copied metadata sidecar %s to %s", src, dst)
-}
-
-// prepareOutputLogs publishes sidecars before a new output file is created.
-// Existing output files are left untouched; their sidecars belong to that
-// already-published file and must not be overwritten by a duplicate attempt.
-func prepareOutputLogs(file media.File, dstDir, extension string) error {
-	outputPath := filepath.Join(dstDir, file.OutName()+extension)
-	if _, err := os.Stat(outputPath); err == nil {
-		return nil
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-	return copyLogsToEncOut(file, dstDir)
 }
 
 func copyLogsToEncOut(file media.File, dstDir string) error {
