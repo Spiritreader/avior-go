@@ -154,8 +154,8 @@ func TestDuplicateNameMatchStripsPrefixFromOutputName(t *testing.T) {
 }
 
 // The .INFO.log files must be world-readable/writable on Unraid so every
-// user (nobody:users) can read/write/delete them. lumberjack creates files
-// with 0600, so writeSkippedLog must fix the mode explicitly.
+// user (nobody:users) can read/write/delete them. joblog.AppendTo must fix the
+// mode before and after lumberjack creates or rotates the file.
 func TestWriteSkippedLogInfoPerms(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix file permissions do not exist on windows")
