@@ -172,6 +172,46 @@ func TestWriteSkippedLogInfoPerms(t *testing.T) {
 	}
 }
 
+func TestPrepareOutputLogsPublishesSidecarsBeforeEncode(t *testing.T) {
+	sourceDir := t.TempDir()
+	destinationDir := t.TempDir()
+	file := media.File{
+		Name:     "Example",
+		LogPaths: []string{filepath.Join(sourceDir, "source.log"), filepath.Join(sourceDir, "source.txt")},
+	}
+	for _, path := range file.LogPaths {
+		if err := os.WriteFile(path, []byte("sidecar"), 0666); err != nil {
+			t.Fatalf("write source sidecar: %s", err)
+		}
+	}
+
+	if err := prepareOutputLogs(file, destinationDir, ".mkv"); err != nil {
+		t.Fatalf("prepare output logs: %s", err)
+	}
+	for _, extension := range []string{".log", ".txt"} {
+		if _, err := os.Stat(filepath.Join(destinationDir, "Example"+extension)); err != nil {
+			t.Errorf("published %s: %s", extension, err)
+		}
+	}
+
+	if err := os.WriteFile(filepath.Join(destinationDir, "Example.mkv"), []byte("existing"), 0666); err != nil {
+		t.Fatalf("write existing output: %s", err)
+	}
+	if err := os.WriteFile(filepath.Join(destinationDir, "Example.log"), []byte("keep"), 0666); err != nil {
+		t.Fatalf("write existing sidecar: %s", err)
+	}
+	if err := prepareOutputLogs(file, destinationDir, ".mkv"); err != nil {
+		t.Fatalf("prepare existing output logs: %s", err)
+	}
+	content, err := os.ReadFile(filepath.Join(destinationDir, "Example.log"))
+	if err != nil {
+		t.Fatalf("read existing sidecar: %s", err)
+	}
+	if string(content) != "keep" {
+		t.Fatalf("existing sidecar was overwritten: %q", content)
+	}
+}
+
 // The quality actions decide whether both versions are kept. Defaults keep the
 // previous behaviour (discard on lower quality, replace on higher quality).
 func TestKeepBothFor(t *testing.T) {
