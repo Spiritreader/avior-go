@@ -120,6 +120,12 @@ func TestDuplicateNameMatchStripsPrefixFromOutputName(t *testing.T) {
 			wantMatch: true,
 		},
 		{
+			name:      "quality suffix does not hide duplicate",
+			file:      media.File{Name: "Nur mit Euch!"},
+			existing:  "Nur mit Euch! (720p, 5.1).mkv",
+			wantMatch: true,
+		},
+		{
 			name:      "erlebnis erde prefix",
 			file:      media.File{Name: "Erlebnis Erde - Wölfe", Subtitle: "Dokumentation Deutschland 2022"},
 			existing:  "Wölfe - Dokumentation Deutschland 2022.mkv",

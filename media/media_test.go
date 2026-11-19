@@ -102,6 +102,20 @@ func TestDuplicateKeyForStripsModuleSuffix(t *testing.T) {
 	}
 }
 
+func TestDuplicateKeyForStripsQualitySuffix(t *testing.T) {
+	patterns := []string{}
+	for _, suffix := range []string{"720p, 5.1", "720p, STEREO", "5.1", "720p"} {
+		withSuffix := "Nur mit Euch! (" + suffix + ").mkv"
+		if got, want := DuplicateKeyFor(withSuffix, patterns), DuplicateKeyFor("Nur mit Euch!.mkv", patterns); got != want {
+			t.Errorf("DuplicateKeyFor(%q) = %q, want %q", withSuffix, got, want)
+		}
+	}
+	// A year in parentheses is part of the title identity and must remain.
+	if DuplicateKeyFor("Nur mit Euch! (2026).mkv", patterns) == DuplicateKeyFor("Nur mit Euch!.mkv", patterns) {
+		t.Error("year suffix must not be stripped as a quality suffix")
+	}
+}
+
 // A broken pattern must not disable duplicate detection.
 func TestDuplicateKeyForInvalidPatternIgnored(t *testing.T) {
 	patterns := []string{`terra\s*x\s*-\s*`, `([unclosed`}

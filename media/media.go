@@ -283,12 +283,15 @@ func StripNamePatterns(stem string, patterns []string) string {
 	return strings.TrimSpace(stem)
 }
 
+var qualitySuffixPattern = regexp.MustCompile(`(?i)\s+\((?:\d+p|stereo|5\.1)(?:,\s*(?:\d+p|stereo|5\.1))*\)$`)
+
 // DuplicateKeyFor resolves the comparison key for a file name: known patterns
 // (framing prefixes, module suffixes) are stripped from the base name before
 // the alphanumeric key is built. The extension is removed first so patterns can
 // anchor on the end of the stem.
 func DuplicateKeyFor(name string, patterns []string) string {
 	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	stem = qualitySuffixPattern.ReplaceAllString(stem, "")
 	return DuplicateNameKey(StripNamePatterns(stem, patterns))
 }
 
