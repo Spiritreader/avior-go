@@ -121,7 +121,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 				_ = glg.Infof("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
 			default:
 				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s)", year, mediaFile.Name, dupeYear)
-				mediaFile.Name = fmt.Sprintf("%s (%s)", mediaFile.Name, year)
+				appendReleaseYear(mediaFile, year)
 				duplicates = nil // name changed, previous matches are stale
 				jobLog.Add(fmt.Sprintf("Year collision: renamed to %s (existing has %s)", mediaFile.OutName(), dupeYear))
 			}
@@ -736,6 +736,18 @@ func keepBothFor(res, moduleName, lowerAction, higherAction string) bool {
 		return higherAction == consts.QUALITY_ACTION_KEEP
 	}
 	return false
+}
+
+func appendReleaseYear(file *media.File, year string) {
+	if file == nil || strings.TrimSpace(year) == "" {
+		return
+	}
+	suffix := " (" + strings.TrimSpace(year) + ")"
+	if strings.TrimSpace(file.Subtitle) != "" {
+		file.Subtitle = strings.TrimSpace(file.Subtitle) + suffix
+		return
+	}
+	file.Name = strings.TrimSpace(file.Name) + suffix
 }
 
 func duplicateNameMatch(candidate, existing, extension string) bool {

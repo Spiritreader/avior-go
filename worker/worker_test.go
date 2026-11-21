@@ -187,6 +187,20 @@ func TestPreferExactQualityDuplicate(t *testing.T) {
 	}
 }
 
+func TestAppendReleaseYearAfterCompleteName(t *testing.T) {
+	withSubtitle := media.File{Name: "1491 - Amerika vor Kolumbus", Subtitle: "Die ersten Menschen"}
+	appendReleaseYear(&withSubtitle, "2026")
+	if got, want := withSubtitle.OutName(), "1491 - Amerika vor Kolumbus - Die ersten Menschen (2026)"; got != want {
+		t.Fatalf("OutName() = %q, want %q", got, want)
+	}
+
+	withoutSubtitle := media.File{Name: "Die Löwin"}
+	appendReleaseYear(&withoutSubtitle, "2024")
+	if got, want := withoutSubtitle.OutName(), "Die Löwin (2024)"; got != want {
+		t.Fatalf("OutName() without subtitle = %q, want %q", got, want)
+	}
+}
+
 // The .INFO.log files must be world-readable/writable on Unraid so every
 // user (nobody:users) can read/write/delete them. joblog.AppendTo must fix the
 // mode before and after lumberjack creates or rotates the file.
