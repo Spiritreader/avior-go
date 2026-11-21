@@ -159,6 +159,17 @@ func TestDuplicateNameMatchStripsPrefixFromOutputName(t *testing.T) {
 	}
 }
 
+func TestFindExactDuplicatePathAcrossQualityVariants(t *testing.T) {
+	duplicates := []media.File{
+		{Path: `\\media\\FilmeHD3\\1080\\Slumdog Millionär.mkv`},
+		{Path: `\\media\\FilmeHD1\\Slumdog Millionär (720p, STEREO).mkv`},
+	}
+	want := duplicates[1].Path
+	if got := findExactDuplicatePath(duplicates, "Slumdog Millionär (720p, STEREO).mkv"); got != want {
+		t.Fatalf("findExactDuplicatePath() = %q, want %q", got, want)
+	}
+}
+
 // The .INFO.log files must be world-readable/writable on Unraid so every
 // user (nobody:users) can read/write/delete them. joblog.AppendTo must fix the
 // mode before and after lumberjack creates or rotates the file.

@@ -184,10 +184,18 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 		if keepBoth {
 			keptBothSourcePath = duplicates[0].Path
 			mediaFile.QualitySuffix = media.QualitySuffixFor(*mediaFile)
-			_ = glg.Infof("keeping both: encoding %s as %s", mediaFile.Path, mediaFile.OutName())
-			jobLog.Add(fmt.Sprintf("Keeping both: new file encoded as %s (%s action)", mediaFile.OutName(), moduleName))
-			duplicateDir := filepath.Dir(duplicates[0].Path)
-			redirectDir = &duplicateDir
+			outputName := mediaFile.OutName() + cfg.Local.Ext
+			if existingPath := findExactDuplicatePath(duplicates, outputName); existingPath != "" {
+				_ = glg.Infof("keeping both target already exists: %s", existingPath)
+				jobLog.Add(fmt.Sprintf("Keeping both target already exists: %s", existingPath))
+				keepBoth = false
+				res = comparator.NOCH
+			} else {
+				_ = glg.Infof("keeping both: encoding %s as %s", mediaFile.Path, mediaFile.OutName())
+				jobLog.Add(fmt.Sprintf("Keeping both: new file encoded as %s (%s action)", mediaFile.OutName(), moduleName))
+				duplicateDir := filepath.Dir(duplicates[0].Path)
+				redirectDir = &duplicateDir
+			}
 		}
 
 		if !keepBoth {
@@ -740,6 +748,15 @@ func duplicateNameMatch(candidate, existing, extension string) bool {
 	// Shared.DuplicateStripPatterns).
 	patterns := config.Instance().Shared.DuplicateStripPatterns
 	return media.DuplicateKeyFor(candidate, patterns) == media.DuplicateKeyFor(existing, patterns)
+}
+
+func findExactDuplicatePath(duplicates []media.File, outputName string) string {
+	for _, duplicate := range duplicates {
+		if strings.EqualFold(filepath.Base(duplicate.Path), outputName) {
+			return duplicate.Path
+		}
+	}
+	return ""
 }
 
 func traverseMemCache(file *media.File, libCache *cache.Library) []media.File {
