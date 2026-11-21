@@ -170,6 +170,23 @@ func TestFindExactDuplicatePathAcrossQualityVariants(t *testing.T) {
 	}
 }
 
+func TestPreferExactQualityDuplicate(t *testing.T) {
+	duplicates := []media.File{
+		{Path: `\\media\\FilmeHD3\\1080\\Slumdog Millionär.mkv`},
+		{Path: `\\media\\FilmeHD1\\Slumdog Millionär (720p, STEREO).mkv`},
+	}
+	file := media.File{
+		Name:        "Slumdog Millionär",
+		Resolution:  media.Resolution{Value: "1280x720"},
+		AudioFormat: media.STEREO,
+	}
+	want := duplicates[1].Path
+	preferExactQualityDuplicate(duplicates, file, ".mkv")
+	if got := duplicates[0].Path; got != want {
+		t.Fatalf("preferred duplicate = %q, want %q", got, want)
+	}
+}
+
 // The .INFO.log files must be world-readable/writable on Unraid so every
 // user (nobody:users) can read/write/delete them. joblog.AppendTo must fix the
 // mode before and after lumberjack creates or rotates the file.

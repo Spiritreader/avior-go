@@ -158,8 +158,9 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			return
 		}
 	}
+	preferExactQualityDuplicate(duplicates, *mediaFile, cfg.Local.Ext)
 	if dupeLen := len(duplicates); dupeLen > 0 {
-		_ = glg.Infof("found %d duplicates, selecting first", dupeLen)
+		_ = glg.Infof("found %d duplicates, selecting preferred first", dupeLen)
 
 		// check if duplicate file actually exists
 		if _, err := os.Stat(duplicates[0].Path); os.IsNotExist(err) {
@@ -757,6 +758,24 @@ func findExactDuplicatePath(duplicates []media.File, outputName string) string {
 		}
 	}
 	return ""
+}
+
+func preferExactQualityDuplicate(duplicates []media.File, file media.File, extension string) {
+	qualitySuffix := media.QualitySuffixFor(file)
+	if qualitySuffix == "" {
+		return
+	}
+	targetName := file.OutName() + " (" + qualitySuffix + ")" + extension
+	existingPath := findExactDuplicatePath(duplicates, targetName)
+	if existingPath == "" {
+		return
+	}
+	for idx := range duplicates {
+		if duplicates[idx].Path == existingPath {
+			duplicates[0], duplicates[idx] = duplicates[idx], duplicates[0]
+			return
+		}
+	}
 }
 
 func traverseMemCache(file *media.File, libCache *cache.Library) []media.File {
