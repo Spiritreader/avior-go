@@ -94,15 +94,6 @@
       "Settings": {
         "MinResolution": 20
       }
-    },
-    "SizeApproxModule": {
-      "Enabled": true,
-      "Priority": 0,
-      "Settings": {
-        "Difference": 20,
-        "Fraction": 10,
-        "SampleCount": 3
-      }
     }
   },
   "EncoderConfig": {

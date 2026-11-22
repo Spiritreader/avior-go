@@ -1,6 +1,8 @@
 package db
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -92,6 +94,43 @@ func (ds *DataStore) LoadSharedConfig() error {
 	}
 	for _, field := range logIncludeFields {
 		cfg.Shared.LogInclude = append(cfg.Shared.LogInclude, field.Value)
+	}
+
+	// duplicate strip patterns (framing prefixes / module suffixes removed before
+	// the duplicate comparison key is built)
+	stripPatternFields, err := ds.GetFields("duplicate_strip_patterns")
+	if err != nil {
+		_ = glg.Errorf("could not retrieve duplicate strip patterns: %s", err)
+		return err
+	}
+	for _, field := range stripPatternFields {
+		cfg.Shared.DuplicateStripPatterns = append(cfg.Shared.DuplicateStripPatterns, field.Value)
+	}
+
+	// quality actions: one value each, defaulting to the previous behaviour
+	cfg.Shared.LowerQualityAction = consts.QUALITY_ACTION_DISCARD
+	if fields, err := ds.GetFields("lower_quality_action"); err != nil {
+		_ = glg.Errorf("could not retrieve lower quality action: %s", err)
+	} else if len(fields) > 0 {
+		cfg.Shared.LowerQualityAction = strings.ToLower(strings.TrimSpace(fields[0].Value))
+	}
+
+	cfg.Shared.HigherQualityAction = consts.QUALITY_ACTION_REPLACE
+	if fields, err := ds.GetFields("higher_quality_action"); err != nil {
+		_ = glg.Errorf("could not retrieve higher quality action: %s", err)
+	} else if len(fields) > 0 {
+		cfg.Shared.HigherQualityAction = strings.ToLower(strings.TrimSpace(fields[0].Value))
+	}
+	cfg.Shared.DescriptionSimilarityThreshold = 0.7
+	if fields, err := ds.GetFields("description_similarity_threshold"); err != nil {
+		_ = glg.Errorf("could not retrieve description similarity threshold: %s", err)
+	} else if len(fields) > 0 {
+		value, parseErr := strconv.ParseFloat(strings.TrimSpace(fields[0].Value), 64)
+		if parseErr != nil || value < 0 || value > 1 {
+			_ = glg.Warnf("invalid description similarity threshold %q, using default 0.7", fields[0].Value)
+		} else {
+			cfg.Shared.DescriptionSimilarityThreshold = value
+		}
 	}
 	return nil
 }

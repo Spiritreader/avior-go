@@ -1,0 +1,11 @@
+DbUrl = 'mongodb://192.168.178.75:27017'
+DbName = 'Avior'
+DefaultClient = 'AVIOR-GO-TEST'
+IgnoredClients = ['VDR-U', 'VDR-U-1', 'VDR-U-2', 'PHOENIX', 'VDR', 'MMDG', 'VAVA']
+Filetypes = [
+    'ts',
+    'mpg',
+    'mkv'
+]
+IgnoredFiletypes = ['INFO.log']
+MinAge = 1

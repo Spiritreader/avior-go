@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
-	github.com/karrick/godirwalk v1.17.0
+	github.com/karrick/godirwalk v1.16.2
 	github.com/kpango/glg v1.6.15
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/redis/go-redis/v9 v9.21.0
@@ -15,6 +15,12 @@ require (
 	golang.org/x/sys v0.47.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
+
+// godirwalk v1.17.0 is broken on Windows: its directory scanner stores the io.EOF
+// that ends a normal Readdir loop as the scan error, and Walk returns it without
+// consulting ErrorCallback, so every successful walk reports EOF. The project is
+// archived upstream, so there is no fix release. Keep it off v1.17.0.
+exclude github.com/karrick/godirwalk v1.17.0
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

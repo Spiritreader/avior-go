@@ -34,17 +34,11 @@ func (j *Data) AddFileProperties(file media.File) {
 }
 
 func (j *Data) AppendTo(path string, newline bool, separators bool) error {
-	/*file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer func() {
-		err := file.Close()
-		if err != nil {
-			_ = glg.Errorf("error closing file: %s", err)
-		}
-	}()
-	if err != nil {
-		_ = glg.Errorf("could not write media info to %s, err: %s", path, err)
-		return err
-	}*/
+	// lumberjack opens log files with 0600. Create the path first so a new
+	// file gets the required mode, and fix existing files before rotation.
+	if err := ensureLogFilePermissions(path); err != nil {
+		_ = glg.Warnf("could not prepare log file %s: %s", path, err)
+	}
 	file := &lumberjack.Logger{
 		Filename: path,
 		MaxSize:  10, // megabytes
@@ -76,10 +70,25 @@ func (j *Data) AppendTo(path string, newline bool, separators bool) error {
 	if separators {
 		_, _ = writer.WriteString("----------------\n\n")
 	}
-	err := writer.Flush()
-	if err != nil {
+	if err := writer.Flush(); err != nil {
 		_ = glg.Errorf("could not write media info to %s, err: %s", path, err)
 		return err
 	}
+	// A new file may have been opened by lumberjack during this write.
+	if err := ensureLogFilePermissions(path); err != nil {
+		_ = glg.Errorf("could not set permissions on media info log %s, err: %s", path, err)
+		return err
+	}
 	return nil
+}
+
+func ensureLogFilePermissions(path string) error {
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0666)
 }

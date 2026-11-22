@@ -138,7 +138,13 @@ func AutoManage(prevCfg config.Redis) error {
 	cfg := config.Instance()
 	redis := Get()
 
-	if cfg.Local.Redis.Enabled {
+	// CacheLibScan=false disables the library cache entirely (always fresh FS
+	// scan), which makes the Redis job broadcast redundant. Skip connecting so
+	// the instance doesn't hold a pointless Redis session. Re-enabling
+	// CacheLibScan (or Redis.Enabled) restores it automatically.
+	redisEffective := cfg.Local.Redis.Enabled && cfg.Local.CacheLibScan
+
+	if redisEffective {
 		if prevCfg.Enabled && (prevCfg.Host != cfg.Local.Redis.Host ||
 			prevCfg.Password != cfg.Local.Redis.Password ||
 			prevCfg.DB != cfg.Local.Redis.DB ||
@@ -150,6 +156,9 @@ func AutoManage(prevCfg config.Redis) error {
 		redis.configure()
 		redis.Handle.subscribe()
 	} else {
+		if cfg.Local.Redis.Enabled && !cfg.Local.CacheLibScan {
+			glg.Infof("redis: disabled because CacheLibScan is false (always fresh scan)")
+		}
 		redis.Handle.Close()
 	}
 	return nil

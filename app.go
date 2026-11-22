@@ -23,6 +23,40 @@ var (
 	resumeChan chan string
 )
 
+// ensureLogPermissions keeps the runtime log files world-readable/writable.
+//
+// umask cannot help here: lumberjack passes 0600 to os.OpenFile, and a umask only
+// removes permission bits. The mode is fixed once the file exists and re-checked
+// periodically so lumberjack's 10 MB rotation does not leave a 0600 file behind.
+func ensureLogPermissions(logDir string) {
+	fixLogPermissions(logDir)
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		fixLogPermissions(logDir)
+	}
+}
+
+// fixLogPermissions makes every file in the log directory world-readable and
+// writable. It covers lumberjack's rotated files and logs created before this
+// rule existed, not just the two the process holds open.
+func fixLogPermissions(logDir string) {
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		_ = glg.Warnf("could not read log directory %s: %s", logDir, err)
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(logDir, entry.Name())
+		if err := os.Chmod(path, 0666); err != nil {
+			_ = glg.Warnf("could not chmod log file %s: %s", path, err)
+		}
+	}
+}
+
 func main() {
 	resumeChan = make(chan string, 1)
 	apiChan := make(chan string)
@@ -31,7 +65,21 @@ func main() {
 
 	// Set up logger
 	//log := glg.FileWriter(filepath.Join("log", "main.log"), os.ModeAppend)
-	errlog := glg.FileWriter(filepath.Join(globalstate.ReflectionPath(), "log", "err.log"), os.ModeAppend)
+	// Create the log dir explicitly with 0775: glg.FileWriter's perm argument is
+	// passed BOTH to os.MkdirAll (dir) and OpenFile (file), so one value cannot be
+	// right for both. A dir needs the x bit (0755), a file should be 0644. The old
+	// os.ModeAppend (flag bit = 0 as permission) made the dir 000 on Linux.
+	logDir := filepath.Join(globalstate.ReflectionPath(), "log")
+	// MkdirAll does NOT fix permissions of an already existing directory. A legacy
+	// log/ dir created with mode 000 (by the old os.ModeAppend bug) would stay
+	// inaccessible forever, so chmod explicitly after creation.
+	if err := os.MkdirAll(logDir, 0775); err != nil {
+		_ = glg.Errorf("could not create log directory %s: %s", logDir, err)
+	}
+	if err := os.Chmod(logDir, 0775); err != nil {
+		_ = glg.Errorf("could not fix permissions on log directory %s: %s", logDir, err)
+	}
+	errlog := glg.FileWriter(filepath.Join(logDir, "err.log"), 0666)
 	log := &lumberjack.Logger{
 		Filename: filepath.Join(globalstate.ReflectionPath(), "log", "main.log"),
 		MaxSize:  10, // megabytes
@@ -52,8 +100,14 @@ func main() {
 		AddLevelWriter(glg.FAIL, errlog).
 		SetLevelColor(glg.ERR, glg.Red).
 		SetLevelColor(glg.DEBG, glg.Cyan)
-	_ = glg.Info("version ==>", "hey (2.0.0) codename odysseus")
+	_ = glg.Info("version ==>", "hey (2.0.1) codename odysseus")
 	defer log.Close()
+
+	// Runtime logs must be readable/writable for every authorized user on the host.
+	// lumberjack opens its file with 0600 and rotates it, and logs written before a
+	// fix stay 0600, so the whole directory is corrected here and re-checked
+	// periodically.
+	go ensureLogPermissions(logDir)
 
 	// read cli args
 	if len(os.Args) > 1 {

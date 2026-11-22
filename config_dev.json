@@ -28,13 +28,6 @@
   ],
   "EstimatedLibSize": 127,
   "Modules": {
-    "AgeModule": {
-      "Enabled": true,
-      "Priority": 0,
-      "Settings": {
-        "MaxAge": 5
-      }
-    },
     "AudioModule": {
       "Enabled": true,
       "Priority": 0,
@@ -45,9 +38,7 @@
     "DuplicateLengthCheckModule": {
       "Enabled": true,
       "Priority": 0,
-      "Settings": {
-        "Threshold": 2
-      }
+      "Settings": {}
     },
     "ErrorReplaceModule": {
       "Enabled": true,
@@ -72,7 +63,27 @@
       "Enabled": true,
       "Priority": 0,
       "Settings": {
-        "Threshold": 20
+        "Tolerances": [
+          {
+            "below_minutes": 10,
+            "minutes": 2
+          },
+          {
+            "below_minutes": 60,
+            "minutes": 3
+          },
+          {
+            "below_minutes": 90,
+            "minutes": 4
+          },
+          {
+            "below_minutes": 120,
+            "minutes": 5
+          },
+          {
+            "minutes": 6
+          }
+        ]
       }
     },
     "LogMatchModule": {
@@ -94,15 +105,6 @@
       "Priority": 0,
       "Settings": {
         "MinResolution": 20
-      }
-    },
-    "SizeApproxModule": {
-      "Enabled": true,
-      "Priority": 0,
-      "Settings": {
-        "Difference": 20,
-        "Fraction": 10,
-        "SampleCount": 3
       }
     }
   },
