@@ -134,12 +134,13 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 					media.DescriptionFromMetadata(mediaFile.MetadataLog), existingDescription,
 				)
 				if compareErr != nil {
-					_ = glg.Warnf("description comparison failed for %s: %s", mediaFile.Name, compareErr)
+					message := fmt.Sprintf("Description comparison failed; job aborted without moving source: %s", reason)
+					_ = glg.Errorf("%s", message)
+					jobLog.Add(message)
+					_ = jobLog.AppendTo(mediaFile.LogPaths[0], true, false)
+					return
 				}
 				jobLog.Add(fmt.Sprintf("Description comparison: score %.3f; content matched=%t; %s", score, sameDescription, reason))
-				if compareErr != nil {
-					jobLog.Add(fmt.Sprintf("Description comparison error: %s", compareErr))
-				}
 				if sameDescription {
 					_ = glg.Infof("year-aware dupes: descriptions identify existing content (score %.3f); keeping original name", score)
 					jobLog.Add("Year-aware decision: same content; keeping original name and continuing duplicate quality checks")
