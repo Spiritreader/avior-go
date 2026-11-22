@@ -10,6 +10,11 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY llm_compare/requirements.txt /tmp/avior-requirements.txt
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-venv git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY llm_compare/requirements.txt /tmp/avior-requirements.txt
+
 ARG MOVIE_NFO_LIB_REF=v1.0.79
 ENV MOVIE_NFO_LIB_REF=${MOVIE_NFO_LIB_REF}
 ARG GIT_TOKEN
