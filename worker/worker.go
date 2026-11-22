@@ -774,9 +774,6 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 	if media.DescriptionsEquivalent(left, right) {
 		return true, 1, "normalized description match", nil
 	}
-	if media.DescriptionsEquivalentIgnoringYears(left, right) {
-		return true, 1, "normalized description match ignoring years", nil
-	}
 	if strings.TrimSpace(left) == "" || strings.TrimSpace(right) == "" {
 		return false, 0, "description missing", nil
 	}

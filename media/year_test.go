@@ -347,7 +347,7 @@ func TestExtractYear(t *testing.T) {
 func TestDescriptionsEquivalentIgnoresMetadataYears(t *testing.T) {
 	left := "SOKO Stuttgart | Für bare Münze | 2000"
 	right := "SOKO Stuttgart | Für bare Münze | 2026"
-	if !DescriptionsEquivalentIgnoringYears(left, right) {
+	if !DescriptionsEquivalent(left, right) {
 		t.Fatalf("descriptions with different metadata years should compare equal")
 	}
 }

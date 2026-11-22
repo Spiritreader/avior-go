@@ -179,9 +179,10 @@ func DescriptionFromMetadata(lines []string) string {
 }
 
 // NormalizeDescription removes recording-date decorations and punctuation noise
-// while retaining content-bearing words and years.
+// while ignoring standalone metadata years that identify the recording rather than its content.
 func NormalizeDescription(description string) string {
 	description = descriptionDateRe.ReplaceAllString(description, " ")
+	description = descriptionYearRe.ReplaceAllString(description, " ")
 	description = strings.ToLower(strings.TrimSpace(description))
 	var b strings.Builder
 	for _, r := range description {
@@ -202,13 +203,6 @@ func DescriptionsEquivalent(left, right string) bool {
 	return left != "" && left == right
 }
 
-// DescriptionsEquivalentIgnoringYears compares descriptions after removing
-// metadata years, which commonly differ between recorder and library sidecars.
-func DescriptionsEquivalentIgnoringYears(left, right string) bool {
-	left = descriptionYearRe.ReplaceAllString(left, " ")
-	right = descriptionYearRe.ReplaceAllString(right, " ")
-	return DescriptionsEquivalent(left, right)
-}
 
 // ExtractYear returns the first 4-digit year found in s, or "".
 // Decade forms like "1980er" are ignored.
