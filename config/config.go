@@ -59,6 +59,14 @@ type Local struct {
 	Modules          map[string]ModuleConfig
 	EncoderConfig    map[string]EncoderConfig
 	EncoderPriority  string
+	YearAwareDupes bool `json:"YearAwareDupes"`
+	// DescriptionSimilarityThreshold is the strict LLM score threshold above which
+	// two different descriptions are treated as the same content. Default 0.7.
+	DescriptionSimilarityThreshold float64 `json:"DescriptionSimilarityThreshold"`
+	EstimatedLibSize               int
+	Modules                        map[string]ModuleConfig
+	EncoderConfig                  map[string]EncoderConfig
+	EncoderPriority                string
 }
 
 type Redis struct {
@@ -221,6 +229,7 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
 	cfg.Local.CacheLibScan = true
 	cfg.Local.YearAwareDupes = true
+	cfg.Local.DescriptionSimilarityThreshold = 0.7
 	cfg.Local.Redis = Redis{
 		Host:          "localhost:6379",
 		Password:      "",
