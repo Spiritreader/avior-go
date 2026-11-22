@@ -166,6 +166,7 @@ func (f *File) ExtractYearFromFile() string {
 }
 
 var descriptionDateRe = regexp.MustCompile(`(?i)\b(?:\d{1,2}[./-]\d{1,2}[./-](?:19|20)\d{2}|(?:19|20)\d{2}-\d{1,2}-\d{1,2})\b`)
+var descriptionYearRe = regexp.MustCompile(`\b(?:19|20)\d{2}\b`)
 
 // DescriptionFromMetadata returns the raw Description= value from a metadata sidecar.
 func DescriptionFromMetadata(lines []string) string {
@@ -199,6 +200,14 @@ func DescriptionsEquivalent(left, right string) bool {
 	left = NormalizeDescription(left)
 	right = NormalizeDescription(right)
 	return left != "" && left == right
+}
+
+// DescriptionsEquivalentIgnoringYears compares descriptions after removing
+// metadata years, which commonly differ between recorder and library sidecars.
+func DescriptionsEquivalentIgnoringYears(left, right string) bool {
+	left = descriptionYearRe.ReplaceAllString(left, " ")
+	right = descriptionYearRe.ReplaceAllString(right, " ")
+	return DescriptionsEquivalent(left, right)
 }
 
 // ExtractYear returns the first 4-digit year found in s, or "".
