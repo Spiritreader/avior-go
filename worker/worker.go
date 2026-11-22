@@ -120,7 +120,7 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 					_ = glg.Infof("year-aware dupes: exact-name duplicate found but its year is unknown, cannot decide collision for %s", mediaFile.Name)
 				}
 			case dupeYear == year:
-				_ = glg.Infof("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
+				jobLog.Add(fmt.Sprintf("Year-aware duplicate: same release year %s; treating as same work", year))
 			default:
 				existingDescription := ""
 				if len(matches) > 0 {
@@ -136,8 +136,10 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 				if compareErr != nil {
 					_ = glg.Warnf("description comparison failed for %s: %s", mediaFile.Name, compareErr)
 				}
+				jobLog.Add(fmt.Sprintf("Description comparison: score %.3f; %s", score, reason))
 				if sameDescription {
 					_ = glg.Infof("year-aware dupes: descriptions identify existing content (score %.3f, %s); keeping original name", score, reason)
+					jobLog.Add("Year-aware decision: same content; keeping original name and continuing duplicate quality checks")
 					break
 				}
 				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s; description score %.3f, %s)", year, mediaFile.Name, dupeYear, score, reason)
