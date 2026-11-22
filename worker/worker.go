@@ -772,9 +772,9 @@ type descriptionComparisonRequest struct {
 
 type descriptionComparisonResponse struct {
 	Score          float64 `json:"score"`
-	SameContent    bool    `json:"same_content"`
 	Explanation    string  `json:"explanation"`
 	UsedInstance   string  `json:"used_instance"`
+	UsedURL        string  `json:"used_url"`
 	UsedModel      string  `json:"used_model"`
 	MaxTokens      int     `json:"max_tokens"`
 	TokensUsed     int     `json:"tokens_used"`
@@ -819,7 +819,7 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 	if err := json.Unmarshal(out, &response); err != nil {
 		return false, 0, "invalid LLM adapter response", err
 	}
-	_ = glg.Infof("description comparison result: instance=%s, model=%s, max_tokens=%d, tokens_used=%d, elapsed=%.3fs, finish=%s, score=%.3f", response.UsedInstance, response.UsedModel, response.MaxTokens, response.TokensUsed, response.ElapsedSeconds, response.FinishReason, response.Score)
+	_ = glg.Infof("description comparison result: instance=%s, url=%s, model=%s, max_tokens=%d, tokens_used=%d, elapsed=%.3fs, finish=%s, score=%.3f", response.UsedInstance, response.UsedURL, response.UsedModel, response.MaxTokens, response.TokensUsed, response.ElapsedSeconds, response.FinishReason, response.Score)
 	if response.Score < 0 || response.Score > 1 {
 		return false, response.Score, response.Explanation, fmt.Errorf("LLM score %.3f outside [0,1]", response.Score)
 	}
