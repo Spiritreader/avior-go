@@ -5,11 +5,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o /out/avior-go app.go
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-venv git ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-COPY llm_compare/requirements.txt /tmp/avior-requirements.txt
 
+FROM linuxserver/ffmpeg:latest
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 python3-venv git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -28,10 +25,8 @@ RUN if [ -z "$GIT_TOKEN" ]; then \
     && rm -f /tmp/avior-requirements.txt \
     && unset TOKEN_URLENC GIT_TOKEN
 ENV PATH="/opt/avior-venv/bin:$PATH"
-COPY llm_compare /opt/avior-go-llm-compare
-
-FROM linuxserver/ffmpeg:latest
 COPY --from=build /out/avior-go /opt/avior-go-bin
+COPY llm_compare /opt/avior-go-llm-compare
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
