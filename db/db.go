@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -119,6 +120,17 @@ func (ds *DataStore) LoadSharedConfig() error {
 		_ = glg.Errorf("could not retrieve higher quality action: %s", err)
 	} else if len(fields) > 0 {
 		cfg.Shared.HigherQualityAction = strings.ToLower(strings.TrimSpace(fields[0].Value))
+	}
+	cfg.Shared.DescriptionSimilarityThreshold = 0.7
+	if fields, err := ds.GetFields("description_similarity_threshold"); err != nil {
+		_ = glg.Errorf("could not retrieve description similarity threshold: %s", err)
+	} else if len(fields) > 0 {
+		value, parseErr := strconv.ParseFloat(strings.TrimSpace(fields[0].Value), 64)
+		if parseErr != nil || value < 0 || value > 1 {
+			_ = glg.Warnf("invalid description similarity threshold %q, using default 0.7", fields[0].Value)
+		} else {
+			cfg.Shared.DescriptionSimilarityThreshold = value
+		}
 	}
 	return nil
 }
