@@ -6,10 +6,13 @@ import contextlib
 import json
 import math
 import os
-import sys
-
+import re
 from movie_metadata import llm
 from movie_metadata.config import RunConfig
+
+def _metadata_value(text: str, label: str, default: str) -> str:
+    match = re.search(rf"^{re.escape(label)}:\s*(.*?)\s*$", text, re.MULTILINE)
+    return match.group(1) if match else default
 
 
 def main() -> int:
@@ -31,6 +34,13 @@ def main() -> int:
         used_instance = llm.active_client_key
         used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         score = float(score)
+        explanation_text = str(explanation or "")
+        metadata = {
+            "max_tokens": int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100")),
+            "tokens_used": int(_metadata_value(explanation_text, "Deep model tokens_used", "0")),
+            "elapsed_seconds": float(_metadata_value(explanation_text, "Time deepcompare", "0")),
+            "finish_reason": _metadata_value(explanation_text, "Deep model finish reason", ""),
+        }
         if not math.isfinite(score) or not 0 <= score <= 1:
             raise ValueError("LLM score must be finite and within [0, 1]")
         json.dump(
@@ -40,6 +50,10 @@ def main() -> int:
                 "explanation": str(explanation or ""),
                 "used_instance": used_instance or "",
                 "used_model": used_model or "",
+                "max_tokens": metadata["max_tokens"],
+                "tokens_used": metadata["tokens_used"],
+                "elapsed_seconds": metadata["elapsed_seconds"],
+                "finish_reason": metadata["finish_reason"],
             },
             sys.stdout,
             ensure_ascii=False,
