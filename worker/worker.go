@@ -130,19 +130,19 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 						existingDescription = media.DescriptionFromMetadata(matches[0].MetadataLog)
 					}
 				}
-				sameDescription, score, reason, compareErr := compareDescriptions(
+				sameDescription, score, _, compareErr := compareDescriptions(
 					media.DescriptionFromMetadata(mediaFile.MetadataLog), existingDescription,
 				)
 				if compareErr != nil {
 					_ = glg.Warnf("description comparison failed for %s: %s", mediaFile.Name, compareErr)
 				}
-				jobLog.Add(fmt.Sprintf("Description comparison: score %.3f; %s", score, reason))
+				jobLog.Add(fmt.Sprintf("Description comparison: score %.3f; content matched=%t", score, sameDescription))
 				if sameDescription {
-					_ = glg.Infof("year-aware dupes: descriptions identify existing content (score %.3f, %s); keeping original name", score, reason)
+					_ = glg.Infof("year-aware dupes: descriptions identify existing content (score %.3f); keeping original name", score)
 					jobLog.Add("Year-aware decision: same content; keeping original name and continuing duplicate quality checks")
 					break
 				}
-				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s; description score %.3f, %s)", year, mediaFile.Name, dupeYear, score, reason)
+				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s; description score %.3f)", year, mediaFile.Name, dupeYear, score)
 				appendReleaseYear(mediaFile, year)
 				duplicates = nil // name changed, previous matches are stale
 				jobLog.Add(fmt.Sprintf("Year collision: renamed to %s (existing has %s)", mediaFile.OutName(), dupeYear))
