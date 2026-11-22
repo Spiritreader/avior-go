@@ -46,12 +46,9 @@ ASKPASS=$(mktemp)
 trap 'rm -f "$ASKPASS"' EXIT
 cat >"$ASKPASS" <<'EOF'
 #!/bin/sh
-LIB_REPO="${MOVIE_NFO_LIB_REPO:-https://github.com/Spiritreader/movie_nfo_lib.git}"
-LIB_REF="${MOVIE_NFO_LIB_REF:?MOVIE_NFO_LIB_REF is required}"
-LIB_DIR=/data/.vendor/movie_nfo_lib
-if [ -z "${GIT_TOKEN:-}" ]; then
-  echo "GIT_TOKEN is required to provision movie_nfo_lib" >&2
-  exit 1
+export AVIOR_LLM_ADAPTER=/opt/avior-go-llm-compare/compare.py
+
+ # Copy binary into persistent data directory so ReflectionPath() (= directory of the
 fi
 rm -rf "$LIB_DIR"
 mkdir -p "$(dirname "$LIB_DIR")"
