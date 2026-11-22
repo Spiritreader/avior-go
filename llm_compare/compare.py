@@ -20,7 +20,8 @@ def _metadata_number(text: str, label: str, default: int | float) -> int | float
     if not value:
         return default
     try:
-        return float(value) if isinstance(default, float) else int(value)
+        normalized = value[:-1].strip() if value.endswith("s") else value
+        return float(normalized) if isinstance(default, float) else int(normalized)
     except ValueError:
         return default
 
