@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import math
+import os
 import sys
 
 from movie_metadata import llm
@@ -22,7 +23,11 @@ def main() -> int:
         if not math.isfinite(threshold) or not 0 <= threshold <= 1:
             raise ValueError("threshold must be finite and within [0, 1]")
         with contextlib.redirect_stdout(sys.stderr):
-            score, explanation = llm.smart_compare_cached(left, right, RunConfig(max_tokens_deep=100))
+            score, explanation = llm.smart_compare_cached(
+                left,
+                right,
+                RunConfig(max_tokens_deep=int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100"))),
+            )
         used_instance = llm.active_client_key
         used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         score = float(score)
