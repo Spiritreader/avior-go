@@ -46,10 +46,23 @@ ASKPASS=$(mktemp)
 trap 'rm -f "$ASKPASS"' EXIT
 cat >"$ASKPASS" <<'EOF'
 #!/bin/sh
+LIB_REPO="${MOVIE_NFO_LIB_REPO:-https://github.com/Spiritreader/movie_nfo_lib.git}"
+LIB_REF="${MOVIE_NFO_LIB_REF:?MOVIE_NFO_LIB_REF is required}"
+LIB_DIR=/data/.vendor/movie_nfo_lib
+if [ -z "${GIT_TOKEN:-}" ]; then
+  echo "GIT_TOKEN is required to provision movie_nfo_lib" >&2
+  exit 1
+fi
+rm -rf "$LIB_DIR"
+mkdir -p "$(dirname "$LIB_DIR")"
+ASKPASS=$(mktemp)
+trap 'rm -f "$ASKPASS"' EXIT
+cat >"$ASKPASS" <<'EOF'
+#!/bin/sh
 printf '%s\n' "$GIT_TOKEN"
 EOF
 chmod 700 "$ASKPASS"
-GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 git clone --quiet --depth 1 --branch "$LIB_REF" "$LIB_REPO" "$LIB_DIR"
+GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0 git -c credential.username=x-access-token clone --quiet --depth 1 --branch "$LIB_REF" "$LIB_REPO" "$LIB_DIR"
 python3 -m venv /data/.vendor/venv
 /data/.vendor/venv/bin/pip install --disable-pip-version-check --quiet -r /opt/avior-go-llm-compare/requirements.txt
 /data/.vendor/venv/bin/pip install --disable-pip-version-check --quiet "$LIB_DIR"
