@@ -80,6 +80,33 @@ func TestDescriptionsEquivalentRequiresContent(t *testing.T) {
 }
 }
 
+func TestDescriptionFromMetadata(t *testing.T) {
+	lines := []string{
+		"Title=Example",
+		"Description=Eine Familie sucht am 03.11.2026 nach ihrem Sohn. | Zusatzdaten",
+	}
+	if got := DescriptionFromMetadata(lines); got != "Eine Familie sucht am 03.11.2026 nach ihrem Sohn. | Zusatzdaten" {
+		t.Fatalf("DescriptionFromMetadata = %q", got)
+	}
+}
+
+func TestDescriptionsEquivalentIgnoresRecordingDateAndPunctuation(t *testing.T) {
+	left := "Eine Familie sucht am 03.11.2026 nach ihrem Sohn."
+	right := "Eine Familie sucht am 04.11.2026 nach ihrem Sohn"
+	if !DescriptionsEquivalent(left, right) {
+		t.Fatal("descriptions with only recording-date/punctuation differences should match")
+	}
+}
+
+func TestDescriptionsEquivalentRequiresContent(t *testing.T) {
+	if DescriptionsEquivalent("", "") {
+		t.Fatal("empty descriptions must not match")
+	}
+	if DescriptionsEquivalent("Eine Familie sucht ihren Sohn", "Eine Familie findet einen Schatz") {
+		t.Fatal("different descriptions must not match")
+}
+}
+
 	lines := []string{
 		"Title=Example",
 		"Description=Eine Familie sucht am 03.11.2026 nach ihrem Sohn. | Zusatzdaten",

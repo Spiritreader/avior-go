@@ -4,18 +4,28 @@
 # instance's config.json (the app listens on 10000+Instance).
 services:
   avior-go:
-    build: .
+    build:
+      context: .
+      args:
+        GIT_TOKEN: ${GIT_TOKEN:?GIT_TOKEN is required}
+        MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.79}
     # Explicit, readable container name per instance (avior-go, avior-go-1, ...);
     # without it Compose derives <project>-<service>-<replica> (avior-go-avior-go-1).
     container_name: avior-go${INSTANCE_SUFFIX:-}
     hostname: avior-go${INSTANCE_SUFFIX:-}   # client fallback name; ClientName in config.json wins
     environment:
-      - TZ=${TZ:-Europe/Berlin}   # local time for logs (app uses time.Local)
+      TZ: ${TZ:-Europe/Berlin}
+      MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.79}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      OLLAMA_BASE_URL_FALLBACK: ${OLLAMA_BASE_URL_FALLBACK:-}
+      OLLAMA_MODEL_FALLBACK: ${OLLAMA_MODEL_FALLBACK:-}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-}
       # Unraid standard: run as nobody:users so files are owned like every
       # other share file and SMB/tools work without per-user PUID config.
       # Override via PUID/PGID env when a dedicated service user is wanted.
-      - PUID=${PUID:-99}
-      - PGID=${PGID:-100}
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-10000}:${CONTAINER_PORT:-10000}"
@@ -36,17 +46,3 @@ services:
       - ${GPU_DEVICE:-/dev/dri}:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
     cap_add:
       - SYS_NICE   # allows negative nice values for encoder priority
-    build:
-      context: .
-      args:
-        GIT_TOKEN: ${GIT_TOKEN:?GIT_TOKEN is required}
-        MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.79}
-      TZ: ${TZ:-Europe/Berlin}
-      MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.79}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
-      OLLAMA_BASE_URL_FALLBACK: ${OLLAMA_BASE_URL_FALLBACK:-}
-      OLLAMA_MODEL_FALLBACK: ${OLLAMA_MODEL_FALLBACK:-}
-      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-}
-      PUID: ${PUID:-99}
-      PGID: ${PGID:-100}
