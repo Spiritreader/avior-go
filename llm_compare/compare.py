@@ -43,6 +43,7 @@ def main() -> int:
                 RunConfig(max_tokens_deep=int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100"))),
             )
         used_instance = llm.active_client_key
+        used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         used_url = (llm.CLIENTS.get(used_instance) or {}).get("base_url", "")
         score = float(score)
         explanation_text = str(explanation or "")
