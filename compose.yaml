@@ -20,7 +20,7 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
       OLLAMA_BASE_URL_FALLBACK: ${OLLAMA_BASE_URL_FALLBACK:-}
       OLLAMA_MODEL_FALLBACK: ${OLLAMA_MODEL_FALLBACK:-}
-      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-}
+      OLLAMA_REASONING_EFFORT: ${OLLAMA_REASONING_EFFORT:-none}
       # Unraid standard: run as nobody:users so files are owned like every
       # other share file and SMB/tools work without per-user PUID config.
       # Override via PUID/PGID env when a dedicated service user is wanted.
