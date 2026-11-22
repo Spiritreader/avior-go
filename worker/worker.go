@@ -778,6 +778,7 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 		return false, 0, "description missing", nil
 	}
 	adapter := os.Getenv("AVIOR_LLM_ADAPTER")
+	_ = glg.Infof("description comparison: adapter=%s, model=%s, base_url=%s, fallback_model=%s, fallback_base_url=%s", adapter, os.Getenv("OLLAMA_MODEL"), os.Getenv("OLLAMA_BASE_URL"), os.Getenv("OLLAMA_MODEL_FALLBACK"), os.Getenv("OLLAMA_BASE_URL_FALLBACK"))
 	if adapter == "" {
 		return false, 0, "LLM adapter not configured", nil
 	}
