@@ -130,13 +130,16 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 						existingDescription = media.DescriptionFromMetadata(matches[0].MetadataLog)
 					}
 				}
-				sameDescription, score, _, compareErr := compareDescriptions(
+				sameDescription, score, reason, compareErr := compareDescriptions(
 					media.DescriptionFromMetadata(mediaFile.MetadataLog), existingDescription,
 				)
 				if compareErr != nil {
 					_ = glg.Warnf("description comparison failed for %s: %s", mediaFile.Name, compareErr)
 				}
-				jobLog.Add(fmt.Sprintf("Description comparison: score %.3f; content matched=%t", score, sameDescription))
+				jobLog.Add(fmt.Sprintf("Description comparison: score %.3f; content matched=%t; %s", score, sameDescription, reason))
+				if compareErr != nil {
+					jobLog.Add(fmt.Sprintf("Description comparison error: %s", compareErr))
+				}
 				if sameDescription {
 					_ = glg.Infof("year-aware dupes: descriptions identify existing content (score %.3f); keeping original name", score)
 					jobLog.Add("Year-aware decision: same content; keeping original name and continuing duplicate quality checks")
@@ -803,10 +806,13 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 	cmd.Stdin = strings.NewReader(string(reqBody) + "\n")
 	out, err := cmd.Output()
 	if err != nil {
+		reason := "LLM adapter failed: " + err.Error()
 		if exitErr, ok := err.(*exec.ExitError); ok && len(exitErr.Stderr) > 0 {
-			_ = glg.Warnf("description comparison adapter stderr: %s", strings.TrimSpace(string(exitErr.Stderr)))
+			stderr := strings.TrimSpace(string(exitErr.Stderr))
+			_ = glg.Warnf("description comparison adapter stderr: %s", stderr)
+			reason += ": " + stderr
 		}
-		return false, 0, "LLM adapter failed", err
+		return false, 0, reason, err
 	}
 	var response descriptionComparisonResponse
 	if err := json.Unmarshal(out, &response); err != nil {
