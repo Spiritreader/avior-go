@@ -14,6 +14,15 @@ def _metadata_value(text: str, label: str, default: str) -> str:
     match = re.search(rf"^{re.escape(label)}:\s*(.*?)\s*$", text, re.MULTILINE)
     return match.group(1) if match else default
 
+def _metadata_number(text: str, label: str, default: int | float) -> int | float:
+    value = _metadata_value(text, label, "")
+    if not value:
+        return default
+    try:
+        return float(value) if isinstance(default, float) else int(value)
+    except ValueError:
+        return default
+
 
 def main() -> int:
     try:
@@ -29,16 +38,16 @@ def main() -> int:
             score, explanation = llm.smart_compare_cached(
                 left,
                 right,
-                RunConfig(max_tokens_deep=int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "300"))),
+                RunConfig(max_tokens_deep=int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100"))),
             )
         used_instance = llm.active_client_key
         used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         score = float(score)
         explanation_text = str(explanation or "")
         metadata = {
-            "max_tokens": int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "300")),
-            "tokens_used": int(_metadata_value(explanation_text, "Deep model tokens_used", "0")),
-            "elapsed_seconds": float(_metadata_value(explanation_text, "Time deepcompare", "0")),
+            "max_tokens": int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100")),
+            "tokens_used": _metadata_number(explanation_text, "Deep model tokens_used", 0),
+            "elapsed_seconds": _metadata_number(explanation_text, "Time deepcompare", 0.0),
             "finish_reason": _metadata_value(explanation_text, "Deep model finish reason", ""),
         }
         if not math.isfinite(score) or not 0 <= score <= 1:
