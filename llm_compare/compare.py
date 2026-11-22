@@ -2,6 +2,7 @@
 """Compare two descriptions through movie_nfo_lib's configured LLM pipeline."""
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import sys
@@ -20,7 +21,8 @@ def main() -> int:
             raise ValueError("left and right must be strings")
         if not math.isfinite(threshold) or not 0 <= threshold <= 1:
             raise ValueError("threshold must be finite and within [0, 1]")
-        score, explanation = llm.smart_compare_cached(left, right, RunConfig())
+        with contextlib.redirect_stdout(sys.stderr):
+            score, explanation = llm.smart_compare_cached(left, right, RunConfig())
         used_instance = llm.active_client_key
         used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         score = float(score)
