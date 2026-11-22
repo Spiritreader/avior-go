@@ -2,9 +2,7 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,14 +57,6 @@ type Local struct {
 	Modules          map[string]ModuleConfig
 	EncoderConfig    map[string]EncoderConfig
 	EncoderPriority  string
-	YearAwareDupes bool `json:"YearAwareDupes"`
-	// DescriptionSimilarityThreshold is the strict LLM score threshold above which
-	// two different descriptions are treated as the same content. Default 0.7.
-	DescriptionSimilarityThreshold float64 `json:"DescriptionSimilarityThreshold"`
-	EstimatedLibSize               int
-	Modules                        map[string]ModuleConfig
-	EncoderConfig                  map[string]EncoderConfig
-	EncoderPriority                string
 }
 
 type Redis struct {
@@ -83,6 +73,9 @@ type Shared struct {
 	SubExclude  []string
 	LogInclude  []string
 	LogExclude  []string
+	// DescriptionSimilarityThreshold is the global strict LLM score threshold
+	// above which two descriptions are treated as the same content.
+	DescriptionSimilarityThreshold float64
 	// DuplicateStripPatterns are case-insensitive regular expressions removed
 	// from a file's base name before the duplicate comparison key is built.
 	// They strip framing prefixes that are not part of the work itself
@@ -229,7 +222,6 @@ func InitWithDefaults(cfg *Data) {
 	cfg.Local.EncoderPriority = PRIORITY_IDLE.String()
 	cfg.Local.CacheLibScan = true
 	cfg.Local.YearAwareDupes = true
-	cfg.Local.DescriptionSimilarityThreshold = 0.7
 	cfg.Local.Redis = Redis{
 		Host:          "localhost:6379",
 		Password:      "",
@@ -333,10 +325,6 @@ func LoadLocalFrom(path string) error {
 	err = json.Unmarshal(serialized, &instance.Local)
 	if err != nil {
 		return err
-	}
-	threshold := instance.Local.DescriptionSimilarityThreshold
-	if math.IsNaN(threshold) || math.IsInf(threshold, 0) || threshold < 0 || threshold > 1 {
-		return fmt.Errorf("DescriptionSimilarityThreshold must be finite and within [0,1], got %v", threshold)
 	}
 	return nil
 }

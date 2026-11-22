@@ -781,7 +781,7 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 	if adapter == "" {
 		return false, 0, "LLM adapter not configured", nil
 	}
-	threshold := config.Instance().Local.DescriptionSimilarityThreshold
+	threshold := config.Instance().Shared.DescriptionSimilarityThreshold
 	if threshold < 0 || threshold > 1 {
 		return false, 0, "invalid description similarity threshold", fmt.Errorf("description similarity threshold %.3f outside [0,1]", threshold)
 	}
