@@ -6,8 +6,8 @@ import json
 import math
 import sys
 
+from movie_metadata import llm
 from movie_metadata.config import RunConfig
-from movie_metadata.llm import smart_compare_cached
 
 
 def main() -> int:
@@ -20,7 +20,9 @@ def main() -> int:
             raise ValueError("left and right must be strings")
         if not math.isfinite(threshold) or not 0 <= threshold <= 1:
             raise ValueError("threshold must be finite and within [0, 1]")
-        score, explanation = smart_compare_cached(left, right, RunConfig())
+        score, explanation = llm.smart_compare_cached(left, right, RunConfig())
+        used_instance = llm.active_client_key
+        used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         score = float(score)
         if not math.isfinite(score) or not 0 <= score <= 1:
             raise ValueError("LLM score must be finite and within [0, 1]")
@@ -29,6 +31,8 @@ def main() -> int:
                 "score": score,
                 "same_content": score > threshold,
                 "explanation": str(explanation or ""),
+                "used_instance": used_instance or "",
+                "used_model": used_model or "",
             },
             sys.stdout,
             ensure_ascii=False,

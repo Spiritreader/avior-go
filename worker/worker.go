@@ -765,9 +765,11 @@ type descriptionComparisonRequest struct {
 }
 
 type descriptionComparisonResponse struct {
-	Score       float64 `json:"score"`
-	SameContent bool    `json:"same_content"`
-	Explanation string  `json:"explanation"`
+	Score        float64 `json:"score"`
+	SameContent  bool    `json:"same_content"`
+	Explanation  string  `json:"explanation"`
+	UsedInstance string  `json:"used_instance"`
+	UsedModel    string  `json:"used_model"`
 }
 
 func compareDescriptions(left, right string) (bool, float64, string, error) {
@@ -802,6 +804,7 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 	if err := json.Unmarshal(out, &response); err != nil {
 		return false, 0, "invalid LLM adapter response", err
 	}
+	_ = glg.Infof("description comparison result: instance=%s, model=%s, score=%.3f", response.UsedInstance, response.UsedModel, response.Score)
 	if response.Score < 0 || response.Score > 1 {
 		return false, response.Score, response.Explanation, fmt.Errorf("LLM score %.3f outside [0,1]", response.Score)
 	}
