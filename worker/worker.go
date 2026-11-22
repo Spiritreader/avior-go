@@ -803,6 +803,9 @@ func compareDescriptions(left, right string) (bool, float64, string, error) {
 	cmd.Stdin = strings.NewReader(string(reqBody) + "\n")
 	out, err := cmd.Output()
 	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && len(exitErr.Stderr) > 0 {
+			_ = glg.Warnf("description comparison adapter stderr: %s", strings.TrimSpace(string(exitErr.Stderr)))
+		}
 		return false, 0, "LLM adapter failed", err
 	}
 	var response descriptionComparisonResponse
