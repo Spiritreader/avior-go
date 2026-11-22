@@ -12,7 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY llm_compare/requirements.txt /tmp/avior-requirements.txt
 
-ARG MOVIE_NFO_LIB_REF=v1.0.79
+ARG MOVIE_NFO_LIB_REF=v1.0.80
 ENV MOVIE_NFO_LIB_REF=${MOVIE_NFO_LIB_REF}
 ARG GIT_TOKEN
 RUN if [ -z "$GIT_TOKEN" ]; then \

@@ -8,14 +8,14 @@ services:
       context: .
       args:
         GIT_TOKEN: ${GIT_TOKEN:?GIT_TOKEN is required}
-        MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.79}
+        MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.80}
     # Explicit, readable container name per instance (avior-go, avior-go-1, ...);
     # without it Compose derives <project>-<service>-<replica> (avior-go-avior-go-1).
     container_name: avior-go${INSTANCE_SUFFIX:-}
     hostname: avior-go${INSTANCE_SUFFIX:-}   # client fallback name; ClientName in config.json wins
     environment:
       TZ: ${TZ:-Europe/Berlin}
-      MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.79}
+      MOVIE_NFO_LIB_REF: ${MOVIE_NFO_LIB_REF:-v1.0.80}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
       OLLAMA_BASE_URL_FALLBACK: ${OLLAMA_BASE_URL_FALLBACK:-}
