@@ -6,7 +6,7 @@ import contextlib
 import json
 import math
 import os
-import sys
+import re
 from movie_metadata import llm
 from movie_metadata.config import RunConfig
 
