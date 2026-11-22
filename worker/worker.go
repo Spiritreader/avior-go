@@ -1,10 +1,12 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -120,7 +122,25 @@ func ProcessJob(dataStore *db.DataStore, client *structs.Client, job *structs.Jo
 			case dupeYear == year:
 				_ = glg.Infof("year-aware dupes: duplicate %s has same year %s, treating as same film", mediaFile.Name, year)
 			default:
-				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s)", year, mediaFile.Name, dupeYear)
+				existingDescription := ""
+				if len(matches) > 0 {
+					if err := matches[0].Update(); err != nil {
+						_ = glg.Warnf("could not read existing duplicate metadata: %s", err)
+					} else {
+						existingDescription = media.DescriptionFromMetadata(matches[0].MetadataLog)
+					}
+				}
+				sameDescription, score, reason, compareErr := compareDescriptions(
+					media.DescriptionFromMetadata(mediaFile.MetadataLog), existingDescription,
+				)
+				if compareErr != nil {
+					_ = glg.Warnf("description comparison failed for %s: %s", mediaFile.Name, compareErr)
+				}
+				if sameDescription {
+					_ = glg.Infof("year-aware dupes: descriptions identify existing content (score %.3f, %s); keeping original name", score, reason)
+					break
+				}
+				_ = glg.Infof("year collision: appending (%s) to %s (existing file has %s; description score %.3f, %s)", year, mediaFile.Name, dupeYear, score, reason)
 				appendReleaseYear(mediaFile, year)
 				duplicates = nil // name changed, previous matches are stale
 				jobLog.Add(fmt.Sprintf("Year collision: renamed to %s (existing has %s)", mediaFile.OutName(), dupeYear))
@@ -736,6 +756,55 @@ func keepBothFor(res, moduleName, lowerAction, higherAction string) bool {
 		return higherAction == consts.QUALITY_ACTION_KEEP
 	}
 	return false
+}
+
+type descriptionComparisonRequest struct {
+	Left      string  `json:"left"`
+	Right     string  `json:"right"`
+	Threshold float64 `json:"threshold"`
+}
+
+type descriptionComparisonResponse struct {
+	Score       float64 `json:"score"`
+	SameContent bool    `json:"same_content"`
+	Explanation string  `json:"explanation"`
+}
+
+func compareDescriptions(left, right string) (bool, float64, string, error) {
+	if media.DescriptionsEquivalent(left, right) {
+		return true, 1, "normalized description match", nil
+	}
+	if strings.TrimSpace(left) == "" || strings.TrimSpace(right) == "" {
+		return false, 0, "description missing", nil
+	}
+	adapter := os.Getenv("AVIOR_LLM_ADAPTER")
+	if adapter == "" {
+		return false, 0, "LLM adapter not configured", nil
+	}
+	threshold := config.Instance().Local.DescriptionSimilarityThreshold
+	if threshold < 0 || threshold > 1 {
+		return false, 0, "invalid description similarity threshold", fmt.Errorf("description similarity threshold %.3f outside [0,1]", threshold)
+	}
+	reqBody, err := json.Marshal(descriptionComparisonRequest{Left: left, Right: right, Threshold: threshold})
+	if err != nil {
+		return false, 0, "request encoding failed", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "python3", adapter)
+	cmd.Stdin = strings.NewReader(string(reqBody) + "\n")
+	out, err := cmd.Output()
+	if err != nil {
+		return false, 0, "LLM adapter failed", err
+	}
+	var response descriptionComparisonResponse
+	if err := json.Unmarshal(out, &response); err != nil {
+		return false, 0, "invalid LLM adapter response", err
+	}
+	if response.Score < 0 || response.Score > 1 {
+		return false, response.Score, response.Explanation, fmt.Errorf("LLM score %.3f outside [0,1]", response.Score)
+	}
+	return response.Score > threshold, response.Score, response.Explanation, nil
 }
 
 func appendReleaseYear(file *media.File, year string) {

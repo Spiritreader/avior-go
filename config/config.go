@@ -2,7 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -322,6 +324,10 @@ func LoadLocalFrom(path string) error {
 	err = json.Unmarshal(serialized, &instance.Local)
 	if err != nil {
 		return err
+	}
+	threshold := instance.Local.DescriptionSimilarityThreshold
+	if math.IsNaN(threshold) || math.IsInf(threshold, 0) || threshold < 0 || threshold > 1 {
+		return fmt.Errorf("DescriptionSimilarityThreshold must be finite and within [0,1], got %v", threshold)
 	}
 	return nil
 }

@@ -36,3 +36,11 @@ services:
       - ${GPU_DEVICE:-/dev/dri}:/dev/dri   # Intel ARC GPU for QSV hardware acceleration
     cap_add:
       - SYS_NICE   # allows negative nice values for encoder priority
+      - GIT_TOKEN=${GIT_TOKEN:?GIT_TOKEN is required}
+      - MOVIE_NFO_LIB_REPO=${MOVIE_NFO_LIB_REPO:-https://github.com/Spiritreader/movie_nfo_lib.git}
+      - MOVIE_NFO_LIB_REF=${MOVIE_NFO_LIB_REF:?MOVIE_NFO_LIB_REF is required}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+      - OLLAMA_BASE_URL_FALLBACK=${OLLAMA_BASE_URL_FALLBACK:-}
+      - OLLAMA_MODEL_FALLBACK=${OLLAMA_MODEL_FALLBACK:-}
+      - OLLAMA_NUM_CTX=${OLLAMA_NUM_CTX:-}
