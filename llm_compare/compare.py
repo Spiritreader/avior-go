@@ -29,14 +29,14 @@ def main() -> int:
             score, explanation = llm.smart_compare_cached(
                 left,
                 right,
-                RunConfig(max_tokens_deep=int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100"))),
+                RunConfig(max_tokens_deep=int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "300"))),
             )
         used_instance = llm.active_client_key
         used_model = llm.model_for_client(used_instance, llm.DEEPMODEL)
         score = float(score)
         explanation_text = str(explanation or "")
         metadata = {
-            "max_tokens": int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "100")),
+            "max_tokens": int(os.environ.get("AVIOR_LLM_MAX_TOKENS", "300")),
             "tokens_used": int(_metadata_value(explanation_text, "Deep model tokens_used", "0")),
             "elapsed_seconds": float(_metadata_value(explanation_text, "Time deepcompare", "0")),
             "finish_reason": _metadata_value(explanation_text, "Deep model finish reason", ""),
